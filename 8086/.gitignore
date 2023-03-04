@@ -1,0 +1,7 @@
+*.pdb
+.vscode
+*.exe
+*.ilk
+*.obj
+*.out
+8086
