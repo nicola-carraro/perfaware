@@ -1,3 +1,5 @@
+#define _CRT_SECURE_NO_WARNINGS
+
 #include "stdio.h"
 #include "stdint.h"
 #include "assert.h"
@@ -43,6 +45,8 @@ char *getRegisterName(uint8_t registerIndex, bool wBit)
     }
 
     assert(false && "Invalid register");
+
+    return 0;
 }
 
 int main(int argc, char *argv[])
@@ -57,8 +61,6 @@ int main(int argc, char *argv[])
     }
 
     char *inputName = argv[1];
-
-    char outputName[] = "8086.out";
 
     FILE *input = fopen(inputName, "r");
 
@@ -81,7 +83,7 @@ int main(int argc, char *argv[])
 
             if (instructionType == 0x22)
             {
-                printf("mov ", instructionType);
+                printf("mov ");
 
                 bool dBit = (firstByte & 0x02) >> 1;
                 bool wBit = firstByte & 0x01;
