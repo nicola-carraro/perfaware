@@ -119,7 +119,7 @@ int main(int argc, char *argv[])
     }
     else
     {
-        perror("ERROR: Could not open input file");
+        perror("Error: Could not open input file");
     }
 
     printf("Press enter to continue...");
