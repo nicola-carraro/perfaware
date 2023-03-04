@@ -122,7 +122,7 @@ int main(int argc, char *argv[])
         perror("Error: Could not open input file");
     }
 
-    printf("Press enter to continue...");
+    printf(";Press enter to continue...");
 
     char byte;
     fread(&byte, sizeof(byte), 1, stdin);
