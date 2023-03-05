@@ -81,9 +81,9 @@ int main(int argc, char *argv[])
 
             uint8_t secondByte = (instruction >> 8);
 
-            uint8_t instructionType = firstByte >> 2;
+            uint8_t opcode = firstByte >> 2;
 
-            if (instructionType == 0x22)
+            if (opcode == 0x22)
             {
                 printf("mov ");
 
@@ -95,11 +95,9 @@ int main(int argc, char *argv[])
                 assert(mod == 3 && "Unknown mod field");
 
                 uint8_t regField = (secondByte & 0x3f) >> 3;
-
                 uint8_t rmField = (secondByte & 0x07);
 
                 char *regFieldRegName = getRegisterName(regField, wBit);
-
                 char *rmFieldRegName = getRegisterName(rmField, wBit);
 
                 if (dBit)
@@ -124,9 +122,10 @@ int main(int argc, char *argv[])
         perror("Error: Could not open input file");
     }
 
-    printf(";Press enter to continue...");
+    printf("; Press enter to continue...");
 
     char byte;
     fread(&byte, sizeof(byte), 1, stdin);
+
     return 0;
 }
