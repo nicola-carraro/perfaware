@@ -12,18 +12,18 @@ typedef struct
     uint8_t registerIndex;
     char w0RegName[3];
     char w1RegName[3];
+    char rmExpression[20];
 } RegisterName;
 
 RegisterName registerNames[] = {
-    {0, "al", "ax"},
-    {1, "cl", "cx"},
-    {2, "dl", "dx"},
-    {3, "bl", "bx"},
-    {4, "ah", "sp"},
-    {5, "ch", "bp"},
-    {6, "dh", "si"},
-    {7, "bh", "di"},
-};
+    {0, "al", "ax", "[bx + si%s]"},
+    {1, "cl", "cx", "[bx + di%s]"},
+    {2, "dl", "dx", "[bx + si%s]"},
+    {3, "bl", "bx", "[bp + di%s]"},
+    {4, "ah", "sp", "[si%s]"},
+    {5, "ch", "bp", "[di%s]"},
+    {6, "dh", "si", "[bp%s]"},
+    {7, "bh", "di", "[bx%s]"}};
 
 char *getRegisterName(uint8_t registerIndex, bool wBit)
 {
@@ -54,15 +54,16 @@ char *getRegisterName(uint8_t registerIndex, bool wBit)
 int main(int argc, char *argv[])
 {
 
-    char *programName = argv[0];
+    // char *programName = argv[0];
 
-    if (argc < 2)
-    {
-        printf("Usage: %s <input file>\n", programName);
-        return 1;
-    }
+    // if (argc < 2)
+    // {
+    //     printf("Usage: %s <input file>\n", programName);
 
-    char *inputName = argv[1];
+    //     return 1;
+    // }
+
+    char *inputName = "data\\listing39.out";
 
     FILE *input = fopen(inputName, "r");
 
@@ -81,9 +82,7 @@ int main(int argc, char *argv[])
 
             uint8_t secondByte = (instruction >> 8);
 
-            uint8_t opcode = firstByte >> 2;
-
-            if (opcode == 0x22)
+            if (firstByte >> 2 == 0x22)
             {
                 printf("mov ");
 
@@ -92,29 +91,99 @@ int main(int argc, char *argv[])
 
                 uint8_t mod = secondByte >> 6;
 
-                assert(mod == 3 && "Unknown mod field");
-
                 uint8_t regField = (secondByte & 0x3f) >> 3;
                 uint8_t rmField = (secondByte & 0x07);
 
                 char *regFieldRegName = getRegisterName(regField, wBit);
                 char *rmFieldRegName = getRegisterName(rmField, wBit);
 
-                if (dBit)
+                if (mod == 3) // Register to register mov
                 {
-                    printf("%s, ", regFieldRegName);
-                    printf("%s\n", rmFieldRegName);
+
+                    if (dBit)
+                    {
+                        printf("%s, ", regFieldRegName);
+                        printf("%s", rmFieldRegName);
+                    }
+                    else
+                    {
+                        printf("%s, ", rmFieldRegName);
+                        printf("%s", regFieldRegName);
+                    }
+                }
+                else if (mod < 3) // Mov between memory and register
+                {
+                    char *templateExpression = registerNames[rmField].rmExpression;
+                    char displacementExpression[256];
+
+                    if (mod == 0)
+                    {
+                        displacementExpression[0] = 0;
+                    }
+                    else
+                    {
+                        uint16_t displacement = secondByte;
+
+                        if (mod == 2)
+                        {
+                            uint8_t thirdByte;
+                            if (fread(&thirdByte, sizeof(thirdByte), 1, input) == 1)
+                            {
+                                displacement |= (((uint16_t)thirdByte) << 8);
+                            }
+                        }
+                        sprintf(displacementExpression, " + %u", displacement);
+                    }
+
+                    char memoryExpression[256];
+
+                    sprintf(memoryExpression, templateExpression, displacementExpression);
+
+                    if (dBit)
+                    {
+                        printf("%s, ", regFieldRegName);
+                        printf("%s", memoryExpression);
+                    }
+                    else
+                    {
+                        printf("%s, ", memoryExpression);
+                        printf("%s", regFieldRegName);
+                    }
                 }
                 else
                 {
-                    printf("%s, ", rmFieldRegName);
-                    printf("%s\n", regFieldRegName);
+                    assert(false && "Unknown mod field");
                 }
+            }
+            else if (firstByte >> 4 == 0xb)
+            {
+                // Immediate-to-register mov
+                printf("mov ");
+                bool wBit = (firstByte & 0x08) >> 3;
+
+                uint8_t regField = firstByte & 0x07;
+                char *regFieldRegName = getRegisterName(regField, wBit);
+
+                uint16_t immediate = secondByte;
+
+                if (wBit)
+                {
+                    uint8_t thirdByte;
+                    if (fread(&thirdByte, sizeof(thirdByte), 1, input) == 1)
+                    {
+                        immediate |= (((uint16_t)thirdByte) << 8);
+                    }
+                }
+
+                printf("%s, ", regFieldRegName);
+                printf("%u", immediate);
             }
             else
             {
                 assert(false && "Unknown instruction");
             }
+
+            printf("\n");
         }
     }
     else
