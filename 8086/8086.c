@@ -28,6 +28,8 @@ RegisterName registerNames[] = {
 char *getRegisterName(uint8_t registerIndex, bool wBit)
 {
 
+    assert(registerIndex < ARR_COUNT(registerNames) && "Register index out of range");
+
     RegisterName *registerName = registerNames + registerIndex;
 
     assert(registerIndex == registerName->registerIndex && "Wrong register index");
