@@ -1,3 +1,3 @@
 @echo off
-cl /nologo /W4 /WX 8086.c
+cl /nologo /W4 8086.c /DEBUG
 del *.obj *.ilk

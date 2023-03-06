@@ -4,6 +4,7 @@
 #include "stdint.h"
 #include "assert.h"
 #include "stdbool.h"
+#include "string.h"
 
 #define ARR_COUNT(a) (sizeof(a) / sizeof(*a))
 
@@ -18,7 +19,7 @@ typedef struct
 RegisterName registerNames[] = {
     {0, "al", "ax", "[bx + si%s]"},
     {1, "cl", "cx", "[bx + di%s]"},
-    {2, "dl", "dx", "[bx + si%s]"},
+    {2, "dl", "dx", "[bp + si%s]"},
     {3, "bl", "bx", "[bp + di%s]"},
     {4, "ah", "sp", "[si%s]"},
     {5, "ch", "bp", "[di%s]"},
@@ -54,16 +55,16 @@ char *getRegisterName(uint8_t registerIndex, bool wBit)
 int main(int argc, char *argv[])
 {
 
-    // char *programName = argv[0];
+    char *programName = argv[0];
 
-    // if (argc < 2)
-    // {
-    //     printf("Usage: %s <input file>\n", programName);
+    if (argc < 2)
+    {
+        printf("Usage: %s <input file>\n", programName);
 
-    //     return 1;
-    // }
+        return 1;
+    }
 
-    char *inputName = "data\\listing39.out";
+    char *inputName = argv[1];
 
     FILE *input = fopen(inputName, "r");
 
@@ -113,26 +114,41 @@ int main(int argc, char *argv[])
                 }
                 else if (mod < 3) // Mov between memory and register
                 {
-                    char *templateExpression = registerNames[rmField].rmExpression;
+                    char templateExpression[256];
+                    strcpy(templateExpression, registerNames[rmField].rmExpression);
                     char displacementExpression[256];
 
                     if (mod == 0)
                     {
                         displacementExpression[0] = 0;
+                        // if (rmField == 6)
+                        // { // direct addressing
+                        //     uint16_t constant = secondByte;
+                        //     uint8_t thirdByte;
+                        //     if (fread(&thirdByte, sizeof(thirdByte), 1, input) == 1)
+                        //     {
+                        //         constant |= (((uint16_t)thirdByte) << 8);
+                        //     }
+                        //     sprintf(templateExpression, "[%u]", constant);
+                        // }
                     }
                     else
                     {
-                        uint16_t displacement = secondByte;
+                        uint8_t thirdByte;
 
-                        if (mod == 2)
+                        if (fread(&thirdByte, sizeof(thirdByte), 1, input))
                         {
-                            uint8_t thirdByte;
-                            if (fread(&thirdByte, sizeof(thirdByte), 1, input) == 1)
+                            uint16_t displacement = thirdByte;
+                            if (mod == 2)
                             {
-                                displacement |= (((uint16_t)thirdByte) << 8);
+                                uint8_t fourthByte;
+                                if (fread(&fourthByte, sizeof(fourthByte), 1, input) == 1)
+                                {
+                                    displacement |= (((uint16_t)fourthByte) << 8);
+                                }
                             }
+                            sprintf(displacementExpression, " + %u", displacement);
                         }
-                        sprintf(displacementExpression, " + %u", displacement);
                     }
 
                     char memoryExpression[256];
