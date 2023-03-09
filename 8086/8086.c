@@ -169,7 +169,7 @@ int main(int argc, char *argv[])
                                     displacement |= (((uint16_t)fourthByte) << 8);
                                 }
                             }
-                            sprintf(displacementExpression, isSigned ? " + %d" : " + %u", displacement);
+                            sprintf(displacementExpression, " %s %d", isSigned ? "" : "+", displacement);
                         }
                     }
 
