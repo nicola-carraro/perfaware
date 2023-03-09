@@ -26,6 +26,18 @@ RegisterName registerNames[] = {
     {6, "dh", "si", "[bp%s]"},
     {7, "bh", "di", "[bx%s]"}};
 
+int16_t signExtend(uint8_t number)
+{
+    uint16_t unsignedResult = number;
+
+    uint16_t numberToShift = 0xff;
+    unsignedResult |= (numberToShift << 8);
+
+    int16_t result = *((int16_t *)((void *)&unsignedResult));
+
+    return result;
+}
+
 char *getRegisterName(uint8_t registerIndex, bool wBit)
 {
 
@@ -138,7 +150,17 @@ int main(int argc, char *argv[])
 
                         if (fread(&thirdByte, sizeof(thirdByte), 1, input))
                         {
-                            uint16_t displacement = thirdByte;
+                            bool sBit = thirdByte >> 7;
+                            int16_t displacement;
+
+                            bool isSigned = false;
+                            displacement = thirdByte;
+                            if (sBit && wBit && mod == 1)
+                            {
+                                displacement = displacement | (0xff << 8);
+                                isSigned = true;
+                            }
+
                             if (mod == 2)
                             {
                                 uint8_t fourthByte;
@@ -147,7 +169,7 @@ int main(int argc, char *argv[])
                                     displacement |= (((uint16_t)fourthByte) << 8);
                                 }
                             }
-                            sprintf(displacementExpression, " + %u", displacement);
+                            sprintf(displacementExpression, isSigned ? " + %d" : " + %u", displacement);
                         }
                     }
 
