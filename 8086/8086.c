@@ -54,7 +54,7 @@ bool extractDOrSBit(uint8_t firstByte)
     return result;
 }
 
-void extractHighBits(int16_t *dest, FILE *input)
+void extractHighBits(uint16_t *dest, FILE *input)
 {
     uint8_t highBits;
     if (fread(&highBits, sizeof(highBits), 1, input) == 1)
@@ -117,7 +117,7 @@ void decodeMovLikeInstruction(FILE *input, uint8_t firstByte, uint8_t secondByte
             if (fread(&thirdByte, sizeof(thirdByte), 1, input))
             {
                 bool sBit = thirdByte >> 7;
-                int16_t displacement;
+                uint16_t displacement;
 
                 bool isSigned = false;
                 displacement = thirdByte;
@@ -271,11 +271,7 @@ int main(int argc, char *argv[])
 
                 if (wBit)
                 {
-                    uint8_t thirdByte;
-                    if (fread(&thirdByte, sizeof(thirdByte), 1, input) == 1)
-                    {
-                        immediate |= (((uint16_t)thirdByte) << 8);
-                    }
+                    extractHighBits(&immediate, input);
                 }
 
                 printf("%s, ", regFieldRegName);
