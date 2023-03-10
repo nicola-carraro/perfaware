@@ -28,18 +28,6 @@ RegisterName registerNames[] = {
     {6, "dh", "si", "[bp%s]"},
     {7, "bh", "di", "[bx%s]"}};
 
-int16_t signExtend(uint8_t number)
-{
-    uint16_t unsignedResult = number;
-
-    uint16_t numberToShift = 0xff;
-    unsignedResult |= (numberToShift << 8);
-
-    int16_t result = *((int16_t *)((void *)&unsignedResult));
-
-    return result;
-}
-
 bool extractWBit(uint8_t firstByte)
 {
     bool result = firstByte & 0x01;
@@ -63,21 +51,77 @@ void extractHighBits(uint16_t *dest, FILE *input)
     }
 }
 
+void decodeDisplacement(uint8_t mod, uint8_t wBit, FILE *input, char *displacementExpression)
+{
+    if (mod == 0)
+    {
+        displacementExpression[0] = 0;
+        // if (rmField == 6)
+        // { // direct addressing
+        //     uint16_t constant = secondByte;
+        //     uint8_t thirdByte;
+        //     if (fread(&thirdByte, sizeof(thirdByte), 1, input) == 1)
+        //     {
+        //         constant |= (((uint16_t)thirdByte) << 8);
+        //     }
+        //     sprintf(templateExpression, "[%u]", constant);
+        // }
+    }
+    else
+    {
+        uint8_t thirdByte;
+
+        if (fread(&thirdByte, sizeof(thirdByte), 1, input))
+        {
+            bool sign = thirdByte >> 7;
+            uint16_t displacement;
+
+            bool isSigned = false;
+            displacement = thirdByte;
+            if (sign && wBit && mod == 1)
+            {
+                displacement = displacement | (0xff << 8);
+                isSigned = true;
+            }
+
+            if (mod == 2)
+            {
+                extractHighBits(&displacement, input);
+            }
+            sprintf(displacementExpression, " %s %d", isSigned ? "" : "+", displacement);
+        }
+    }
+}
+
+uint8_t extractMod(uint8_t secondByte)
+{
+    uint8_t result = secondByte >> 6;
+
+    return result;
+}
+
+uint8_t extractRmField(uint8_t byte)
+{
+    uint8_t result = (byte & 0x07);
+
+    return result;
+}
+
 void decodeMovLikeInstruction(FILE *input, uint8_t firstByte, uint8_t secondByte)
 {
     bool dBit = extractDOrSBit(firstByte);
     bool wBit = extractWBit(firstByte);
 
-    uint8_t mod = secondByte >> 6;
+    uint8_t mod = extractMod(secondByte);
 
     uint8_t regField = (secondByte & 0x3f) >> 3;
-    uint8_t rmField = (secondByte & 0x07);
+    uint8_t rmField = extractRmField(secondByte);
 
     char *regFieldRegName = getRegisterName(regField, wBit);
-    char *rmFieldRegName = getRegisterName(rmField, wBit);
 
     if (mod == 3) // Register to register
     {
+        char *rmFieldRegName = getRegisterName(rmField, wBit);
 
         if (dBit)
         {
@@ -94,54 +138,11 @@ void decodeMovLikeInstruction(FILE *input, uint8_t firstByte, uint8_t secondByte
     {
         char templateExpression[256];
         strcpy(templateExpression, registerNames[rmField].rmExpression);
+
         char displacementExpression[256];
-
-        if (mod == 0)
-        {
-            displacementExpression[0] = 0;
-            // if (rmField == 6)
-            // { // direct addressing
-            //     uint16_t constant = secondByte;
-            //     uint8_t thirdByte;
-            //     if (fread(&thirdByte, sizeof(thirdByte), 1, input) == 1)
-            //     {
-            //         constant |= (((uint16_t)thirdByte) << 8);
-            //     }
-            //     sprintf(templateExpression, "[%u]", constant);
-            // }
-        }
-        else
-        {
-            uint8_t thirdByte;
-
-            if (fread(&thirdByte, sizeof(thirdByte), 1, input))
-            {
-                bool sBit = thirdByte >> 7;
-                uint16_t displacement;
-
-                bool isSigned = false;
-                displacement = thirdByte;
-                if (sBit && wBit && mod == 1)
-                {
-                    displacement = displacement | (0xff << 8);
-                    isSigned = true;
-                }
-
-                if (mod == 2)
-                {
-                    extractHighBits(&displacement, input);
-                    /* uint8_t fourthByte;
-                    if (fread(&fourthByte, sizeof(fourthByte), 1, input) == 1)
-                    {
-                        displacement |= (((uint16_t)fourthByte) << 8);
-                    } */
-                }
-                sprintf(displacementExpression, " %s %d", isSigned ? "" : "+", displacement);
-            }
-        }
+        decodeDisplacement(mod, wBit, input, displacementExpression);
 
         char memoryExpression[256];
-
         sprintf(memoryExpression, templateExpression, displacementExpression);
 
         if (dBit)
@@ -219,6 +220,9 @@ int main(int argc, char *argv[])
             uint8_t secondByte = (instruction >> 8);
 
             uint8_t opcode = firstByte >> 2;
+
+            uint8_t mod = extractMod(secondByte);
+
             if (opcode == 0x22)
             {
                 printf("mov ");
@@ -257,6 +261,28 @@ int main(int argc, char *argv[])
                 }
                 bool sBit = extractDOrSBit(firstByte);
                 bool wBit = extractWBit(firstByte);
+
+                uint8_t rmField = extractRmField(secondByte);
+
+                char displacementExpression[256] = {0};
+
+                if (mod == 1 || mod == 2)
+                {
+                    decodeDisplacement(mod, wBit, input, displacementExpression);
+                }
+
+                if (mod == 3)
+                {
+                    uint8_t byte;
+                    if (fread(&byte, sizeof(byte), 1, input) == 1)
+                    {
+                        uint16_t immediate = byte;
+
+                        char *rmFieldRegName = getRegisterName(rmField, wBit);
+                        printf("%s, ", rmFieldRegName);
+                        printf("%u", immediate);
+                    }
+                }
             }
             else if (firstByte >> 4 == 0xb)
             {
