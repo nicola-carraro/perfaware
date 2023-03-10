@@ -6,6 +6,8 @@
 #include "stdbool.h"
 #include "string.h"
 
+char *getRegisterName(uint8_t registerIndex, bool wBit);
+
 #define ARR_COUNT(a) (sizeof(a) / sizeof(*a))
 
 typedef struct
@@ -36,6 +38,127 @@ int16_t signExtend(uint8_t number)
     int16_t result = *((int16_t *)((void *)&unsignedResult));
 
     return result;
+}
+
+bool extractWBit(uint8_t firstByte)
+{
+    bool result = firstByte & 0x01;
+
+    return result;
+}
+
+bool extractDOrSBit(uint8_t firstByte)
+{
+    bool result = (firstByte & 0x02) >> 1;
+
+    return result;
+}
+
+void extractHighBits(int16_t *dest, FILE *input)
+{
+    uint8_t highBits;
+    if (fread(&highBits, sizeof(highBits), 1, input) == 1)
+    {
+        *dest |= (((uint16_t)highBits) << 8);
+    }
+}
+
+void decodeMovLikeInstruction(FILE *input, uint8_t firstByte, uint8_t secondByte)
+{
+    bool dBit = extractDOrSBit(firstByte);
+    bool wBit = extractWBit(firstByte);
+
+    uint8_t mod = secondByte >> 6;
+
+    uint8_t regField = (secondByte & 0x3f) >> 3;
+    uint8_t rmField = (secondByte & 0x07);
+
+    char *regFieldRegName = getRegisterName(regField, wBit);
+    char *rmFieldRegName = getRegisterName(rmField, wBit);
+
+    if (mod == 3) // Register to register
+    {
+
+        if (dBit)
+        {
+            printf("%s, ", regFieldRegName);
+            printf("%s", rmFieldRegName);
+        }
+        else
+        {
+            printf("%s, ", rmFieldRegName);
+            printf("%s", regFieldRegName);
+        }
+    }
+    else if (mod < 3) // Between memory and register
+    {
+        char templateExpression[256];
+        strcpy(templateExpression, registerNames[rmField].rmExpression);
+        char displacementExpression[256];
+
+        if (mod == 0)
+        {
+            displacementExpression[0] = 0;
+            // if (rmField == 6)
+            // { // direct addressing
+            //     uint16_t constant = secondByte;
+            //     uint8_t thirdByte;
+            //     if (fread(&thirdByte, sizeof(thirdByte), 1, input) == 1)
+            //     {
+            //         constant |= (((uint16_t)thirdByte) << 8);
+            //     }
+            //     sprintf(templateExpression, "[%u]", constant);
+            // }
+        }
+        else
+        {
+            uint8_t thirdByte;
+
+            if (fread(&thirdByte, sizeof(thirdByte), 1, input))
+            {
+                bool sBit = thirdByte >> 7;
+                int16_t displacement;
+
+                bool isSigned = false;
+                displacement = thirdByte;
+                if (sBit && wBit && mod == 1)
+                {
+                    displacement = displacement | (0xff << 8);
+                    isSigned = true;
+                }
+
+                if (mod == 2)
+                {
+                    extractHighBits(&displacement, input);
+                    /* uint8_t fourthByte;
+                    if (fread(&fourthByte, sizeof(fourthByte), 1, input) == 1)
+                    {
+                        displacement |= (((uint16_t)fourthByte) << 8);
+                    } */
+                }
+                sprintf(displacementExpression, " %s %d", isSigned ? "" : "+", displacement);
+            }
+        }
+
+        char memoryExpression[256];
+
+        sprintf(memoryExpression, templateExpression, displacementExpression);
+
+        if (dBit)
+        {
+            printf("%s, ", regFieldRegName);
+            printf("%s", memoryExpression);
+        }
+        else
+        {
+            printf("%s, ", memoryExpression);
+            printf("%s", regFieldRegName);
+        }
+    }
+    else
+    {
+        assert(false && "Unknown mod field");
+    }
 }
 
 char *getRegisterName(uint8_t registerIndex, bool wBit)
@@ -95,103 +218,45 @@ int main(int argc, char *argv[])
 
             uint8_t secondByte = (instruction >> 8);
 
-            if (firstByte >> 2 == 0x22)
+            uint8_t opcode = firstByte >> 2;
+            if (opcode == 0x22)
             {
                 printf("mov ");
+                decodeMovLikeInstruction(input, firstByte, secondByte);
+            }
+            else if (opcode == 0x00)
+            {
+                printf("add ");
+                decodeMovLikeInstruction(input, firstByte, secondByte);
+            }
+            else if (opcode == 0x20)
+            {
 
-                bool dBit = (firstByte & 0x02) >> 1;
-                bool wBit = firstByte & 0x01;
-
-                uint8_t mod = secondByte >> 6;
-
-                uint8_t regField = (secondByte & 0x3f) >> 3;
-                uint8_t rmField = (secondByte & 0x07);
-
-                char *regFieldRegName = getRegisterName(regField, wBit);
-                char *rmFieldRegName = getRegisterName(rmField, wBit);
-
-                if (mod == 3) // Register to register mov
+                uint8_t instructionExtension = (secondByte >> 3) & 0x07;
+                switch (instructionExtension)
                 {
-
-                    if (dBit)
-                    {
-                        printf("%s, ", regFieldRegName);
-                        printf("%s", rmFieldRegName);
-                    }
-                    else
-                    {
-                        printf("%s, ", rmFieldRegName);
-                        printf("%s", regFieldRegName);
-                    }
-                }
-                else if (mod < 3) // Mov between memory and register
+                case 0:
                 {
-                    char templateExpression[256];
-                    strcpy(templateExpression, registerNames[rmField].rmExpression);
-                    char displacementExpression[256];
-
-                    if (mod == 0)
-                    {
-                        displacementExpression[0] = 0;
-                        // if (rmField == 6)
-                        // { // direct addressing
-                        //     uint16_t constant = secondByte;
-                        //     uint8_t thirdByte;
-                        //     if (fread(&thirdByte, sizeof(thirdByte), 1, input) == 1)
-                        //     {
-                        //         constant |= (((uint16_t)thirdByte) << 8);
-                        //     }
-                        //     sprintf(templateExpression, "[%u]", constant);
-                        // }
-                    }
-                    else
-                    {
-                        uint8_t thirdByte;
-
-                        if (fread(&thirdByte, sizeof(thirdByte), 1, input))
-                        {
-                            bool sBit = thirdByte >> 7;
-                            int16_t displacement;
-
-                            bool isSigned = false;
-                            displacement = thirdByte;
-                            if (sBit && wBit && mod == 1)
-                            {
-                                displacement = displacement | (0xff << 8);
-                                isSigned = true;
-                            }
-
-                            if (mod == 2)
-                            {
-                                uint8_t fourthByte;
-                                if (fread(&fourthByte, sizeof(fourthByte), 1, input) == 1)
-                                {
-                                    displacement |= (((uint16_t)fourthByte) << 8);
-                                }
-                            }
-                            sprintf(displacementExpression, " %s %d", isSigned ? "" : "+", displacement);
-                        }
-                    }
-
-                    char memoryExpression[256];
-
-                    sprintf(memoryExpression, templateExpression, displacementExpression);
-
-                    if (dBit)
-                    {
-                        printf("%s, ", regFieldRegName);
-                        printf("%s", memoryExpression);
-                    }
-                    else
-                    {
-                        printf("%s, ", memoryExpression);
-                        printf("%s", regFieldRegName);
-                    }
+                    printf("add ");
                 }
-                else
+                break;
+                case 5:
                 {
-                    assert(false && "Unknown mod field");
+                    printf("sub ");
                 }
+                break;
+                case 7:
+                {
+                    printf("cmp ");
+                }
+                break;
+                default:
+                {
+                    assert(false && "Unimplemented");
+                }
+                }
+                bool sBit = extractDOrSBit(firstByte);
+                bool wBit = extractWBit(firstByte);
             }
             else if (firstByte >> 4 == 0xb)
             {
