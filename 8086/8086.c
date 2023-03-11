@@ -107,7 +107,7 @@ uint8_t extractRmField(uint8_t byte)
     return result;
 }
 
-void decodeMovLikeInstruction(FILE *input, uint8_t firstByte, uint8_t secondByte)
+void registerMemoryToFromMemory(FILE *input, uint8_t firstByte, uint8_t secondByte)
 {
     bool dBit = extractDOrSBit(firstByte);
     bool wBit = extractWBit(firstByte);
@@ -226,12 +226,12 @@ int main(int argc, char *argv[])
             if (opcode == 0x22)
             {
                 printf("mov ");
-                decodeMovLikeInstruction(input, firstByte, secondByte);
+                registerMemoryToFromMemory(input, firstByte, secondByte);
             }
             else if (opcode == 0x00)
             {
                 printf("add ");
-                decodeMovLikeInstruction(input, firstByte, secondByte);
+                registerMemoryToFromMemory(input, firstByte, secondByte);
             }
             else if (opcode == 0x20)
             {
@@ -271,14 +271,28 @@ int main(int argc, char *argv[])
                     decodeDisplacement(mod, wBit, input, displacementExpression);
                 }
 
-                if (mod == 3)
+                if (mod == 0)
                 {
+                    char *rmFieldMemoryExpression = registerNames[rmField].rmExpression;
+
+                    printf(rmFieldMemoryExpression, "");
+                    printf(", ");
+                    uint8_t byte;
+                    if (fread(&byte, sizeof(byte), 1, input) == 1)
+                    {
+                        uint16_t immediate = byte;
+                        printf("%u", immediate);
+                    }
+                }
+                else if (mod == 3)
+                {
+                    char *rmFieldRegName = getRegisterName(rmField, wBit);
+
                     uint8_t byte;
                     if (fread(&byte, sizeof(byte), 1, input) == 1)
                     {
                         uint16_t immediate = byte;
 
-                        char *rmFieldRegName = getRegisterName(rmField, wBit);
                         printf("%s, ", rmFieldRegName);
                         printf("%u", immediate);
                     }
