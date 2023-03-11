@@ -42,7 +42,7 @@ bool extractDOrSBit(uint8_t firstByte)
     return result;
 }
 
-void extractHighBits(uint16_t *dest, FILE *input)
+void extractHighBits(int16_t *dest, FILE *input)
 {
     uint8_t highBits;
     if (fread(&highBits, sizeof(highBits), 1, input) == 1)
@@ -74,7 +74,7 @@ void decodeDisplacement(uint8_t mod, uint8_t wBit, FILE *input, char *displaceme
         if (fread(&thirdByte, sizeof(thirdByte), 1, input))
         {
             bool sign = thirdByte >> 7;
-            uint16_t displacement;
+            int16_t displacement;
 
             bool isSigned = false;
             displacement = thirdByte;
@@ -251,7 +251,7 @@ int main(int argc, char *argv[])
                     {
                         immediate = immediate | (0xff << 8);
                     }
-                    printf("al ");
+                    printf("al, ");
                 }
 
                 printf("%d", immediate);
@@ -296,7 +296,7 @@ int main(int argc, char *argv[])
                     uint8_t byte;
                     if (fread(&byte, sizeof(byte), 1, input) == 1)
                     {
-                        uint16_t immediate = byte;
+                        int16_t immediate = byte;
                         if (mod == 2)
                         {
                             if (sBit == 0 && wBit == 1)
@@ -331,7 +331,7 @@ int main(int argc, char *argv[])
                     uint8_t byte;
                     if (fread(&byte, sizeof(byte), 1, input) == 1)
                     {
-                        uint16_t immediate = byte;
+                        int16_t immediate = byte;
 
                         bool isWord = false;
                         if (sBit == 0 && wBit == 1)
@@ -367,7 +367,7 @@ int main(int argc, char *argv[])
                 uint8_t regField = firstByte & 0x07;
                 char *regFieldRegName = getRegisterName(regField, wBit);
 
-                uint16_t immediate = secondByte;
+                int16_t immediate = secondByte;
 
                 if (wBit)
                 {
