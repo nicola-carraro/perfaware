@@ -271,29 +271,44 @@ int main(int argc, char *argv[])
                     decodeDisplacement(mod, wBit, input, displacementExpression);
                 }
 
-                if (mod == 0)
+                if (mod == 0 || mod == 3)
                 {
-                    char *rmFieldMemoryExpression = registerNames[rmField].rmExpression;
-
-                    printf(rmFieldMemoryExpression, "");
-                    printf(", ");
-                    uint8_t byte;
-                    if (fread(&byte, sizeof(byte), 1, input) == 1)
+                    char dest[256];
+                    if (mod == 0)
                     {
-                        uint16_t immediate = byte;
-                        printf("%u", immediate);
+                        sprintf(dest, registerNames[rmField].rmExpression, "");
                     }
-                }
-                else if (mod == 3)
-                {
-                    char *rmFieldRegName = getRegisterName(rmField, wBit);
+                    else
+                    {
+                        memcpy(dest, getRegisterName(rmField, wBit), 3);
+                    }
 
                     uint8_t byte;
                     if (fread(&byte, sizeof(byte), 1, input) == 1)
                     {
                         uint16_t immediate = byte;
 
-                        printf("%s, ", rmFieldRegName);
+                        bool isWord = false;
+                        if (sBit == 0 && wBit == 1)
+                        {
+                            isWord = true;
+                            extractHighBits(&immediate, input);
+                        }
+
+                        if (mod == 0)
+                        {
+                            if (isWord)
+                            {
+                                printf("word ");
+                            }
+                            else
+                            {
+                                printf("byte ");
+                            }
+                        }
+
+                        printf("%s, ", dest);
+
                         printf("%u", immediate);
                     }
                 }
