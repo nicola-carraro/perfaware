@@ -256,6 +256,11 @@ int main(int argc, char *argv[])
 
                 printf("%d", immediate);
             }
+            else if (opcode == 0x0a)
+            {
+                printf("sub ");
+                registerMemoryToFromMemory(input, firstByte, secondByte);
+            }
             else if (opcode == 0x20)
             {
 
