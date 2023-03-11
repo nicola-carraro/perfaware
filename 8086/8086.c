@@ -233,6 +233,29 @@ int main(int argc, char *argv[])
                 printf("add ");
                 registerMemoryToFromMemory(input, firstByte, secondByte);
             }
+            else if ((firstByte >> 1) == 0x2)
+            { // immediate to accumulator
+                printf("add ");
+                int16_t immediate = secondByte;
+                bool wBit = extractWBit(firstByte);
+                if (wBit)
+                {
+                    extractHighBits(&immediate, input);
+                    printf("ax, ");
+                }
+                else
+                {
+                    bool sign = secondByte >> 7;
+
+                    if (sign)
+                    {
+                        immediate = immediate | (0xff << 8);
+                    }
+                    printf("al ");
+                }
+
+                printf("%d", immediate);
+            }
             else if (opcode == 0x20)
             {
 
@@ -269,9 +292,31 @@ int main(int argc, char *argv[])
                 if (mod == 1 || mod == 2)
                 {
                     decodeDisplacement(mod, wBit, input, displacementExpression);
+                    char dest[256];
+                    uint8_t byte;
+                    if (fread(&byte, sizeof(byte), 1, input) == 1)
+                    {
+                        uint16_t immediate = byte;
+                        if (mod == 2)
+                        {
+                            if (sBit == 0 && wBit == 1)
+                            {
+                                extractHighBits(&immediate, input);
+                            }
+
+                            printf("word ");
+                        }
+                        else
+                        {
+                            printf("byte ");
+                        }
+                        sprintf(dest, registerNames[rmField].rmExpression, displacementExpression);
+                        printf("%s, ", dest);
+                        printf("%d", immediate);
+                    }
                 }
 
-                if (mod == 0 || mod == 3)
+                else
                 {
                     char dest[256];
                     if (mod == 0)
