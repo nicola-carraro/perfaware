@@ -254,6 +254,7 @@ int main(int argc, char *argv[])
             else if ((firstByte >> 1) == 0x1e)
             {
                 printf("cmp ");
+                immediateToAccumulator(input, firstByte, secondByte);
             }
             else if ((firstByte >> 1) == 0x2)
             { // immediate to accumulator
