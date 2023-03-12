@@ -56,16 +56,6 @@ void decodeDisplacement(uint8_t mod, uint8_t wBit, FILE *input, char *displaceme
     if (mod == 0)
     {
         displacementExpression[0] = 0;
-        // if (rmField == 6)
-        // { // direct addressing
-        //     uint16_t constant = secondByte;
-        //     uint8_t thirdByte;
-        //     if (fread(&thirdByte, sizeof(thirdByte), 1, input) == 1)
-        //     {
-        //         constant |= (((uint16_t)thirdByte) << 8);
-        //     }
-        //     sprintf(templateExpression, "[%u]", constant);
-        // }
     }
     else
     {
@@ -361,7 +351,22 @@ int main(int argc, char *argv[])
                         {
                             printf("byte ");
                         }
-                        sprintf(dest, registerNames[rmField].rmExpression, "");
+
+                        if (rmField == 6)
+                        { // direct addressing
+                            uint8_t byte;
+                            if (fread(&byte, sizeof(byte), 1, input) == 1)
+                            {
+                                int16_t constant = byte;
+
+                                extractHighBits(&constant, input);
+                                sprintf(dest, "[%d]", constant);
+                            }
+                        }
+                        else
+                        {
+                            sprintf(dest, registerNames[rmField].rmExpression, "");
+                        }
                     }
                     else
                     {
