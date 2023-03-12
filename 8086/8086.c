@@ -400,6 +400,34 @@ int main(int argc, char *argv[])
                 printf("sub ");
                 immediateToAccumulator(input, firstByte, secondByte);
             }
+            else if ((firstByte >> 1) == 0x50)
+            {
+                printf("mov "); // Memory to accumulator
+
+                printf("ax, ");
+                uint8_t thirdByte;
+                if (!fread(&thirdByte, sizeof(thirdByte), 1, input))
+                {
+                    assert(false && "Could not read from file");
+                }
+
+                int16_t address = secondByte | (thirdByte << 8);
+
+                printf("[%d]", address);
+            }
+            else if ((firstByte >> 1) == 0x51)
+            {
+                printf("mov "); // Accumulator to memory
+                uint8_t thirdByte;
+                if (!fread(&thirdByte, sizeof(thirdByte), 1, input))
+                {
+                    assert(false && "Could not read from file");
+                }
+                int16_t address = secondByte | (thirdByte << 8);
+
+                printf("[%d], ", address);
+                printf("ax");
+            }
             else if (opcode == 0x0a)
             {
                 printf("sub ");
