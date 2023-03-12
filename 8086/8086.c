@@ -8,6 +8,8 @@
 
 char *getRegisterName(uint8_t registerIndex, bool wBit);
 
+void decodeDirectAddressing(FILE *input, char *dest);
+
 #define ARR_COUNT(a) (sizeof(a) / sizeof(*a))
 
 typedef struct
@@ -154,9 +156,17 @@ void registerMemoryToFromMemory(FILE *input, uint8_t firstByte, uint8_t secondBy
 
         char displacementExpression[256];
         decodeDisplacement(mod, wBit, input, displacementExpression);
-
         char memoryExpression[256];
-        sprintf(memoryExpression, templateExpression, displacementExpression);
+
+        if (mod == 0 && rmField == 6)
+        {
+
+            decodeDirectAddressing(input, memoryExpression);
+        }
+        else
+        {
+            sprintf(memoryExpression, templateExpression, displacementExpression);
+        }
 
         if (dBit)
         {
@@ -219,6 +229,110 @@ void decodeJump(uint16_t instruction)
 {
     int8_t immediate = (instruction >> 8);
     printf("%d", immediate);
+}
+
+void decodeDirectAddressing(FILE *input, char *buffer)
+{
+    uint8_t byte;
+    if (fread(&byte, sizeof(byte), 1, input) == 1)
+    {
+        int16_t constant = byte;
+
+        extractHighBits(&constant, input);
+        sprintf(buffer, "[%d]", constant);
+    }
+}
+
+void decodeImmediateToRegisterOrMemory(FILE *input, uint8_t mod, uint8_t firstByte, uint8_t secondByte, bool hasSignBit)
+{
+    bool sBit = extractDOrSBit(firstByte);
+    bool wBit = extractWBit(firstByte);
+
+    uint8_t rmField = extractRmField(secondByte);
+
+    char displacementExpression[256] = {0};
+
+    if (mod == 1 || mod == 2)
+    {
+        decodeDisplacement(mod, wBit, input, displacementExpression);
+        char dest[256];
+        uint8_t byte;
+
+        if (fread(&byte, sizeof(byte), 1, input) == 1)
+        {
+            int16_t immediate = byte;
+            if (mod == 2)
+            {
+
+                if (wBit && !(hasSignBit && sBit))
+                {
+                    extractHighBits(&immediate, input);
+                }
+            }
+
+            if (mod == 1 || mod == 2)
+            {
+                if (wBit)
+                {
+                    printf("word ");
+                }
+                else
+                {
+                    printf("byte ");
+                }
+            }
+
+            sprintf(dest, registerNames[rmField].rmExpression, displacementExpression);
+            printf("%s, ", dest);
+            printf("%d", immediate);
+        }
+    }
+
+    else
+    {
+        char dest[256];
+        if (mod == 0)
+        {
+            if (wBit)
+            {
+                printf("word ");
+            }
+            else
+            {
+                printf("byte ");
+            }
+
+            if (rmField == 6)
+            { // direct addressing
+                decodeDirectAddressing(input, dest);
+            }
+            else
+            {
+                sprintf(dest, registerNames[rmField].rmExpression, "");
+            }
+        }
+        else
+        {
+            memcpy(dest, getRegisterName(rmField, wBit), 3);
+        }
+
+        uint8_t byte;
+        if (fread(&byte, sizeof(byte), 1, input) == 1)
+        {
+            int16_t immediate = byte;
+
+            bool isWord = false;
+            if (sBit == 0 && wBit == 1)
+            {
+                isWord = true;
+                extractHighBits(&immediate, input);
+            }
+
+            printf("%s, ", dest);
+
+            printf("%u", immediate);
+        }
+    }
 }
 
 int main(int argc, char *argv[])
@@ -317,100 +431,12 @@ int main(int argc, char *argv[])
                     assert(false && "Unimplemented");
                 }
                 }
-                bool sBit = extractDOrSBit(firstByte);
-                bool wBit = extractWBit(firstByte);
-
-                uint8_t rmField = extractRmField(secondByte);
-
-                char displacementExpression[256] = {0};
-
-                if (mod == 1 || mod == 2)
-                {
-                    decodeDisplacement(mod, wBit, input, displacementExpression);
-                    char dest[256];
-                    uint8_t byte;
-
-                    if (fread(&byte, sizeof(byte), 1, input) == 1)
-                    {
-                        int16_t immediate = byte;
-                        if (mod == 2)
-                        {
-                            if (sBit == 0 && wBit == 1)
-                            {
-                                extractHighBits(&immediate, input);
-                            }
-                        }
-
-                        if (mod == 1 || mod == 2)
-                        {
-                            if (wBit)
-                            {
-                                printf("word ");
-                            }
-                            else
-                            {
-                                printf("byte ");
-                            }
-                        }
-
-                        sprintf(dest, registerNames[rmField].rmExpression, displacementExpression);
-                        printf("%s, ", dest);
-                        printf("%d", immediate);
-                    }
-                }
-
-                else
-                {
-                    char dest[256];
-                    if (mod == 0)
-                    {
-                        if (wBit)
-                        {
-                            printf("word ");
-                        }
-                        else
-                        {
-                            printf("byte ");
-                        }
-
-                        if (rmField == 6)
-                        { // direct addressing
-                            uint8_t byte;
-                            if (fread(&byte, sizeof(byte), 1, input) == 1)
-                            {
-                                int16_t constant = byte;
-
-                                extractHighBits(&constant, input);
-                                sprintf(dest, "[%d]", constant);
-                            }
-                        }
-                        else
-                        {
-                            sprintf(dest, registerNames[rmField].rmExpression, "");
-                        }
-                    }
-                    else
-                    {
-                        memcpy(dest, getRegisterName(rmField, wBit), 3);
-                    }
-
-                    uint8_t byte;
-                    if (fread(&byte, sizeof(byte), 1, input) == 1)
-                    {
-                        int16_t immediate = byte;
-
-                        bool isWord = false;
-                        if (sBit == 0 && wBit == 1)
-                        {
-                            isWord = true;
-                            extractHighBits(&immediate, input);
-                        }
-
-                        printf("%s, ", dest);
-
-                        printf("%u", immediate);
-                    }
-                }
+                decodeImmediateToRegisterOrMemory(input, mod, firstByte, secondByte, true);
+            }
+            else if (opcode == 0x31)
+            {
+                printf("mov ");
+                decodeImmediateToRegisterOrMemory(input, mod, firstByte, secondByte, false);
             }
             else if (firstByte >> 4 == 0xb)
             {
