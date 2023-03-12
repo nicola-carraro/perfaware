@@ -309,6 +309,7 @@ int main(int argc, char *argv[])
                     decodeDisplacement(mod, wBit, input, displacementExpression);
                     char dest[256];
                     uint8_t byte;
+
                     if (fread(&byte, sizeof(byte), 1, input) == 1)
                     {
                         int16_t immediate = byte;
@@ -318,13 +319,20 @@ int main(int argc, char *argv[])
                             {
                                 extractHighBits(&immediate, input);
                             }
+                        }
 
-                            printf("word ");
-                        }
-                        else
+                        if (mod == 1 || mod == 2)
                         {
-                            printf("byte ");
+                            if (wBit)
+                            {
+                                printf("word ");
+                            }
+                            else
+                            {
+                                printf("byte ");
+                            }
                         }
+
                         sprintf(dest, registerNames[rmField].rmExpression, displacementExpression);
                         printf("%s, ", dest);
                         printf("%d", immediate);
@@ -336,6 +344,14 @@ int main(int argc, char *argv[])
                     char dest[256];
                     if (mod == 0)
                     {
+                        if (wBit)
+                        {
+                            printf("word ");
+                        }
+                        else
+                        {
+                            printf("byte ");
+                        }
                         sprintf(dest, registerNames[rmField].rmExpression, "");
                     }
                     else
@@ -353,18 +369,6 @@ int main(int argc, char *argv[])
                         {
                             isWord = true;
                             extractHighBits(&immediate, input);
-                        }
-
-                        if (mod == 0)
-                        {
-                            if (isWord)
-                            {
-                                printf("word ");
-                            }
-                            else
-                            {
-                                printf("byte ");
-                            }
                         }
 
                         printf("%s, ", dest);
