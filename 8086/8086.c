@@ -107,6 +107,29 @@ uint8_t extractRmField(uint8_t byte)
     return result;
 }
 
+void immediateToAccumulator(FILE *input, uint8_t firstByte, uint8_t secondByte)
+{
+    int16_t immediate = secondByte;
+    bool wBit = extractWBit(firstByte);
+    if (wBit)
+    {
+        extractHighBits(&immediate, input);
+        printf("ax, ");
+    }
+    else
+    {
+        bool sign = secondByte >> 7;
+
+        if (sign)
+        {
+            immediate = immediate | (0xff << 8);
+        }
+        printf("al, ");
+    }
+
+    printf("%d", immediate);
+}
+
 void registerMemoryToFromMemory(FILE *input, uint8_t firstByte, uint8_t secondByte)
 {
     bool dBit = extractDOrSBit(firstByte);
@@ -236,25 +259,12 @@ int main(int argc, char *argv[])
             else if ((firstByte >> 1) == 0x2)
             { // immediate to accumulator
                 printf("add ");
-                int16_t immediate = secondByte;
-                bool wBit = extractWBit(firstByte);
-                if (wBit)
-                {
-                    extractHighBits(&immediate, input);
-                    printf("ax, ");
-                }
-                else
-                {
-                    bool sign = secondByte >> 7;
-
-                    if (sign)
-                    {
-                        immediate = immediate | (0xff << 8);
-                    }
-                    printf("al, ");
-                }
-
-                printf("%d", immediate);
+                immediateToAccumulator(input, firstByte, secondByte);
+            }
+            else if ((firstByte >> 1) == 0x16)
+            {
+                printf("sub ");
+                immediateToAccumulator(input, firstByte, secondByte);
             }
             else if (opcode == 0x0a)
             {
