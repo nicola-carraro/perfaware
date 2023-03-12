@@ -256,6 +256,15 @@ int main(int argc, char *argv[])
                 printf("add ");
                 registerMemoryToFromMemory(input, firstByte, secondByte);
             }
+            else if (opcode == 0x0e)
+            {
+                printf("cmp ");
+                registerMemoryToFromMemory(input, firstByte, secondByte);
+            }
+            else if ((firstByte >> 1) == 0x1e)
+            {
+                printf("cmp ");
+            }
             else if ((firstByte >> 1) == 0x2)
             { // immediate to accumulator
                 printf("add ");
