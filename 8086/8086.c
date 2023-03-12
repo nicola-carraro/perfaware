@@ -201,6 +201,26 @@ char *getRegisterName(uint8_t registerIndex, bool wBit)
     return 0;
 }
 
+int8_t readSignedByte(FILE *input)
+{
+    int8_t result;
+    if (fread(&result, sizeof(result), 1, input) == 1)
+    {
+        return result;
+    }
+    else
+    {
+        assert(false && "Error while reading from file");
+        return 0;
+    }
+}
+
+void decodeJump(uint16_t instruction)
+{
+    int8_t immediate = (instruction >> 8);
+    printf("%d", immediate);
+}
+
 int main(int argc, char *argv[])
 {
 
@@ -410,6 +430,106 @@ int main(int argc, char *argv[])
 
                 printf("%s, ", regFieldRegName);
                 printf("%u", immediate);
+            }
+            else if (firstByte == 0x70)
+            {
+                printf("jo ");
+                decodeJump(instruction);
+            }
+            else if (firstByte == 0x71)
+            {
+                printf("jno ");
+                decodeJump(instruction);
+            }
+            else if (firstByte == 0x72)
+            {
+                printf("jb ");
+                decodeJump(instruction);
+            }
+            else if (firstByte == 0x73)
+            {
+                printf("jnb ");
+                decodeJump(instruction);
+            }
+            else if (firstByte == 0x74)
+            {
+                printf("je ");
+                decodeJump(instruction);
+            }
+            else if (firstByte == 0x75)
+            {
+                printf("jne ");
+                decodeJump(instruction);
+            }
+            else if (firstByte == 0x76)
+            {
+                printf("jbe ");
+                decodeJump(instruction);
+            }
+            else if (firstByte == 0x77)
+            {
+                printf("ja ");
+                decodeJump(instruction);
+            }
+            else if (firstByte == 0x78)
+            {
+                printf("js ");
+                decodeJump(instruction);
+            }
+            else if (firstByte == 0x79)
+            {
+                printf("jns ");
+                decodeJump(instruction);
+            }
+            else if (firstByte == 0x7a)
+            {
+                printf("jp ");
+                decodeJump(instruction);
+            }
+            else if (firstByte == 0x7b)
+            {
+                printf("jnp ");
+                decodeJump(instruction);
+            }
+            else if (firstByte == 0x7c)
+            {
+                printf("jl ");
+                decodeJump(instruction);
+            }
+            else if (firstByte == 0x7d)
+            {
+                printf("jnl ");
+                decodeJump(instruction);
+            }
+            else if (firstByte == 0x7e)
+            {
+                printf("jle ");
+                decodeJump(instruction);
+            }
+            else if (firstByte == 0x7f)
+            {
+                printf("jg ");
+                decodeJump(instruction);
+            }
+            else if (firstByte == 0xe0)
+            {
+                printf("loopnz ");
+                decodeJump(instruction);
+            }
+            else if (firstByte == 0xe1)
+            {
+                printf("loopz ");
+                decodeJump(instruction);
+            }
+            else if (firstByte == 0xe2)
+            {
+                printf("loop ");
+                decodeJump(instruction);
+            }
+            else if (firstByte == 0xe3)
+            {
+                printf("jcxz ");
+                decodeJump(instruction);
             }
             else
             {
