@@ -94,7 +94,7 @@ uint8_t extractRmField(uint8_t byte)
     return result;
 }
 
-void immediateToAccumulator(FILE *input, uint8_t firstByte, uint8_t secondByte)
+void decodeImmediateToAccumulator(FILE *input, uint8_t firstByte, uint8_t secondByte)
 {
     int16_t immediate = secondByte;
     bool wBit = extractWBit(firstByte);
@@ -117,7 +117,7 @@ void immediateToAccumulator(FILE *input, uint8_t firstByte, uint8_t secondByte)
     printf("%d", immediate);
 }
 
-void registerMemoryToFromMemory(FILE *input, uint8_t firstByte, uint8_t secondByte)
+void decodeRegisterMemoryToFromMemory(FILE *input, uint8_t firstByte, uint8_t secondByte)
 {
     bool dBit = extractDOrSBit(firstByte);
     bool wBit = extractWBit(firstByte);
@@ -374,32 +374,32 @@ int main(int argc, char *argv[])
             if (opcode == 0x22)
             {
                 printf("mov ");
-                registerMemoryToFromMemory(input, firstByte, secondByte);
+                decodeRegisterMemoryToFromMemory(input, firstByte, secondByte);
             }
             else if (opcode == 0x00)
             {
                 printf("add ");
-                registerMemoryToFromMemory(input, firstByte, secondByte);
+                decodeRegisterMemoryToFromMemory(input, firstByte, secondByte);
             }
             else if (opcode == 0x0e)
             {
                 printf("cmp ");
-                registerMemoryToFromMemory(input, firstByte, secondByte);
+                decodeRegisterMemoryToFromMemory(input, firstByte, secondByte);
             }
             else if ((firstByte >> 1) == 0x1e)
             {
                 printf("cmp ");
-                immediateToAccumulator(input, firstByte, secondByte);
+                decodeImmediateToAccumulator(input, firstByte, secondByte);
             }
             else if ((firstByte >> 1) == 0x2)
-            { // immediate to accumulator
+            { 
                 printf("add ");
-                immediateToAccumulator(input, firstByte, secondByte);
+                decodeImmediateToAccumulator(input, firstByte, secondByte);
             }
             else if ((firstByte >> 1) == 0x16)
             {
                 printf("sub ");
-                immediateToAccumulator(input, firstByte, secondByte);
+                decodeImmediateToAccumulator(input, firstByte, secondByte);
             }
             else if ((firstByte >> 1) == 0x50)
             {
@@ -424,7 +424,7 @@ int main(int argc, char *argv[])
             else if (opcode == 0x0a)
             {
                 printf("sub ");
-                registerMemoryToFromMemory(input, firstByte, secondByte);
+                decodeRegisterMemoryToFromMemory(input, firstByte, secondByte);
             }
             else if (opcode == 0x20)
             {
