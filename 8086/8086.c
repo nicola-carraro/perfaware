@@ -10,6 +10,8 @@ char *getRegisterName(uint8_t registerIndex, bool wBit);
 
 void decodeDirectAddressing(FILE *input, char *dest);
 
+uint8_t readUnsignedByte(FILE *input);
+
 #define ARR_COUNT(a) (sizeof(a) / sizeof(*a))
 
 typedef struct
@@ -46,11 +48,8 @@ bool extractDOrSBit(uint8_t firstByte)
 
 void extractHighBits(int16_t *dest, FILE *input)
 {
-    uint8_t highBits;
-    if (fread(&highBits, sizeof(highBits), 1, input) == 1)
-    {
-        *dest |= (((uint16_t)highBits) << 8);
-    }
+    uint8_t highBits = readUnsignedByte(input);
+    *dest |= (((uint16_t)highBits) << 8);
 }
 
 void decodeDisplacement(uint8_t mod, uint8_t wBit, FILE *input, char *displacementExpression)
@@ -61,19 +60,16 @@ void decodeDisplacement(uint8_t mod, uint8_t wBit, FILE *input, char *displaceme
     }
     else
     {
-        uint8_t thirdByte;
+        uint8_t thirdByte = readUnsignedByte(input);
+        bool sign = thirdByte >> 7;
+        int16_t displacement;
 
-        if (fread(&thirdByte, sizeof(thirdByte), 1, input))
+        bool isSigned = false;
+        displacement = thirdByte;
+        if (sign && wBit && mod == 1)
         {
-            bool sign = thirdByte >> 7;
-            int16_t displacement;
-
-            bool isSigned = false;
-            displacement = thirdByte;
-            if (sign && wBit && mod == 1)
-            {
-                displacement = displacement | (0xff << 8);
-                isSigned = true;
+            displacement = displacement | (0xff << 8);
+            isSigned = true;
             }
 
             if (mod == 2)
@@ -82,7 +78,6 @@ void decodeDisplacement(uint8_t mod, uint8_t wBit, FILE *input, char *displaceme
             }
             sprintf(displacementExpression, " %s %d", isSigned ? "" : "+", displacement);
         }
-    }
 }
 
 uint8_t extractMod(uint8_t secondByte)
@@ -211,6 +206,20 @@ char *getRegisterName(uint8_t registerIndex, bool wBit)
     return 0;
 }
 
+uint8_t readUnsignedByte(FILE *input)
+{
+    uint8_t result;
+    if (fread(&result, sizeof(result), 1, input) == 1)
+    {
+        return result;
+    }
+    else
+    {
+        assert(false && "Error while reading from file");
+        return 0;
+    }
+}
+
 int8_t readSignedByte(FILE *input)
 {
     int8_t result;
@@ -233,14 +242,11 @@ void decodeJump(uint16_t instruction)
 
 void decodeDirectAddressing(FILE *input, char *buffer)
 {
-    uint8_t byte;
-    if (fread(&byte, sizeof(byte), 1, input) == 1)
-    {
-        int16_t constant = byte;
+    uint8_t byte = readUnsignedByte(input);
+    int16_t constant = byte;
 
-        extractHighBits(&constant, input);
-        sprintf(buffer, "[%d]", constant);
-    }
+    extractHighBits(&constant, input);
+    sprintf(buffer, "[%d]", constant);
 }
 
 void decodeImmediateToRegisterOrMemory(FILE *input, uint8_t mod, uint8_t firstByte, uint8_t secondByte, bool hasSignBit)
@@ -256,19 +262,17 @@ void decodeImmediateToRegisterOrMemory(FILE *input, uint8_t mod, uint8_t firstBy
     {
         decodeDisplacement(mod, wBit, input, displacementExpression);
         char dest[256];
-        uint8_t byte;
+        uint8_t byte = readUnsignedByte(input);
 
-        if (fread(&byte, sizeof(byte), 1, input) == 1)
+        int16_t immediate = byte;
+        if (mod == 2)
         {
-            int16_t immediate = byte;
-            if (mod == 2)
-            {
 
-                if (wBit && !(hasSignBit && sBit))
-                {
-                    extractHighBits(&immediate, input);
-                }
+            if (wBit && !(hasSignBit && sBit))
+            {
+                extractHighBits(&immediate, input);
             }
+        }
 
             if (mod == 1 || mod == 2)
             {
@@ -285,7 +289,6 @@ void decodeImmediateToRegisterOrMemory(FILE *input, uint8_t mod, uint8_t firstBy
             sprintf(dest, registerNames[rmField].rmExpression, displacementExpression);
             printf("%s, ", dest);
             printf("%d", immediate);
-        }
     }
 
     else
@@ -316,22 +319,20 @@ void decodeImmediateToRegisterOrMemory(FILE *input, uint8_t mod, uint8_t firstBy
             memcpy(dest, getRegisterName(rmField, wBit), 3);
         }
 
-        uint8_t byte;
-        if (fread(&byte, sizeof(byte), 1, input) == 1)
-        {
-            int16_t immediate = byte;
+        uint8_t byte = readUnsignedByte(input);
 
-            bool isWord = false;
-            if (sBit == 0 && wBit == 1)
-            {
-                isWord = true;
-                extractHighBits(&immediate, input);
-            }
+        int16_t immediate = byte;
+
+        bool isWord = false;
+        if (sBit == 0 && wBit == 1)
+        {
+            isWord = true;
+            extractHighBits(&immediate, input);
+        }
 
             printf("%s, ", dest);
 
             printf("%u", immediate);
-        }
     }
 }
 
@@ -405,11 +406,7 @@ int main(int argc, char *argv[])
                 printf("mov "); // Memory to accumulator
 
                 printf("ax, ");
-                uint8_t thirdByte;
-                if (!fread(&thirdByte, sizeof(thirdByte), 1, input))
-                {
-                    assert(false && "Could not read from file");
-                }
+                uint8_t thirdByte = readUnsignedByte(input);
 
                 int16_t address = secondByte | (thirdByte << 8);
 
@@ -418,11 +415,7 @@ int main(int argc, char *argv[])
             else if ((firstByte >> 1) == 0x51)
             {
                 printf("mov "); // Accumulator to memory
-                uint8_t thirdByte;
-                if (!fread(&thirdByte, sizeof(thirdByte), 1, input))
-                {
-                    assert(false && "Could not read from file");
-                }
+                uint8_t thirdByte = readUnsignedByte(input);
                 int16_t address = secondByte | (thirdByte << 8);
 
                 printf("[%d], ", address);
