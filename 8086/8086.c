@@ -70,14 +70,14 @@ void decodeDisplacement(uint8_t mod, uint8_t wBit, FILE *input, char *displaceme
         {
             displacement = displacement | (0xff << 8);
             isSigned = true;
-            }
-
-            if (mod == 2)
-            {
-                extractHighBits(&displacement, input);
-            }
-            sprintf(displacementExpression, " %s %d", isSigned ? "" : "+", displacement);
         }
+
+        if (mod == 2)
+        {
+            extractHighBits(&displacement, input);
+        }
+        sprintf(displacementExpression, " %s %d", isSigned ? "" : "+", displacement);
+    }
 }
 
 uint8_t extractMod(uint8_t secondByte)
@@ -115,6 +115,70 @@ void decodeImmediateToAccumulator(FILE *input, uint8_t firstByte, uint8_t second
     }
 
     printf("%d", immediate);
+}
+
+void decodeRegisterMemory(FILE *input, uint8_t firstByte, uint8_t secondByte)
+{
+
+    uint8_t rmField = extractRmField(secondByte);
+    uint8_t mod = extractMod(secondByte);
+    bool dBit = extractDOrSBit(firstByte);
+    bool wBit = extractWBit(firstByte);
+
+    if (wBit)
+    {
+        printf("word ");
+    }
+    else
+    {
+        printf("byte ");
+    }
+
+    if (mod == 3) // Register
+    {
+        char *rmFieldRegName = getRegisterName(rmField, wBit);
+
+        if (dBit)
+        {
+            printf("%s", rmFieldRegName);
+        }
+        else
+        {
+            printf("%s, ", rmFieldRegName);
+        }
+    }
+    else if (mod < 3) // Memory
+    {
+        char templateExpression[256];
+        strcpy(templateExpression, registerNames[rmField].rmExpression);
+
+        char displacementExpression[256];
+        decodeDisplacement(mod, wBit, input, displacementExpression);
+        char memoryExpression[256];
+
+        if (mod == 0 && rmField == 6)
+        {
+
+            decodeDirectAddressing(input, memoryExpression);
+        }
+        else
+        {
+            sprintf(memoryExpression, templateExpression, displacementExpression);
+        }
+
+        if (dBit)
+        {
+            printf("%s", memoryExpression);
+        }
+        else
+        {
+            printf("%s, ", memoryExpression);
+        }
+    }
+    else
+    {
+        assert(false && "Unknown mod field");
+    }
 }
 
 void decodeRegisterMemoryToFromMemory(FILE *input, uint8_t firstByte, uint8_t secondByte)
@@ -274,21 +338,21 @@ void decodeImmediateToRegisterOrMemory(FILE *input, uint8_t mod, uint8_t firstBy
             }
         }
 
-            if (mod == 1 || mod == 2)
+        if (mod == 1 || mod == 2)
+        {
+            if (wBit)
             {
-                if (wBit)
-                {
-                    printf("word ");
-                }
-                else
-                {
-                    printf("byte ");
-                }
+                printf("word ");
             }
+            else
+            {
+                printf("byte ");
+            }
+        }
 
-            sprintf(dest, registerNames[rmField].rmExpression, displacementExpression);
-            printf("%s, ", dest);
-            printf("%d", immediate);
+        sprintf(dest, registerNames[rmField].rmExpression, displacementExpression);
+        printf("%s, ", dest);
+        printf("%d", immediate);
     }
 
     else
@@ -330,9 +394,9 @@ void decodeImmediateToRegisterOrMemory(FILE *input, uint8_t mod, uint8_t firstBy
             extractHighBits(&immediate, input);
         }
 
-            printf("%s, ", dest);
+        printf("%s, ", dest);
 
-            printf("%u", immediate);
+        printf("%u", immediate);
     }
 }
 
@@ -392,7 +456,7 @@ int main(int argc, char *argv[])
                 decodeImmediateToAccumulator(input, firstByte, secondByte);
             }
             else if ((firstByte >> 1) == 0x2)
-            { 
+            {
                 printf("add ");
                 decodeImmediateToAccumulator(input, firstByte, secondByte);
             }
@@ -577,6 +641,13 @@ int main(int argc, char *argv[])
             {
                 printf("jcxz ");
                 decodeJump(instruction);
+            }
+            else if (firstByte == 0xff)
+            {
+                printf("push ");
+                uint8_t secondByteInstructionPattern = ((secondByte >> 3) & 0x07);
+                assert(secondByteInstructionPattern == 0x06 && "Unimplemented instruction pattern");
+                decodeRegisterMemory(input, firstByte, secondByte);
             }
             else
             {
