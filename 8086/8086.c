@@ -324,6 +324,30 @@ void decodeDirectAddressing(FILE *input, char *buffer)
     sprintf(buffer, "[%d]", constant);
 }
 
+void decodeSegmentRegister(uint8_t regField)
+{
+    if (regField == 0x00)
+    {
+        printf("es");
+    }
+    else if (regField == 0x01)
+    {
+        printf("cs");
+    }
+    else if (regField == 0x02)
+    {
+        printf("ss");
+    }
+    else if (regField == 0x03)
+    {
+        printf("ds");
+    }
+    else
+    {
+        assert(false && "Invalid segment register");
+    }
+}
+
 void decodeImmediateToRegisterOrMemory(FILE *input, uint8_t mod, uint8_t firstByte, uint8_t secondByte, bool hasSignBit)
 {
     bool sBit = extractDOrSBit(firstByte);
@@ -704,9 +728,10 @@ int main(int argc, char *argv[])
             }
             else if (firstByte == 0xff)
             {
-                uint8_t secondByte = readByte(input);
 
                 printf("push ");
+
+                uint8_t secondByte = readByte(input);
                 uint8_t secondByteInstructionPattern = ((secondByte >> 3) & 0x07);
                 assert(secondByteInstructionPattern == 0x06 && "Unimplemented instruction pattern");
                 decodeRegisterMemory(input, firstByte, secondByte);
@@ -725,27 +750,38 @@ int main(int argc, char *argv[])
                 printf("push ");
                 uint8_t regField = (firstByte >> 3) & 0x03;
 
-                if (regField == 0x00)
-                {
-                    printf("es");
-                }
-                else if (regField == 0x01)
-                {
-                    printf("cs");
-                }
-                else if (regField == 0x02)
-                {
-                    printf("ss");
-                }
-                else if (regField == 0x03)
-                {
-                    printf("ds");
-                }
-                else
-                {
-                    assert(false && "Invalid segment register");
-                }
+                decodeSegmentRegister(regField);
             }
+
+            else if (firstByte == 0x8f)
+            {
+
+                printf("pop ");
+
+                uint8_t secondByte = readByte(input);
+                uint8_t secondByteInstructionPattern = ((secondByte >> 3) & 0x07);
+                assert(secondByteInstructionPattern == 0x00 && "Unimplemented instruction pattern");
+                decodeRegisterMemory(input, firstByte, secondByte);
+            }
+
+            else if ((firstByte >> 3) == 0x0b)
+            {
+
+                printf("pop ");
+
+                uint8_t regField = firstByte & 0x07;
+                char *regFieldRegName = getRegisterName(regField, 1);
+
+                printf(regFieldRegName);
+            }
+            else if (((firstByte >> 6) == 0) && ((firstByte & 0x07) == 0x07))
+            {
+                printf("pop ");
+                uint8_t regField = (firstByte >> 3) & 0x03;
+
+                decodeSegmentRegister(regField);
+            }
+
             else
             {
                 assert(false && "Unknown instruction");
