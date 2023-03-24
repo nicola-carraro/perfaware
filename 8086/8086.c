@@ -562,15 +562,6 @@ int main(int argc, char *argv[])
                 printf("%s, ", regFieldRegName);
                 printf("%u", immediate);
             }
-            else if ((firstByte >> 3) == 0xa)
-            {
-                printf("push ");
-
-                uint8_t regField = firstByte & 0x07;
-                char *regFieldRegName = getRegisterName(regField, 1);
-
-                printf(regFieldRegName);
-            }
             else if (firstByte == 0x70)
             {
                 uint8_t secondByte = readByte(input);
@@ -719,6 +710,41 @@ int main(int argc, char *argv[])
                 uint8_t secondByteInstructionPattern = ((secondByte >> 3) & 0x07);
                 assert(secondByteInstructionPattern == 0x06 && "Unimplemented instruction pattern");
                 decodeRegisterMemory(input, firstByte, secondByte);
+            }
+            else if ((firstByte >> 3) == 0xa)
+            {
+                printf("push ");
+
+                uint8_t regField = firstByte & 0x07;
+                char *regFieldRegName = getRegisterName(regField, 1);
+
+                printf(regFieldRegName);
+            }
+            else if (((firstByte >> 6) == 0) && ((firstByte & 0x07) == 0x06))
+            {
+                printf("push ");
+                uint8_t regField = (firstByte >> 3) & 0x03;
+
+                if (regField == 0x00)
+                {
+                    printf("es");
+                }
+                else if (regField == 0x01)
+                {
+                    printf("cs");
+                }
+                else if (regField == 0x02)
+                {
+                    printf("ss");
+                }
+                else if (regField == 0x03)
+                {
+                    printf("ds");
+                }
+                else
+                {
+                    assert(false && "Invalid segment register");
+                }
             }
             else
             {
