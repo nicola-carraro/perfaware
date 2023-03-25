@@ -310,6 +310,18 @@ void decodeDirectAddressing(FILE *input, char *buffer)
     sprintf(buffer, "[%d]", constant);
 }
 
+void printAccumulator(bool wBit)
+{
+    if (wBit)
+    {
+        printf("ax, ");
+    }
+    else
+    {
+        printf("al, ");
+    }
+}
+
 void decodeSegmentRegister(uint8_t regField)
 {
     if (regField == 0x00)
@@ -785,7 +797,7 @@ int main(int argc, char *argv[])
             else if ((firstByte >> 1) == 0x72)
             {
                 printf("in ");
-                uint8_t wBit = extractWBit(firstByte);
+                bool wBit = extractWBit(firstByte);
                 uint8_t secondByte = readSignedByte(input);
 
                 int16_t fixedPort = secondByte;
@@ -796,14 +808,7 @@ int main(int argc, char *argv[])
                     fixedPort = fixedPort | (0xff << 8);
                 }
 
-                if (wBit)
-                {
-                    printf("ax, ");
-                }
-                else
-                {
-                    printf("al, ");
-                }
+                printAccumulator(wBit);
 
                 printf("%d", fixedPort);
             }
@@ -811,18 +816,57 @@ int main(int argc, char *argv[])
             {
                 printf("in ");
 
-                uint8_t wBit = extractWBit(firstByte);
+                bool wBit = extractWBit(firstByte);
+
+                printAccumulator(wBit);
+
+                printf("dx");
+            }
+            else if ((firstByte >> 1) == 0x73)
+            {
+                printf("out ");
+                bool wBit = extractWBit(firstByte);
+                uint8_t secondByte = readSignedByte(input);
+
+                int16_t fixedPort = secondByte;
+                bool sign = secondByte >> 7;
+
+                if (wBit && sign)
+                {
+                    fixedPort = fixedPort | (0xff << 8);
+                }
+
+                printf("%d, ", fixedPort);
+                if (wBit && sign)
+                {
+                    fixedPort = fixedPort | (0xff << 8);
+                }
 
                 if (wBit)
                 {
-                    printf("ax, ");
+                    printf("ax");
                 }
                 else
                 {
-                    printf("al, ");
+                    printf("al");
                 }
+            }
 
-                printf("dx");
+            else if ((firstByte >> 1) == 0x77)
+            {
+                printf("out ");
+                printf("dx, ");
+
+                bool wBit = extractWBit(firstByte);
+
+                if (wBit)
+                {
+                    printf("ax");
+                }
+                else
+                {
+                    printf("al");
+                }
             }
             else
             {
