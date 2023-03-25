@@ -472,6 +472,28 @@ int main(int argc, char *argv[])
                 uint8_t secondByte = readUnsignedByte(input);
                 decodeRegisterMemoryToFromMemory(input, secondByte, true, true);
             }
+            else if (firstByte == 0xc4)
+            {
+                printf("les ");
+                uint8_t secondByte = readUnsignedByte(input);
+                decodeRegisterMemoryToFromMemory(input, secondByte, true, true);
+            }
+            else if (firstByte == 0x9f)
+            {
+                printf("lahf ");
+            }
+            else if (firstByte == 0x9e)
+            {
+                printf("sahf ");
+            }
+            else if (firstByte == 0x9c)
+            {
+                printf("pushf ");
+            }
+            else if (firstByte == 0x9d)
+            {
+                printf("popf ");
+            }
             else if (opcode == 0x22)
             {
                 uint8_t secondByte = readUnsignedByte(input);
