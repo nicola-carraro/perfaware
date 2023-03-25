@@ -868,6 +868,10 @@ int main(int argc, char *argv[])
                     printf("al");
                 }
             }
+            else if (firstByte == 0xd7)
+            {
+                printf("xlat");
+            }
             else
             {
                 assert(false && "Unknown instruction");
