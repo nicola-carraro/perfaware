@@ -460,8 +460,13 @@ int main(int argc, char *argv[])
             firstByte = firstByte & 0xff;
 
             uint8_t opcode = firstByte >> 2;
-
-            if (opcode == 0x22)
+            if (firstByte == 0xc5)
+            {
+                printf("lds ");
+                uint8_t secondByte = readUnsignedByte(input);
+                decodeRegisterMemoryToFromMemory(input, secondByte, true, true);
+            }
+            else if (opcode == 0x22)
             {
                 uint8_t secondByte = readUnsignedByte(input);
                 printf("mov ");
@@ -885,6 +890,7 @@ int main(int argc, char *argv[])
                 uint8_t secondByte = readUnsignedByte(input);
                 decodeRegisterMemoryToFromMemory(input, secondByte, true, true);
             }
+
             else
             {
                 assert(false && "Unknown instruction");
