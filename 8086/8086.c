@@ -510,6 +510,14 @@ int main(int argc, char *argv[])
                 bool wBit = extractWBit(firstByte);
                 decodeRegisterMemoryToFromMemory(input, secondByte, dBit, wBit);
             }
+            else if (opcode == 0x04)
+            {
+                uint8_t secondByte = readUnsignedByte(input);
+                printf("adc ");
+                bool dBit = extractDOrSBit(firstByte);
+                bool wBit = extractWBit(firstByte);
+                decodeRegisterMemoryToFromMemory(input, secondByte, dBit, wBit);
+            }
             else if (opcode == 0x0e)
             {
                 uint8_t secondByte = readUnsignedByte(input);
@@ -528,6 +536,12 @@ int main(int argc, char *argv[])
             {
                 uint8_t secondByte = readUnsignedByte(input);
                 printf("add ");
+                decodeImmediateToAccumulator(input, firstByte, secondByte);
+            }
+            else if ((firstByte >> 1) == 0x0a)
+            {
+                uint8_t secondByte = readUnsignedByte(input);
+                printf("adc ");
                 decodeImmediateToAccumulator(input, firstByte, secondByte);
             }
             else if ((firstByte >> 1) == 0x16)
@@ -576,6 +590,11 @@ int main(int argc, char *argv[])
                 case 0:
                 {
                     printf("add ");
+                }
+                break;
+                case 2:
+                {
+                    printf("adc ");
                 }
                 break;
                 case 5:
