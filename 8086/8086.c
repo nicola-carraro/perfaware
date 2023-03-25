@@ -781,7 +781,21 @@ int main(int argc, char *argv[])
 
                 decodeSegmentRegister(regField);
             }
-
+            else if ((firstByte >> 1) == 0x43)
+            {
+                printf("xchg ");
+                uint8_t secondByte = readByte(input);
+                decodeRegisterMemoryToFromMemory(input, firstByte, secondByte);
+            }
+            else if ((firstByte >> 3) == 0x12)
+            {
+                // Register with accumulator
+                printf("xchg ");
+                printf("ax, ");
+                uint8_t regField = firstByte & 0x07;
+                char *regFieldRegName = getRegisterName(regField, 1);
+                printf(regFieldRegName);
+            }
             else
             {
                 assert(false && "Unknown instruction");
