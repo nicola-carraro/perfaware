@@ -782,6 +782,48 @@ int main(int argc, char *argv[])
                 char *regFieldRegName = getRegisterName(regField, 1);
                 printf(regFieldRegName);
             }
+            else if ((firstByte >> 1) == 0x72)
+            {
+                printf("in ");
+                uint8_t wBit = extractWBit(firstByte);
+                uint8_t secondByte = readSignedByte(input);
+
+                int16_t fixedPort = secondByte;
+                bool sign = secondByte >> 7;
+
+                if (wBit && sign)
+                {
+                    fixedPort = fixedPort | (0xff << 8);
+                }
+
+                if (wBit)
+                {
+                    printf("ax, ");
+                }
+                else
+                {
+                    printf("al, ");
+                }
+
+                printf("%d", fixedPort);
+            }
+            else if ((firstByte >> 1) == 0x76)
+            {
+                printf("in ");
+
+                uint8_t wBit = extractWBit(firstByte);
+
+                if (wBit)
+                {
+                    printf("ax, ");
+                }
+                else
+                {
+                    printf("al, ");
+                }
+
+                printf("dx");
+            }
             else
             {
                 assert(false && "Unknown instruction");
