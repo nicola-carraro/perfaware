@@ -192,11 +192,8 @@ uint8_t readUnsignedByte(FILE *input)
     return result;
 }
 
-void decodeRegisterMemoryToFromMemory(FILE *input, uint8_t firstByte, uint8_t secondByte)
+void decodeRegisterMemoryToFromMemory(FILE *input, uint8_t secondByte, bool dBit, bool wBit)
 {
-    bool dBit = extractDOrSBit(firstByte);
-    bool wBit = extractWBit(firstByte);
-
     uint8_t mod = extractMod(secondByte);
 
     uint8_t regField = (secondByte & 0x3f) >> 3;
@@ -468,19 +465,25 @@ int main(int argc, char *argv[])
             {
                 uint8_t secondByte = readUnsignedByte(input);
                 printf("mov ");
-                decodeRegisterMemoryToFromMemory(input, firstByte, secondByte);
+                bool dBit = extractDOrSBit(firstByte);
+                bool wBit = extractWBit(firstByte);
+                decodeRegisterMemoryToFromMemory(input, secondByte, dBit, wBit);
             }
             else if (opcode == 0x00)
             {
                 uint8_t secondByte = readUnsignedByte(input);
                 printf("add ");
-                decodeRegisterMemoryToFromMemory(input, firstByte, secondByte);
+                bool dBit = extractDOrSBit(firstByte);
+                bool wBit = extractWBit(firstByte);
+                decodeRegisterMemoryToFromMemory(input, secondByte, dBit, wBit);
             }
             else if (opcode == 0x0e)
             {
                 uint8_t secondByte = readUnsignedByte(input);
                 printf("cmp ");
-                decodeRegisterMemoryToFromMemory(input, firstByte, secondByte);
+                bool dBit = extractDOrSBit(firstByte);
+                bool wBit = extractWBit(firstByte);
+                decodeRegisterMemoryToFromMemory(input, secondByte, dBit, wBit);
             }
             else if ((firstByte >> 1) == 0x1e)
             {
@@ -526,7 +529,9 @@ int main(int argc, char *argv[])
             {
                 uint8_t secondByte = readUnsignedByte(input);
                 printf("sub ");
-                decodeRegisterMemoryToFromMemory(input, firstByte, secondByte);
+                bool dBit = extractDOrSBit(firstByte);
+                bool wBit = extractWBit(firstByte);
+                decodeRegisterMemoryToFromMemory(input, secondByte, dBit, wBit);
             }
             else if (opcode == 0x20)
             {
@@ -783,7 +788,9 @@ int main(int argc, char *argv[])
             {
                 printf("xchg ");
                 uint8_t secondByte = readUnsignedByte(input);
-                decodeRegisterMemoryToFromMemory(input, firstByte, secondByte);
+                bool dBit = extractDOrSBit(firstByte);
+                bool wBit = extractWBit(firstByte);
+                decodeRegisterMemoryToFromMemory(input, secondByte, dBit, wBit);
             }
             else if ((firstByte >> 3) == 0x12)
             {
@@ -871,6 +878,12 @@ int main(int argc, char *argv[])
             else if (firstByte == 0xd7)
             {
                 printf("xlat");
+            }
+            else if (firstByte == 0x8d)
+            {
+                printf("lea ");
+                uint8_t secondByte = readUnsignedByte(input);
+                decodeRegisterMemoryToFromMemory(input, secondByte, true, true);
             }
             else
             {
