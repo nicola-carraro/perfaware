@@ -181,7 +181,7 @@ void decodeRegisterMemory(FILE *input, uint8_t firstByte, uint8_t secondByte)
     }
 }
 
-uint8_t readByte(FILE *input)
+uint8_t readUnsignedByte(FILE *input)
 {
     uint8_t result = 0;
     if (fread(&result, sizeof(result), 1, input) != 1)
@@ -281,20 +281,6 @@ char *getRegisterName(uint8_t registerIndex, bool wBit)
     return 0;
 }
 
-uint8_t readUnsignedByte(FILE *input)
-{
-    uint8_t result;
-    if (fread(&result, sizeof(result), 1, input) == 1)
-    {
-        return result;
-    }
-    else
-    {
-        assert(false && "Error while reading from file");
-        return 0;
-    }
-}
-
 int8_t readSignedByte(FILE *input)
 {
     int8_t result;
@@ -309,10 +295,10 @@ int8_t readSignedByte(FILE *input)
     }
 }
 
-void decodeJump(uint8_t secondByte)
+void decodeJump(int8_t secondByte)
 {
 
-    printf("%d", secondByte);
+    printf("$%+d", secondByte + 2);
 }
 
 void decodeDirectAddressing(FILE *input, char *buffer)
@@ -468,43 +454,43 @@ int main(int argc, char *argv[])
 
             if (opcode == 0x22)
             {
-                uint8_t secondByte = readByte(input);
+                uint8_t secondByte = readUnsignedByte(input);
                 printf("mov ");
                 decodeRegisterMemoryToFromMemory(input, firstByte, secondByte);
             }
             else if (opcode == 0x00)
             {
-                uint8_t secondByte = readByte(input);
+                uint8_t secondByte = readUnsignedByte(input);
                 printf("add ");
                 decodeRegisterMemoryToFromMemory(input, firstByte, secondByte);
             }
             else if (opcode == 0x0e)
             {
-                uint8_t secondByte = readByte(input);
+                uint8_t secondByte = readUnsignedByte(input);
                 printf("cmp ");
                 decodeRegisterMemoryToFromMemory(input, firstByte, secondByte);
             }
             else if ((firstByte >> 1) == 0x1e)
             {
-                uint8_t secondByte = readByte(input);
+                uint8_t secondByte = readUnsignedByte(input);
                 printf("cmp ");
                 decodeImmediateToAccumulator(input, firstByte, secondByte);
             }
             else if ((firstByte >> 1) == 0x2)
             {
-                uint8_t secondByte = readByte(input);
+                uint8_t secondByte = readUnsignedByte(input);
                 printf("add ");
                 decodeImmediateToAccumulator(input, firstByte, secondByte);
             }
             else if ((firstByte >> 1) == 0x16)
             {
-                uint8_t secondByte = readByte(input);
+                uint8_t secondByte = readUnsignedByte(input);
                 printf("sub ");
                 decodeImmediateToAccumulator(input, firstByte, secondByte);
             }
             else if ((firstByte >> 1) == 0x50)
             {
-                uint8_t secondByte = readByte(input);
+                uint8_t secondByte = readUnsignedByte(input);
                 printf("mov "); // Memory to accumulator
 
                 printf("ax, ");
@@ -516,7 +502,7 @@ int main(int argc, char *argv[])
             }
             else if ((firstByte >> 1) == 0x51)
             {
-                uint8_t secondByte = readByte(input);
+                uint8_t secondByte = readUnsignedByte(input);
                 printf("mov "); // Accumulator to memory
                 uint8_t thirdByte = readUnsignedByte(input);
                 int16_t address = secondByte | (thirdByte << 8);
@@ -526,13 +512,13 @@ int main(int argc, char *argv[])
             }
             else if (opcode == 0x0a)
             {
-                uint8_t secondByte = readByte(input);
+                uint8_t secondByte = readUnsignedByte(input);
                 printf("sub ");
                 decodeRegisterMemoryToFromMemory(input, firstByte, secondByte);
             }
             else if (opcode == 0x20)
             {
-                uint8_t secondByte = readByte(input);
+                uint8_t secondByte = readUnsignedByte(input);
                 uint8_t mod = extractMod(secondByte);
                 uint8_t instructionExtension = (secondByte >> 3) & 0x07;
                 switch (instructionExtension)
@@ -561,14 +547,14 @@ int main(int argc, char *argv[])
             }
             else if (opcode == 0x31)
             {
-                uint8_t secondByte = readByte(input);
+                uint8_t secondByte = readUnsignedByte(input);
                 uint8_t mod = extractMod(secondByte);
                 printf("mov ");
                 decodeImmediateToRegisterOrMemory(input, mod, firstByte, secondByte, false);
             }
             else if (firstByte >> 4 == 0xb)
             {
-                uint8_t secondByte = readByte(input);
+                uint8_t secondByte = readUnsignedByte(input);
                 // Immediate-to-register mov
                 printf("mov ");
                 bool wBit = (firstByte & 0x08) >> 3;
@@ -588,132 +574,132 @@ int main(int argc, char *argv[])
             }
             else if (firstByte == 0x70)
             {
-                uint8_t secondByte = readByte(input);
+                uint8_t secondByte = readUnsignedByte(input);
                 printf("jo ");
                 decodeJump(secondByte);
             }
             else if (firstByte == 0x71)
             {
-                uint8_t secondByte = readByte(input);
+                uint8_t secondByte = readUnsignedByte(input);
 
                 printf("jno ");
                 decodeJump(secondByte);
             }
             else if (firstByte == 0x72)
             {
-                uint8_t secondByte = readByte(input);
+                uint8_t secondByte = readUnsignedByte(input);
 
                 printf("jb ");
                 decodeJump(secondByte);
             }
             else if (firstByte == 0x73)
             {
-                uint8_t secondByte = readByte(input);
+                uint8_t secondByte = readUnsignedByte(input);
 
                 printf("jnb ");
                 decodeJump(secondByte);
             }
             else if (firstByte == 0x74)
             {
-                uint8_t secondByte = readByte(input);
+                uint8_t secondByte = readUnsignedByte(input);
 
                 printf("je ");
                 decodeJump(secondByte);
             }
             else if (firstByte == 0x75)
             {
-                uint8_t secondByte = readByte(input);
+                int8_t secondByte = readSignedByte(input);
 
-                printf("jne ");
+                printf("jnz ");
                 decodeJump(secondByte);
             }
             else if (firstByte == 0x76)
             {
-                uint8_t secondByte = readByte(input);
+                int8_t secondByte = readSignedByte(input);
 
                 printf("jbe ");
                 decodeJump(secondByte);
             }
             else if (firstByte == 0x77)
             {
-                uint8_t secondByte = readByte(input);
+                int8_t secondByte = readSignedByte(input);
 
                 printf("ja ");
                 decodeJump(secondByte);
             }
             else if (firstByte == 0x78)
             {
-                uint8_t secondByte = readByte(input);
+                int8_t secondByte = readSignedByte(input);
 
                 printf("js ");
                 decodeJump(secondByte);
             }
             else if (firstByte == 0x79)
             {
-                uint8_t secondByte = readByte(input);
+                int8_t secondByte = readSignedByte(input);
 
                 printf("jns ");
                 decodeJump(secondByte);
             }
             else if (firstByte == 0x7a)
             {
-                uint8_t secondByte = readByte(input);
+                int8_t secondByte = readUnsignedByte(input);
 
                 printf("jp ");
                 decodeJump(secondByte);
             }
             else if (firstByte == 0x7b)
             {
-                uint8_t secondByte = readByte(input);
+                int8_t secondByte = readUnsignedByte(input);
 
                 printf("jnp ");
                 decodeJump(secondByte);
             }
             else if (firstByte == 0x7c)
             {
-                uint8_t secondByte = readByte(input);
+                int8_t secondByte = readUnsignedByte(input);
 
                 printf("jl ");
                 decodeJump(secondByte);
             }
             else if (firstByte == 0x7d)
             {
-                uint8_t secondByte = readByte(input);
+                int8_t secondByte = readUnsignedByte(input);
 
                 printf("jnl ");
                 decodeJump(secondByte);
             }
             else if (firstByte == 0x7e)
             {
-                uint8_t secondByte = readByte(input);
+                int8_t secondByte = readUnsignedByte(input);
 
                 printf("jle ");
                 decodeJump(secondByte);
             }
             else if (firstByte == 0x7f)
             {
-                uint8_t secondByte = readByte(input);
+                int8_t secondByte = readSignedByte(input);
 
                 printf("jg ");
                 decodeJump(secondByte);
             }
             else if (firstByte == 0xe0)
             {
-                uint8_t secondByte = readByte(input);
+                int8_t secondByte = readSignedByte(input);
 
                 printf("loopnz ");
                 decodeJump(secondByte);
             }
             else if (firstByte == 0xe1)
             {
-                uint8_t secondByte = readByte(input);
+                int8_t secondByte = readSignedByte(input);
 
                 printf("loopz ");
                 decodeJump(secondByte);
             }
             else if (firstByte == 0xe2)
             {
-                uint8_t secondByte = readByte(input);
+                int8_t secondByte = readSignedByte(input);
 
                 printf("loop ");
                 decodeJump(secondByte);
@@ -721,7 +707,7 @@ int main(int argc, char *argv[])
 
             else if (firstByte == 0xe3)
             {
-                uint8_t secondByte = readByte(input);
+                int8_t secondByte = readSignedByte(input);
 
                 printf("jcxz ");
                 decodeJump(secondByte);
@@ -731,7 +717,7 @@ int main(int argc, char *argv[])
 
                 printf("push ");
 
-                uint8_t secondByte = readByte(input);
+                uint8_t secondByte = readUnsignedByte(input);
                 uint8_t secondByteInstructionPattern = ((secondByte >> 3) & 0x07);
                 assert(secondByteInstructionPattern == 0x06 && "Unimplemented instruction pattern");
                 decodeRegisterMemory(input, firstByte, secondByte);
@@ -758,7 +744,7 @@ int main(int argc, char *argv[])
 
                 printf("pop ");
 
-                uint8_t secondByte = readByte(input);
+                uint8_t secondByte = readUnsignedByte(input);
                 uint8_t secondByteInstructionPattern = ((secondByte >> 3) & 0x07);
                 assert(secondByteInstructionPattern == 0x00 && "Unimplemented instruction pattern");
                 decodeRegisterMemory(input, firstByte, secondByte);
@@ -784,7 +770,7 @@ int main(int argc, char *argv[])
             else if ((firstByte >> 1) == 0x43)
             {
                 printf("xchg ");
-                uint8_t secondByte = readByte(input);
+                uint8_t secondByte = readUnsignedByte(input);
                 decodeRegisterMemoryToFromMemory(input, firstByte, secondByte);
             }
             else if ((firstByte >> 3) == 0x12)
