@@ -733,6 +733,14 @@ int main(int argc, char *argv[])
                 {
                     printf("imul ");
                 }
+                else if (rem == 0x06)
+                {
+                    printf("div ");
+                }
+                else if (rem == 0x07)
+                {
+                    printf("idiv ");
+                }
                 else
                 {
                     assert(false && "Unimplemented");
