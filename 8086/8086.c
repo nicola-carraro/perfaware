@@ -635,10 +635,16 @@ int main(int argc, char *argv[])
                 printf("adc ");
                 decodeImmediateToAccumulator(input, firstByte, secondByte);
             }
-            else if ((firstByte >> 1) == 0x16)
+            else if (firstByte >= 0x2c && firstByte <= 0x2d)
             {
                 uint8_t secondByte = readUnsignedByte(input);
                 printf("sub ");
+                decodeImmediateToAccumulator(input, firstByte, secondByte);
+            }
+            else if (firstByte >= 0x1c && firstByte <= 0x1d)
+            {
+                uint8_t secondByte = readUnsignedByte(input);
+                printf("sbb ");
                 decodeImmediateToAccumulator(input, firstByte, secondByte);
             }
             else if ((firstByte >> 1) == 0x50)
@@ -663,10 +669,18 @@ int main(int argc, char *argv[])
                 printf("[%d], ", address);
                 printf("ax");
             }
-            else if (opcode == 0x0a)
+            else if (firstByte >= 0x28 && firstByte <= 0x2b)
             {
                 uint8_t secondByte = readUnsignedByte(input);
                 printf("sub ");
+                bool dBit = extractDOrSBit(firstByte);
+                bool wBit = extractWBit(firstByte);
+                decodeRegisterMemoryToFromMemory(input, secondByte, dBit, wBit);
+            }
+            else if (firstByte >= 0x18 && firstByte <= 0x1b)
+            {
+                uint8_t secondByte = readUnsignedByte(input);
+                printf("sbb ");
                 bool dBit = extractDOrSBit(firstByte);
                 bool wBit = extractWBit(firstByte);
                 decodeRegisterMemoryToFromMemory(input, secondByte, dBit, wBit);
@@ -713,6 +727,11 @@ int main(int argc, char *argv[])
                 case 2:
                 {
                     printf("adc ");
+                }
+                break;
+                case 3:
+                {
+                    printf("sbb ");
                 }
                 break;
                 case 5:
