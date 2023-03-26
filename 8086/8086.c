@@ -693,21 +693,31 @@ int main(int argc, char *argv[])
                 if (firstByte == 0xff && rem == 0x06)
                 {
                     printf("push ");
-                    decodeRegisterMemory(input, firstByte, secondByte);
                 }
                 else if (rem == 0x00)
                 {
                     printf("inc ");
-                    decodeRegisterMemory(input, firstByte, secondByte);
+                }
+                else if (rem == 0x01)
+                {
+                    printf("dec ");
                 }
                 else
                 {
                     assert(false && "Unimplemented");
                 }
+                decodeRegisterMemory(input, firstByte, secondByte);
             }
             else if (firstByte >= 0x40 && firstByte <= 0x47)
             {
                 printf("inc ");
+                uint8_t rem = extractLowBits(firstByte, 3);
+                char *regExpression = getRegisterName(rem, 1);
+                printf(regExpression);
+            }
+            else if (firstByte >= 0x48 && firstByte <= 0x4f)
+            {
+                printf("dec ");
                 uint8_t rem = extractLowBits(firstByte, 3);
                 char *regExpression = getRegisterName(rem, 1);
                 printf(regExpression);
