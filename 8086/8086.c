@@ -725,6 +725,10 @@ int main(int argc, char *argv[])
                 {
                     printf("neg ");
                 }
+                else if (rem == 0x04)
+                {
+                    printf("mul ");
+                }
                 else
                 {
                     assert(false && "Unimplemented");
