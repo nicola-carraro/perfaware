@@ -708,6 +708,22 @@ int main(int argc, char *argv[])
                 }
                 decodeRegisterMemory(input, firstByte, secondByte);
             }
+            else if (firstByte >= 0xf6 && firstByte <= 0xf7)
+            {
+                uint8_t secondByte = readUnsignedByte(input);
+                uint8_t rem = extractBits(secondByte, 3, 6);
+
+                if (rem == 0x03)
+                {
+                    printf("neg ");
+                }
+                else
+                {
+                    assert(false && "Unimplemented");
+                }
+
+                decodeRegisterMemory(input, firstByte, secondByte);
+            }
             else if (firstByte >= 0x40 && firstByte <= 0x47)
             {
                 printf("inc ");
