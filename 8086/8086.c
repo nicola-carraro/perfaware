@@ -555,6 +555,14 @@ int main(int argc, char *argv[])
                 uint8_t secondByte = readUnsignedByte(input);
                 decodeRegisterMemoryToFromMemory(input, secondByte, true, true);
             }
+            else if (firstByte == 0x37)
+            {
+                printf("aaa");
+            }
+            else if (firstByte == 0x27)
+            {
+                printf("daa");
+            }
             else if (firstByte == 0xc4)
             {
                 printf("les ");
