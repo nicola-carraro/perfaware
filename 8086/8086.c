@@ -747,6 +747,19 @@ int main(int argc, char *argv[])
                 char *regExpression = getRegisterName(rem, 1);
                 printf(regExpression);
             }
+            else if (firstByte == 0xd4)
+            {
+                uint8_t secondByte = readUnsignedByte(input);
+
+                if (secondByte == 0x0a)
+                {
+                    printf("aam");
+                }
+                else
+                {
+                    assert(false && "Unimplemented");
+                }
+            }
             else if (firstByte >= 0x48 && firstByte <= 0x4f)
             {
                 printf("dec ");
