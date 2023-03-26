@@ -563,6 +563,14 @@ int main(int argc, char *argv[])
             {
                 printf("daa");
             }
+            else if (firstByte == 0x3f)
+            {
+                printf("aas");
+            }
+            else if (firstByte == 0x2f)
+            {
+                printf("das");
+            }
             else if (firstByte == 0xc4)
             {
                 printf("les ");
