@@ -729,6 +729,10 @@ int main(int argc, char *argv[])
                 {
                     printf("mul ");
                 }
+                else if (rem == 0x05)
+                {
+                    printf("imul ");
+                }
                 else
                 {
                     assert(false && "Unimplemented");
