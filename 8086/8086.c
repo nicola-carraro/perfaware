@@ -430,6 +430,89 @@ void decodeImmediateToRegisterOrMemory(FILE *input, uint8_t mod, uint8_t firstBy
     }
 }
 
+uint8_t extractLowBits(uint8_t byte, uint8_t bitsToExtract)
+{
+    assert(bitsToExtract <= 8);
+    uint8_t mask = 0x00;
+
+    switch (bitsToExtract)
+    {
+    case 0:
+    {
+        mask = 0x00;
+    }
+    break;
+    case 1:
+    {
+        mask = 0x01;
+    }
+    break;
+    case 2:
+    {
+        mask = 0x03;
+    }
+    break;
+    case 3:
+    {
+        mask = 0x07;
+    }
+    break;
+    case 4:
+    {
+        mask = 0x0f;
+    }
+    break;
+    case 5:
+    {
+        mask = 0xf1;
+    }
+    break;
+    case 6:
+    {
+        mask = 0xf3;
+    }
+    break;
+    case 7:
+    {
+        mask = 0xf7;
+    }
+    break;
+    case 8:
+    {
+        mask = 0xff;
+    }
+    break;
+    default:
+    {
+        assert(false && "Unreachable");
+    }
+    }
+
+    return byte & mask;
+}
+
+uint8_t extractBits(uint8_t byte, uint8_t firstBit, uint8_t onePastLastBit)
+{
+    assert(firstBit <= onePastLastBit);
+    assert(firstBit <= 7);
+    assert(onePastLastBit <= 8);
+
+    uint8_t bitCount = onePastLastBit - firstBit;
+    uint8_t shifted = (byte >> firstBit);
+    uint8_t result = extractLowBits(shifted, bitCount);
+
+    return result;
+}
+
+bool extractBit(uint8_t byte, uint8_t index)
+{
+    assert(index <= 7);
+    uint8_t extracted = extractBits(byte, index, index + 1);
+    assert(extracted <= 1);
+
+    return extracted == 1;
+}
+
 int main(int argc, char *argv[])
 {
 
@@ -579,6 +662,33 @@ int main(int argc, char *argv[])
                 bool dBit = extractDOrSBit(firstByte);
                 bool wBit = extractWBit(firstByte);
                 decodeRegisterMemoryToFromMemory(input, secondByte, dBit, wBit);
+            }
+            else if (firstByte >= 0xfd && firstByte <= 0xff)
+            {
+
+                uint8_t secondByte = readUnsignedByte(input);
+                uint8_t rem = extractBits(secondByte, 3, 6);
+                if (firstByte == 0xff && rem == 0x06)
+                {
+                    printf("push ");
+                    decodeRegisterMemory(input, firstByte, secondByte);
+                }
+                else if (rem == 0x00)
+                {
+                    printf("inc ");
+                    decodeRegisterMemory(input, firstByte, secondByte);
+                }
+                else
+                {
+                    assert(false && "Unimplemented");
+                }
+            }
+            else if (firstByte >= 0x40 && firstByte <= 0x47)
+            {
+                printf("inc ");
+                uint8_t rem = extractLowBits(firstByte, 3);
+                char *regExpression = getRegisterName(rem, 1);
+                printf(regExpression);
             }
             else if (opcode == 0x20)
             {
@@ -781,16 +891,7 @@ int main(int argc, char *argv[])
                 printf("jcxz ");
                 decodeJump(secondByte);
             }
-            else if (firstByte == 0xff)
-            {
 
-                printf("push ");
-
-                uint8_t secondByte = readUnsignedByte(input);
-                uint8_t secondByteInstructionPattern = ((secondByte >> 3) & 0x07);
-                assert(secondByteInstructionPattern == 0x06 && "Unimplemented instruction pattern");
-                decodeRegisterMemory(input, firstByte, secondByte);
-            }
             else if ((firstByte >> 3) == 0xa)
             {
                 printf("push ");
