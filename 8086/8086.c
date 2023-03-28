@@ -735,7 +735,36 @@ int main(int argc, char *argv[])
                 bool wBit = extractWBit(firstByte);
                 decodeRegisterMemoryToFromMemory(input, secondByte, dBit, wBit);
             }
+            else if (firstByte >= 0xc6 && firstByte <= 0xc7)
+            {
+                uint8_t secondByte = readUnsignedByte(input);
+                uint8_t mod = extractMod(secondByte);
 
+                uint8_t reg = extractBits(secondByte, 3, 6);
+                assert(reg == 0 && "Unimplemented");
+                printf("mov ");
+                decodeImmediateToRegisterOrMemory(input, mod, firstByte, secondByte, false);
+            }
+            else if (firstByte >= 0xb0 && firstByte <= 0xbf)
+            {
+                uint8_t secondByte = readUnsignedByte(input);
+                // Immediate-to-register mov
+                printf("mov ");
+                bool wBit = (firstByte & 0x08) >> 3;
+
+                uint8_t regField = firstByte & 0x07;
+                char *regFieldRegName = getRegisterName(regField, wBit);
+
+                int16_t immediate = secondByte;
+
+                if (wBit)
+                {
+                    extractHighBits(&immediate, input);
+                }
+
+                printf("%s, ", regFieldRegName);
+                printf("%u", immediate);
+            }
             else if (firstByte == 0xc4)
             {
                 printf("les ");
@@ -972,36 +1001,6 @@ int main(int argc, char *argv[])
                 }
                 }
                 decodeImmediateToRegisterOrMemory(input, mod, firstByte, secondByte, true);
-            }
-            else if (firstByte >= 0xc6 && firstByte <= 0xc7)
-            {
-                uint8_t secondByte = readUnsignedByte(input);
-                uint8_t mod = extractMod(secondByte);
-
-                uint8_t reg = extractBits(secondByte, 3, 6);
-                assert(reg == 0 && "Unimplemented");
-                printf("mov ");
-                decodeImmediateToRegisterOrMemory(input, mod, firstByte, secondByte, false);
-            }
-            else if (firstByte >= 0xb0 && firstByte <= 0xbf)
-            {
-                uint8_t secondByte = readUnsignedByte(input);
-                // Immediate-to-register mov
-                printf("mov ");
-                bool wBit = (firstByte & 0x08) >> 3;
-
-                uint8_t regField = firstByte & 0x07;
-                char *regFieldRegName = getRegisterName(regField, wBit);
-
-                int16_t immediate = secondByte;
-
-                if (wBit)
-                {
-                    extractHighBits(&immediate, input);
-                }
-
-                printf("%s, ", regFieldRegName);
-                printf("%u", immediate);
             }
             else if (firstByte == 0x70)
             {
