@@ -705,7 +705,7 @@ int main(int argc, char *argv[])
                 uint8_t secondByte = readUnsignedByte(input);
                 decodeRegisterMemoryToFromMemory(input, secondByte, true, true);
             }
-            else if ((firstByte >> 1) == 0x50)
+            else if (firstByte >= 0xa0 && firstByte <= 0xa1)
             {
                 uint8_t secondByte = readUnsignedByte(input);
                 printf("mov "); // Memory to accumulator
@@ -717,15 +717,7 @@ int main(int argc, char *argv[])
 
                 printf("[%d]", address);
             }
-            else if (opcode == 0x22)
-            {
-                uint8_t secondByte = readUnsignedByte(input);
-                printf("mov ");
-                bool dBit = extractDOrSBit(firstByte);
-                bool wBit = extractWBit(firstByte);
-                decodeRegisterMemoryToFromMemory(input, secondByte, dBit, wBit);
-            }
-            else if ((firstByte >> 1) == 0x51)
+            else if (firstByte >= 0xa2 && firstByte <= 0xa3)
             {
                 uint8_t secondByte = readUnsignedByte(input);
                 printf("mov "); // Accumulator to memory
@@ -735,6 +727,15 @@ int main(int argc, char *argv[])
                 printf("[%d], ", address);
                 printf("ax");
             }
+            else if (firstByte >= 0x88 && firstByte <= 0x8b)
+            {
+                uint8_t secondByte = readUnsignedByte(input);
+                printf("mov ");
+                bool dBit = extractDOrSBit(firstByte);
+                bool wBit = extractWBit(firstByte);
+                decodeRegisterMemoryToFromMemory(input, secondByte, dBit, wBit);
+            }
+
             else if (firstByte == 0xc4)
             {
                 printf("les ");
@@ -972,14 +973,17 @@ int main(int argc, char *argv[])
                 }
                 decodeImmediateToRegisterOrMemory(input, mod, firstByte, secondByte, true);
             }
-            else if (opcode == 0x31)
+            else if (firstByte >= 0xc6 && firstByte <= 0xc7)
             {
                 uint8_t secondByte = readUnsignedByte(input);
                 uint8_t mod = extractMod(secondByte);
+
+                uint8_t reg = extractBits(secondByte, 3, 6);
+                assert(reg == 0 && "Unimplemented");
                 printf("mov ");
                 decodeImmediateToRegisterOrMemory(input, mod, firstByte, secondByte, false);
             }
-            else if (firstByte >> 4 == 0xb)
+            else if (firstByte >= 0xb0 && firstByte <= 0xbf)
             {
                 uint8_t secondByte = readUnsignedByte(input);
                 // Immediate-to-register mov
@@ -1168,7 +1172,7 @@ int main(int argc, char *argv[])
                 decodeRegisterMemory(input, firstByte, secondByte);
             }
 
-            else if ((firstByte >> 3) == 0x0b)
+            else if (firstByte >= 0x58 && firstByte <= 0x5f)
             {
 
                 printf("pop ");
