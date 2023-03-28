@@ -693,6 +693,8 @@ int main(int argc, char *argv[])
 
         uint8_t firstByte;
 
+        Instruction instruction = {0};
+
         while (fread(&firstByte, sizeof(firstByte), 1, input) == 1)
         {
 
@@ -731,8 +733,32 @@ int main(int argc, char *argv[])
             {
                 uint8_t secondByte = readUnsignedByte(input);
                 printf("mov ");
-                bool dBit = extractDOrSBit(firstByte);
-                bool wBit = extractWBit(firstByte);
+                uint8_t dBit = extractDOrSBit(firstByte);
+                uint8_t wBit = extractWBit(firstByte);
+                uint8_t mod = extractMod(secondByte);
+                instruction.dBit = dBit;
+                instruction.wBit = wBit;
+                instruction.mod = extractMod(secondByte);
+                instruction.operandCount = 2;
+                instruction.operands[0].type = reg;
+
+                if (mod == 0x03)
+                {
+                    instruction.operands[1].type = reg;
+                }
+                else
+                {
+                    instruction.operands[1].type = memory;
+
+                    if (mod == 0x00)
+                    {
+                        instruction.operands[1].operand.memory.displacement = 0;
+                    }
+                    else if (mod == 0x01)
+                    {
+                    }
+                }
+
                 decodeRegisterMemoryToFromMemory(input, secondByte, dBit, wBit);
             }
             else if (firstByte >= 0xc6 && firstByte <= 0xc7)
