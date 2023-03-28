@@ -22,6 +22,7 @@ typedef struct
     char rmExpression[20];
 } RegisterName;
 
+
 RegisterName registerNames[] = {
     {0, "al", "ax", "[bx + si%s]"},
     {1, "cl", "cx", "[bx + di%s]"},
@@ -31,6 +32,107 @@ RegisterName registerNames[] = {
     {5, "ch", "bp", "[di%s]"},
     {6, "dh", "si", "[bp%s]"},
     {7, "bh", "di", "[bx%s]"}};
+
+
+typedef enum{
+    none,
+    mov,
+    push,
+    pop,
+    xchg,
+    in,
+    out,
+    xlat,
+    lea,
+    lds,
+    les,
+    lahf,
+    sahf,
+    pushf,
+    popf,
+    add,
+    adc,
+    inc,
+    aaa,
+    daa,
+    sub,
+    sbb,
+    dec,
+    cmp,
+    aas,
+    das,
+    mul,
+    imul,
+    aam,
+    div,
+    idiv,
+    aad,
+    cbw,
+    cwd,
+    not,
+    shl,
+    shr,
+    sar,
+    rol,
+    ror,
+    rcl,
+    and,
+    test,
+    or,
+    xor,
+    rep,
+    movs,
+    cmps,
+    scas,
+    lods,
+    stds,
+    call,
+    jmp,
+    ret,
+    je,
+    jle,
+    jb,
+    jbe,
+    jp,
+    jo,
+    js,
+    jnz,
+    jnl,
+    jnle,
+    jnb,
+    jnbe,
+    jnp,
+    jno,
+    jns,
+    loop,
+    loopz,
+    loopnz,
+    jcxz,
+    interrupt,
+    into,
+    iret,
+    clc,
+    cmc,
+    stc,
+    cld,
+    std,
+    cli,
+    sti,
+    hlt,
+    wait,
+    esc,
+    lock,
+    segment
+}
+InstructionType;
+
+
+
+typedef struct 
+{
+    InstructionType type;
+} Instruction;
+
 
 bool extractWBit(uint8_t firstByte)
 {
