@@ -22,7 +22,6 @@ typedef struct
     char rmExpression[20];
 } RegisterName;
 
-
 RegisterName registerNames[] = {
     {0, "al", "ax", "[bx + si%s]"},
     {1, "cl", "cx", "[bx + di%s]"},
@@ -33,8 +32,8 @@ RegisterName registerNames[] = {
     {6, "dh", "si", "[bp%s]"},
     {7, "bh", "di", "[bx%s]"}};
 
-
-typedef enum{
+typedef enum
+{
     none,
     mov,
     push,
@@ -78,7 +77,8 @@ typedef enum{
     rcl,
     and,
     test,
-    or,
+    or
+    ,
     xor,
     rep,
     movs,
@@ -123,16 +123,70 @@ typedef enum{
     esc,
     lock,
     segment
-}
-InstructionType;
+} InstructionType;
 
+typedef enum
+{
+    ax,
+    bx,
+    cx,
+    dx,
+    sp,
+    bp,
+    si,
+    di
+} Register;
 
+typedef enum
+{
+    memory,
+    reg,
+    immediate
+} OperandType;
 
-typedef struct 
+typedef enum
+{
+    low,
+    high,
+    x
+} RegisterUsage;
+
+typedef struct
+{
+    OperandType type;
+    union
+    {
+        struct
+        {
+            Register reg;
+            RegisterUsage usage;
+
+        } reg;
+
+        struct
+        {
+            uint8_t regCount;
+            Register regs[2];
+            RegisterUsage regUsages;
+            int16_t displacement;
+        } memory;
+
+        int16_t immediate;
+    } operand;
+} Operand;
+
+typedef struct
 {
     InstructionType type;
+    bool wBit;
+    bool sBit;
+    bool dBit;
+    bool vBit;
+    bool zBit;
+    uint8_t mod;
+    uint8_t operandCount;
+    Operand operands[2];
 } Instruction;
-
 
 bool extractWBit(uint8_t firstByte)
 {
@@ -651,6 +705,36 @@ int main(int argc, char *argv[])
                 uint8_t secondByte = readUnsignedByte(input);
                 decodeRegisterMemoryToFromMemory(input, secondByte, true, true);
             }
+            else if ((firstByte >> 1) == 0x50)
+            {
+                uint8_t secondByte = readUnsignedByte(input);
+                printf("mov "); // Memory to accumulator
+
+                printf("ax, ");
+                uint8_t thirdByte = readUnsignedByte(input);
+
+                int16_t address = secondByte | (thirdByte << 8);
+
+                printf("[%d]", address);
+            }
+            else if (opcode == 0x22)
+            {
+                uint8_t secondByte = readUnsignedByte(input);
+                printf("mov ");
+                bool dBit = extractDOrSBit(firstByte);
+                bool wBit = extractWBit(firstByte);
+                decodeRegisterMemoryToFromMemory(input, secondByte, dBit, wBit);
+            }
+            else if ((firstByte >> 1) == 0x51)
+            {
+                uint8_t secondByte = readUnsignedByte(input);
+                printf("mov "); // Accumulator to memory
+                uint8_t thirdByte = readUnsignedByte(input);
+                int16_t address = secondByte | (thirdByte << 8);
+
+                printf("[%d], ", address);
+                printf("ax");
+            }
             else if (firstByte == 0xc4)
             {
                 printf("les ");
@@ -695,14 +779,7 @@ int main(int argc, char *argv[])
             {
                 printf("popf ");
             }
-            else if (opcode == 0x22)
-            {
-                uint8_t secondByte = readUnsignedByte(input);
-                printf("mov ");
-                bool dBit = extractDOrSBit(firstByte);
-                bool wBit = extractWBit(firstByte);
-                decodeRegisterMemoryToFromMemory(input, secondByte, dBit, wBit);
-            }
+
             else if (opcode == 0x00)
             {
                 uint8_t secondByte = readUnsignedByte(input);
@@ -757,28 +834,7 @@ int main(int argc, char *argv[])
                 printf("sbb ");
                 decodeImmediateToAccumulator(input, firstByte, secondByte);
             }
-            else if ((firstByte >> 1) == 0x50)
-            {
-                uint8_t secondByte = readUnsignedByte(input);
-                printf("mov "); // Memory to accumulator
 
-                printf("ax, ");
-                uint8_t thirdByte = readUnsignedByte(input);
-
-                int16_t address = secondByte | (thirdByte << 8);
-
-                printf("[%d]", address);
-            }
-            else if ((firstByte >> 1) == 0x51)
-            {
-                uint8_t secondByte = readUnsignedByte(input);
-                printf("mov "); // Accumulator to memory
-                uint8_t thirdByte = readUnsignedByte(input);
-                int16_t address = secondByte | (thirdByte << 8);
-
-                printf("[%d], ", address);
-                printf("ax");
-            }
             else if (firstByte >= 0x28 && firstByte <= 0x2b)
             {
                 uint8_t secondByte = readUnsignedByte(input);
