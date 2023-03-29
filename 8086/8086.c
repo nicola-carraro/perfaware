@@ -916,7 +916,11 @@ int main(int argc, char *argv[])
                 uint8_t reg = extractBits(secondByte, 3, 6);
                 assert(reg == 0 && "Unimplemented");
                 printf("mov ");
+                uint16_t initialRegValue = 0;
+                uint16_t finalValue = 0;
+                char *toRegName;
                 decodeImmediateToRegisterOrMemory(input, mod, firstByte, secondByte, false);
+                printf("%s:%#X-->%#X", toRegName, initialRegValue, finalValue);
             }
             else if (firstByte >= 0xb0 && firstByte <= 0xbf)
             {
