@@ -907,15 +907,6 @@ int main(int argc, char *argv[])
 
                 uint16_t finalValue = cpu.regs.allRegs[toReg];
                 printf("%s:%#X-->%#X", toRegName, initialRegValue, finalValue);
-
-                printf("ax:%#X", cpu.regs.individualRegs.ax);
-                printf("bx:%#X", cpu.regs.individualRegs.bx);
-                printf("cx:%#X", cpu.regs.individualRegs.cx);
-                printf("dx:%#X", cpu.regs.individualRegs.dx);
-                printf("sp:%#X", cpu.regs.individualRegs.sp);
-                printf("bp:%#X", cpu.regs.individualRegs.bp);
-                printf("si:%#X", cpu.regs.individualRegs.si);
-                printf("di:%#X", cpu.regs.individualRegs.di);
             }
             else if (firstByte >= 0xc6 && firstByte <= 0xc7)
             {
@@ -1476,6 +1467,15 @@ int main(int argc, char *argv[])
             {
                 assert(false && "Unknown instruction");
             }
+
+            printf("ax:%#X", cpu.regs.individualRegs.ax);
+            printf("bx:%#X", cpu.regs.individualRegs.bx);
+            printf("cx:%#X", cpu.regs.individualRegs.cx);
+            printf("dx:%#X", cpu.regs.individualRegs.dx);
+            printf("sp:%#X", cpu.regs.individualRegs.sp);
+            printf("bp:%#X", cpu.regs.individualRegs.bp);
+            printf("si:%#X", cpu.regs.individualRegs.si);
+            printf("di:%#X", cpu.regs.individualRegs.di);
 
             printf("\n");
         }
