@@ -14,24 +14,6 @@ uint8_t readUnsignedByte(FILE *input);
 
 #define ARR_COUNT(a) (sizeof(a) / sizeof(*a))
 
-typedef struct
-{
-    uint8_t registerIndex;
-    char w0RegName[3];
-    char w1RegName[3];
-    char rmExpression[20];
-} RegisterName;
-
-RegisterName registerNames[] = {
-    {0, "al", "ax", "[bx + si%s]"},
-    {1, "cl", "cx", "[bx + di%s]"},
-    {2, "dl", "dx", "[bp + si%s]"},
-    {3, "bl", "bx", "[bp + di%s]"},
-    {4, "ah", "sp", "[si%s]"},
-    {5, "ch", "bp", "[di%s]"},
-    {6, "dh", "si", "[bp%s]"},
-    {7, "bh", "di", "[bx%s]"}};
-
 typedef enum
 {
     none,
@@ -137,12 +119,21 @@ typedef enum
     di
 } Register;
 
-typedef enum
+typedef struct
 {
-    memory,
-    reg,
-    immediate
-} OperandType;
+    Register reg;
+    char name[3];
+} RegName;
+
+char regNames[8][3] = {
+    "ax",
+    "bx",
+    "cx",
+    "dx",
+    "sp",
+    "bp",
+    "si",
+    "di"};
 
 typedef enum
 {
@@ -153,6 +144,47 @@ typedef enum
 
 typedef struct
 {
+    uint8_t rem;
+    struct
+    {
+        Register reg;
+        RegisterUsage usage;
+    } w0Reg;
+    struct
+    {
+        Register reg;
+        RegisterUsage usage;
+    } w1Reg;
+    struct
+    {
+        struct mem
+        {
+            Register reg;
+            RegisterUsage usage;
+        } mem[2];
+        uint8_t regCount;
+    } mem;
+} RemValue;
+
+RemValue rmValues[] = {
+    {0, {ax, low}, {ax, x}, {{{bx, x}, {si, x}}, 2}},
+    {1, {cx, low}, {cx, x}, {{{bx, x}, {di, x}}, 2}},
+    {2, {dx, low}, {dx, x}, {{{bp, x}, {si, x}}, 2}},
+    {3, {bx, low}, {bx, low}, {{{bp, x}, {di, x}}, 2}},
+    {4, {ax, high}, {sp, x}, {{{si, x}}, 1}},
+    {5, {cx, high}, {bp, x}, {{{di, x}}, 1}},
+    {6, {dx, high}, {si, x}, {{{bp, x}}, 1}},
+    {7, {bx, high}, {di, x}, {{{bx, x}}, 1}}};
+
+typedef enum
+{
+    memory,
+    reg,
+    immediate
+} OperandType;
+
+typedef struct
+{
     OperandType type;
     union
     {
@@ -160,9 +192,7 @@ typedef struct
         {
             Register reg;
             RegisterUsage usage;
-
         } reg;
-
         struct
         {
             uint8_t regCount;
@@ -170,7 +200,6 @@ typedef struct
             RegisterUsage regUsages;
             int16_t displacement;
         } memory;
-
         int16_t immediate;
     } operand;
 } Operand;
@@ -187,6 +216,44 @@ typedef struct
     uint8_t operandCount;
     Operand operands[2];
 } Instruction;
+
+typedef struct
+{
+    uint8_t registerIndex;
+    char w0RegName[3];
+    char w1RegName[3];
+    char rmExpression[20];
+} RegisterName;
+
+RegisterName registerNames[] = {
+    {0, "al", "ax", "[bx + si%s]"},
+    {1, "cl", "cx", "[bx + di%s]"},
+    {2, "dl", "dx", "[bp + si%s]"},
+    {3, "bl", "bx", "[bp + di%s]"},
+    {4, "ah", "sp", "[si%s]"},
+    {5, "ch", "bp", "[di%s]"},
+    {6, "dh", "si", "[bp%s]"},
+    {7, "bh", "di", "[bx%s]"}};
+
+struct
+{
+    union
+    {
+        struct
+        {
+            uint16_t ax;
+            uint16_t bx;
+            uint16_t cx;
+            uint16_t dx;
+            uint16_t sp;
+            uint16_t bp;
+            uint16_t si;
+            uint16_t di;
+        } individualRegs;
+        uint16_t allRegs[8];
+    } regs;
+
+} cpu = {0};
 
 bool extractWBit(uint8_t firstByte)
 {
@@ -348,26 +415,42 @@ uint8_t readUnsignedByte(FILE *input)
     return result;
 }
 
-void decodeRegisterMemoryToFromMemory(FILE *input, uint8_t secondByte, bool dBit, bool wBit)
+Instruction decodeRegisterMemoryToFromMemory(FILE *input, uint8_t secondByte, bool dBit, bool wBit)
 {
+    Instruction result = {0};
+
     uint8_t mod = extractMod(secondByte);
 
     uint8_t regField = (secondByte & 0x3f) >> 3;
     uint8_t rmField = extractRmField(secondByte);
 
     char *regFieldRegName = getRegisterName(regField, wBit);
+    Operand regOperand = {0};
+    regOperand.type = reg;
+    regOperand.operand.reg.reg = wBit ? rmValues[regField].w1Reg.reg : rmValues[regField].w0Reg.reg;
+    regOperand.operand.reg.usage = wBit ? rmValues[regField].w1Reg.usage : rmValues[regField].w0Reg.usage;
 
     if (mod == 3) // Register to register
     {
         char *rmFieldRegName = getRegisterName(rmField, wBit);
+        Operand rmOperand = {0};
+        rmOperand.type = reg;
+        rmOperand.operand.reg.reg = wBit ? rmValues[rmField].w1Reg.reg : rmValues[rmField].w0Reg.reg;
+        rmOperand.operand.reg.usage = wBit ? rmValues[rmField].w1Reg.usage : rmValues[rmField].w0Reg.usage;
 
         if (dBit)
         {
+            result.operands[0] = regOperand;
+            result.operands[1] = rmOperand;
+
             printf("%s, ", regFieldRegName);
             printf("%s", rmFieldRegName);
         }
         else
         {
+            result.operands[0] = rmOperand;
+            result.operands[1] = regOperand;
+
             printf("%s, ", rmFieldRegName);
             printf("%s", regFieldRegName);
         }
@@ -406,6 +489,8 @@ void decodeRegisterMemoryToFromMemory(FILE *input, uint8_t secondByte, bool dBit
     {
         assert(false && "Unknown mod field");
     }
+
+    return result;
 }
 
 char *getRegisterName(uint8_t registerIndex, bool wBit)
@@ -693,7 +778,7 @@ int main(int argc, char *argv[])
 
         uint8_t firstByte;
 
-        Instruction instruction = {0};
+        // Instruction instruction = {0};
 
         while (fread(&firstByte, sizeof(firstByte), 1, input) == 1)
         {
@@ -735,31 +820,102 @@ int main(int argc, char *argv[])
                 printf("mov ");
                 uint8_t dBit = extractDOrSBit(firstByte);
                 uint8_t wBit = extractWBit(firstByte);
-                uint8_t mod = extractMod(secondByte);
-                instruction.dBit = dBit;
-                instruction.wBit = wBit;
-                instruction.mod = extractMod(secondByte);
-                instruction.operandCount = 2;
-                instruction.operands[0].type = reg;
+                // uint8_t mod = extractMod(secondByte);
+                // uint8_t rm = extractBits(secondByte, 3, 6);
+                // instruction.dBit = dBit;
+                // instruction.wBit = wBit;
+                // instruction.mod = extractMod(secondByte);
+                // instruction.operandCount = 2;
+                // instruction.operands[0].type = reg;
 
-                if (mod == 0x03)
+                // if (mod == 0x03)
+                // {
+                //     instruction.operands[1].type = reg;
+
+                //     if (wBit)
+                //     {
+                //         instruction.operands[2].operand.reg.reg = rmValues[rm].w1Reg.reg;
+                //     }
+                //     else
+                //     {
+                //         instruction.operands[2].operand.reg.reg = rmValues[rm].w0Reg.reg;
+                //     }
+                // }
+                // else
+                // {
+                //     instruction.operands[1].type = memory;
+
+                //     if (mod == 0x00)
+                //     {
+                //         instruction.operands[1].operand.memory.displacement = 0;
+                //     }
+                //     else if (mod == 0x01)
+                //     {
+                //     }
+                // }
+
+                Instruction instruction = decodeRegisterMemoryToFromMemory(input, secondByte, dBit, wBit);
+
+                uint16_t valueToMove = 0;
+                Operand fromOperand = instruction.operands[0];
+                Operand toOperand = instruction.operands[1];
+                uint16_t initialRegValue = 0;
+                const char *toRegName = 0;
+
+                if (fromOperand.type == reg)
                 {
-                    instruction.operands[1].type = reg;
+                    Register fromReg = fromOperand.operand.reg.reg;
+                    initialRegValue = cpu.regs.allRegs[fromReg];
+
+                    uint16_t regValue = cpu.regs.allRegs[fromReg];
+
+                    RegisterUsage usage = fromOperand.operand.reg.usage;
+                    if (usage == low)
+                    {
+                        valueToMove = regValue & 0x0f;
+                    }
+                    else if (usage == high)
+                    {
+                        valueToMove = regValue >> 8;
+                    }
+                    else
+                    {
+                        valueToMove = regValue;
+                    }
                 }
-                else
+                Register toReg = {0};
+                if (toOperand.type == reg)
                 {
-                    instruction.operands[1].type = memory;
+                    toReg = toOperand.operand.reg.reg;
 
-                    if (mod == 0x00)
+                    toRegName = regNames[toReg];
+
+                    RegisterUsage usage = toOperand.operand.reg.usage;
+                    if (usage == low)
                     {
-                        instruction.operands[1].operand.memory.displacement = 0;
+                        cpu.regs.allRegs[toReg] &= (0xf0 | valueToMove);
                     }
-                    else if (mod == 0x01)
+                    else if (usage == high)
                     {
+                        cpu.regs.allRegs[toReg] &= (0x0f | valueToMove << 8);
+                    }
+                    else
+                    {
+                        cpu.regs.allRegs[toReg] = valueToMove;
                     }
                 }
 
-                decodeRegisterMemoryToFromMemory(input, secondByte, dBit, wBit);
+                uint16_t finalValue = cpu.regs.allRegs[toReg];
+                printf("%s:%#X-->%#X", toRegName, initialRegValue, finalValue);
+
+                printf("ax:%#X", cpu.regs.individualRegs.ax);
+                printf("bx:%#X", cpu.regs.individualRegs.bx);
+                printf("cx:%#X", cpu.regs.individualRegs.cx);
+                printf("dx:%#X", cpu.regs.individualRegs.dx);
+                printf("sp:%#X", cpu.regs.individualRegs.sp);
+                printf("bp:%#X", cpu.regs.individualRegs.bp);
+                printf("si:%#X", cpu.regs.individualRegs.si);
+                printf("di:%#X", cpu.regs.individualRegs.di);
             }
             else if (firstByte >= 0xc6 && firstByte <= 0xc7)
             {
