@@ -164,9 +164,9 @@ typedef struct
         } mem[2];
         uint8_t regCount;
     } mem;
-} RemValue;
+} OperandValue;
 
-RemValue rmValues[] = {
+OperandValue operandValues[] = {
     {0, {ax, low}, {ax, x}, {{{bx, x}, {si, x}}, 2}},
     {1, {cx, low}, {cx, x}, {{{bx, x}, {di, x}}, 2}},
     {2, {dx, low}, {dx, x}, {{{bp, x}, {si, x}}, 2}},
@@ -186,22 +186,9 @@ typedef enum
 typedef struct
 {
     OperandType type;
-    union
-    {
-        struct
-        {
-            Register reg;
-            RegisterUsage usage;
-        } reg;
-        struct
-        {
-            uint8_t regCount;
-            Register regs[2];
-            RegisterUsage regUsages;
-            int16_t displacement;
-        } memory;
-        int16_t immediate;
-    } operand;
+    RegisterUsage usage;
+    int16_t value;
+    char string[256];
 } Operand;
 
 typedef struct
@@ -275,8 +262,10 @@ void extractHighBits(int16_t *dest, FILE *input)
     *dest |= (((uint16_t)highBits) << 8);
 }
 
-void decodeDisplacement(uint8_t mod, uint8_t wBit, FILE *input, char *displacementExpression)
+int16_t decodeDisplacement(uint8_t mod, uint8_t wBit, FILE *input, char *displacementExpression)
 {
+    int16_t displacement = 0;
+
     if (mod == 0)
     {
         displacementExpression[0] = 0;
@@ -285,7 +274,6 @@ void decodeDisplacement(uint8_t mod, uint8_t wBit, FILE *input, char *displaceme
     {
         uint8_t thirdByte = readUnsignedByte(input);
         bool sign = thirdByte >> 7;
-        int16_t displacement;
 
         bool isSigned = false;
         displacement = thirdByte;
@@ -301,6 +289,8 @@ void decodeDisplacement(uint8_t mod, uint8_t wBit, FILE *input, char *displaceme
         }
         sprintf(displacementExpression, " %s %d", isSigned ? "" : "+", displacement);
     }
+
+    return displacement;
 }
 
 uint8_t extractMod(uint8_t secondByte)
@@ -425,32 +415,18 @@ Instruction decodeRegisterMemoryToFromMemory(FILE *input, uint8_t secondByte, bo
     uint8_t rmField = extractRmField(secondByte);
 
     char *regFieldRegName = getRegisterName(regField, wBit);
-    Operand regOperand = {0};
-    regOperand.type = reg;
-    regOperand.operand.reg.reg = wBit ? rmValues[regField].w1Reg.reg : rmValues[regField].w0Reg.reg;
-    regOperand.operand.reg.usage = wBit ? rmValues[regField].w1Reg.usage : rmValues[regField].w0Reg.usage;
 
     if (mod == 3) // Register to register
     {
         char *rmFieldRegName = getRegisterName(rmField, wBit);
-        Operand rmOperand = {0};
-        rmOperand.type = reg;
-        rmOperand.operand.reg.reg = wBit ? rmValues[rmField].w1Reg.reg : rmValues[rmField].w0Reg.reg;
-        rmOperand.operand.reg.usage = wBit ? rmValues[rmField].w1Reg.usage : rmValues[rmField].w0Reg.usage;
 
         if (dBit)
         {
-            result.operands[0] = regOperand;
-            result.operands[1] = rmOperand;
-
             printf("%s, ", regFieldRegName);
             printf("%s", rmFieldRegName);
         }
         else
         {
-            result.operands[0] = rmOperand;
-            result.operands[1] = regOperand;
-
             printf("%s, ", rmFieldRegName);
             printf("%s", regFieldRegName);
         }
@@ -584,8 +560,10 @@ void decodeSegmentRegister(uint8_t regField)
     }
 }
 
-void decodeImmediateToRegisterOrMemory(FILE *input, uint8_t mod, uint8_t firstByte, uint8_t secondByte, bool hasSignBit)
+Instruction decodeImmediateToRegisterOrMemory(FILE *input, uint8_t mod, uint8_t firstByte, uint8_t secondByte, bool hasSignBit)
 {
+    Instruction instruction = {0};
+
     bool sBit = extractDOrSBit(firstByte);
     bool wBit = extractWBit(firstByte);
 
@@ -596,6 +574,7 @@ void decodeImmediateToRegisterOrMemory(FILE *input, uint8_t mod, uint8_t firstBy
     if (mod == 1 || mod == 2)
     {
         decodeDisplacement(mod, wBit, input, displacementExpression);
+
         char dest[256];
         uint8_t byte = readUnsignedByte(input);
 
@@ -658,6 +637,29 @@ void decodeImmediateToRegisterOrMemory(FILE *input, uint8_t mod, uint8_t firstBy
 
         int16_t immediate = byte;
 
+        OperandValue operandValue = operandValues[rmField];
+
+        Register reg = wBit ? operandValue.w1Reg.reg : operandValue.w0Reg.reg;
+
+        RegisterUsage usage = wBit ? operandValue.w1Reg.usage : operandValue.w0Reg.usage;
+
+        int16_t initialValue = cpu.regs.allRegs[reg];
+
+        if (usage == x)
+        {
+            cpu.regs.allRegs[reg] = immediate;
+        }
+        else if (usage == low)
+        {
+            cpu.regs.allRegs[reg] |= (immediate & 0x0f);
+        }
+        else if (usage == high)
+        {
+            cpu.regs.allRegs[reg] |= (immediate << 8);
+        }
+
+        int16_t finalValue = cpu.regs.allRegs[reg];
+
         bool isWord = false;
         if (sBit == 0 && wBit == 1)
         {
@@ -668,7 +670,12 @@ void decodeImmediateToRegisterOrMemory(FILE *input, uint8_t mod, uint8_t firstBy
         printf("%s, ", dest);
 
         printf("%u", immediate);
+
+        char *regName = regNames[reg];
+        printf(" %s: %#X-->%#X", regName, initialValue, finalValue);
     }
+
+    return instruction;
 }
 
 uint8_t extractLowBits(uint8_t byte, uint8_t bitsToExtract)
@@ -834,11 +841,11 @@ int main(int argc, char *argv[])
 
                 //     if (wBit)
                 //     {
-                //         instruction.operands[2].operand.reg.reg = rmValues[rm].w1Reg.reg;
+                //         instruction.operands[2].operand.reg.reg = operandValues[rm].w1Reg.reg;
                 //     }
                 //     else
                 //     {
-                //         instruction.operands[2].operand.reg.reg = rmValues[rm].w0Reg.reg;
+                //         instruction.operands[2].operand.reg.reg = operandValues[rm].w0Reg.reg;
                 //     }
                 // }
                 // else
@@ -854,59 +861,7 @@ int main(int argc, char *argv[])
                 //     }
                 // }
 
-                Instruction instruction = decodeRegisterMemoryToFromMemory(input, secondByte, dBit, wBit);
-
-                uint16_t valueToMove = 0;
-                Operand fromOperand = instruction.operands[0];
-                Operand toOperand = instruction.operands[1];
-                uint16_t initialRegValue = 0;
-                const char *toRegName = 0;
-
-                if (fromOperand.type == reg)
-                {
-                    Register fromReg = fromOperand.operand.reg.reg;
-                    initialRegValue = cpu.regs.allRegs[fromReg];
-
-                    uint16_t regValue = cpu.regs.allRegs[fromReg];
-
-                    RegisterUsage usage = fromOperand.operand.reg.usage;
-                    if (usage == low)
-                    {
-                        valueToMove = regValue & 0x0f;
-                    }
-                    else if (usage == high)
-                    {
-                        valueToMove = regValue >> 8;
-                    }
-                    else
-                    {
-                        valueToMove = regValue;
-                    }
-                }
-                Register toReg = {0};
-                if (toOperand.type == reg)
-                {
-                    toReg = toOperand.operand.reg.reg;
-
-                    toRegName = regNames[toReg];
-
-                    RegisterUsage usage = toOperand.operand.reg.usage;
-                    if (usage == low)
-                    {
-                        cpu.regs.allRegs[toReg] &= (0xf0 | valueToMove);
-                    }
-                    else if (usage == high)
-                    {
-                        cpu.regs.allRegs[toReg] &= (0x0f | valueToMove << 8);
-                    }
-                    else
-                    {
-                        cpu.regs.allRegs[toReg] = valueToMove;
-                    }
-                }
-
-                uint16_t finalValue = cpu.regs.allRegs[toReg];
-                printf("%s:%#X-->%#X", toRegName, initialRegValue, finalValue);
+                decodeRegisterMemoryToFromMemory(input, secondByte, dBit, wBit);
             }
             else if (firstByte >= 0xc6 && firstByte <= 0xc7)
             {
@@ -916,11 +871,7 @@ int main(int argc, char *argv[])
                 uint8_t reg = extractBits(secondByte, 3, 6);
                 assert(reg == 0 && "Unimplemented");
                 printf("mov ");
-                uint16_t initialRegValue = 0;
-                uint16_t finalValue = 0;
-                char *toRegName;
                 decodeImmediateToRegisterOrMemory(input, mod, firstByte, secondByte, false);
-                printf("%s:%#X-->%#X", toRegName, initialRegValue, finalValue);
             }
             else if (firstByte >= 0xb0 && firstByte <= 0xbf)
             {
@@ -934,6 +885,29 @@ int main(int argc, char *argv[])
 
                 int16_t immediate = secondByte;
 
+                OperandValue operandValue = operandValues[regField];
+
+                Register reg = wBit ? operandValue.w1Reg.reg : operandValue.w0Reg.reg;
+
+                RegisterUsage usage = wBit ? operandValue.w1Reg.usage : operandValue.w0Reg.usage;
+
+                int16_t initialValue = cpu.regs.allRegs[reg];
+
+                if (usage == x)
+                {
+                    cpu.regs.allRegs[reg] = immediate;
+                }
+                else if (usage == low)
+                {
+                    cpu.regs.allRegs[reg] |= (immediate & 0x0f);
+                }
+                else if (usage == high)
+                {
+                    cpu.regs.allRegs[reg] |= (immediate << 8);
+                }
+
+                int16_t finalValue = cpu.regs.allRegs[reg];
+
                 if (wBit)
                 {
                     extractHighBits(&immediate, input);
@@ -941,6 +915,8 @@ int main(int argc, char *argv[])
 
                 printf("%s, ", regFieldRegName);
                 printf("%u", immediate);
+
+                printf(" %s: %#X-->%#X", regFieldRegName, initialValue, finalValue);
             }
             else if (firstByte == 0xc4)
             {
@@ -1472,15 +1448,6 @@ int main(int argc, char *argv[])
                 assert(false && "Unknown instruction");
             }
 
-            printf("ax:%#X", cpu.regs.individualRegs.ax);
-            printf("bx:%#X", cpu.regs.individualRegs.bx);
-            printf("cx:%#X", cpu.regs.individualRegs.cx);
-            printf("dx:%#X", cpu.regs.individualRegs.dx);
-            printf("sp:%#X", cpu.regs.individualRegs.sp);
-            printf("bp:%#X", cpu.regs.individualRegs.bp);
-            printf("si:%#X", cpu.regs.individualRegs.si);
-            printf("di:%#X", cpu.regs.individualRegs.di);
-
             printf("\n");
         }
     }
@@ -1488,6 +1455,16 @@ int main(int argc, char *argv[])
     {
         perror("Error: Could not open input file");
     }
+
+    printf("Final registers:\n");
+    printf("ax:%#X\n", cpu.regs.individualRegs.ax);
+    printf("bx:%#X\n", cpu.regs.individualRegs.bx);
+    printf("cx:%#X\n", cpu.regs.individualRegs.cx);
+    printf("dx:%#X\n", cpu.regs.individualRegs.dx);
+    printf("sp:%#X\n", cpu.regs.individualRegs.sp);
+    printf("bp:%#X\n", cpu.regs.individualRegs.bp);
+    printf("si:%#X\n", cpu.regs.individualRegs.si);
+    printf("di:%#X\n", cpu.regs.individualRegs.di);
 
     printf("; Press enter to continue...");
 
