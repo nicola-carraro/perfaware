@@ -423,17 +423,21 @@ Instruction decodeRegisterMemoryToFromMemory(FILE *input, uint8_t secondByte, bo
 
         OperandValue regOperandValue = operandValues[regField];
         Register regRegister = wBit ? regOperandValue.w1Reg.reg : regOperandValue.w0Reg.reg;
+        RegisterUsage regRegisterUsage = wBit ? regOperandValue.w1Reg.usage : regOperandValue.w0Reg.usage;
         Operand regOperand = {0};
         strcpy(regOperand.string, regFieldRegName);
         regOperand.reg = regRegister;
         regOperand.type = registerOperand;
+        regOperand.usage = regRegisterUsage;
 
         OperandValue rmOperandValue = operandValues[rmField];
         Register rmRegister = wBit ? rmOperandValue.w1Reg.reg : rmOperandValue.w0Reg.reg;
+        RegisterUsage rmRegisterUsage = wBit ? rmOperandValue.w1Reg.usage : rmOperandValue.w0Reg.usage;
         Operand rmOperand = {0};
         strcpy(rmOperand.string, rmFieldRegName);
         rmOperand.reg = rmRegister;
         rmOperand.type = registerOperand;
+        rmOperand.usage = rmRegisterUsage;
 
         if (dBit)
         {
@@ -840,8 +844,8 @@ int main(int argc, char *argv[])
 
                 int16_t valueToMove;
 
-                Register fromReg = instruction.operands[0].reg;
-                RegisterUsage fromRegUsage = instruction.operands[0].usage;
+                Register fromReg = instruction.operands[1].reg;
+                RegisterUsage fromRegUsage = instruction.operands[1].usage;
                 int16_t fromRegValue = cpu.regs.allRegs[fromReg];
 
                 if (fromRegUsage == low)
@@ -857,8 +861,8 @@ int main(int argc, char *argv[])
                     valueToMove = fromRegValue;
                 }
 
-                Register toReg = instruction.operands[1].reg;
-                RegisterUsage toRegUsage = instruction.operands[1].usage;
+                Register toReg = instruction.operands[0].reg;
+                RegisterUsage toRegUsage = instruction.operands[0].usage;
 
                 int16_t initialValue = cpu.regs.allRegs[toReg];
 
