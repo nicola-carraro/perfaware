@@ -334,8 +334,9 @@ void printError(const char *file, const size_t line, const char *format, va_list
     vsprintf(errorMessage, format, args);
     va_end(args);
 
-    printf("ERROR(%s:%zu): ", file, line);
+    printf("ERROR(%s:%zu): \n", file, line);
     perror(errorMessage);
+    printPressEnterToContinue();
 }
 
 void error(const char *file, const size_t line, const char *format, ...)
@@ -588,6 +589,7 @@ Operand decodeRmOperand(bool wBit, uint8_t mod, uint8_t rm, Stream *instructions
 void printOperand(Operand operand)
 {
 
+    printf(" ");
     if (operand.type == operand_type_register)
     {
 
@@ -665,11 +667,6 @@ int main(int argc, char *argv[])
     instructions.bytes = bytes;
     instructions.size = fileSize;
 
-    if (bytes != NULL)
-    {
-        free(bytes);
-    }
-
     while (instructions.position < instructions.size)
     {
         uint8_t firstByte = consumeByteAsUnsigned(&instructions);
@@ -681,7 +678,7 @@ int main(int argc, char *argv[])
 
         if (firstByte >= 0x88 && firstByte <= 0x8b)
         {
-            assert(instruction.type == reg_none);
+            assert(instruction.type == instruction_none);
 
             uint8_t secondByte = consumeByteAsUnsigned(&instructions);
             uint8_t mod = extractBits(secondByte, 6, 8);
@@ -692,10 +689,21 @@ int main(int argc, char *argv[])
             instruction.type = instruction_mov;
         }
 
+        if (instruction.type == instruction_none)
+        {
+            error(__FILE__, __LINE__, "Unknown instruction, first byte=%#X", firstByte);
+        }
+
         printInstruction(instruction);
+
+        printf("\n");
     }
 
     printPressEnterToContinue();
+    if (bytes != NULL)
+    {
+        free(bytes);
+    }
 
     return 0;
 }
