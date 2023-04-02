@@ -126,7 +126,6 @@ void printError(const char *format, va_list args)
 
 void error(const char *format, ...)
 {
-
     va_list args;
     va_start(args, format);
     printError(format, args);
@@ -169,9 +168,14 @@ char *readFile(const char *filename, size_t *len)
     return bytes;
 }
 
-int main(void)
+int main(int argc, char *argv[])
 {
-    char filename[] = "data/listing37f";
+    if (argc < 1)
+    {
+        error("Usage: %s <filename>", argv[0]);
+    }
+
+    const char *filename = argv[1];
 
     size_t len;
 
