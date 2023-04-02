@@ -6,6 +6,7 @@
 #include "stdbool.h"
 #include "stdint.h"
 #include "assert.h"
+#include "string.h"
 
 #define REG_COUNT 8
 
@@ -317,8 +318,17 @@ typedef struct
     size_t position;
 } Stream;
 
-void printPressEnterToContinue()
+typedef struct
 {
+    bool isNoWait;
+} State;
+
+void printPressEnterToContinue(bool isNoWait)
+{
+    if (isNoWait)
+    {
+        return;
+    }
     printf("; Press enter to continue...");
 
     char byte;
@@ -328,7 +338,7 @@ void printPressEnterToContinue()
     }
 }
 
-void printError(const char *file, const size_t line, const char *format, va_list args)
+void printError(const char *file, const size_t line, const char *format, va_list args, bool isNoWait)
 {
     char errorMessage[256];
     vsprintf(errorMessage, format, args);
@@ -336,59 +346,64 @@ void printError(const char *file, const size_t line, const char *format, va_list
 
     printf("ERROR(%s:%zu): \n", file, line);
     perror(errorMessage);
-    printPressEnterToContinue();
+    printPressEnterToContinue(isNoWait);
 }
 
-void error(const char *file, const size_t line, const char *format, ...)
+void error(const char *file, const size_t line, bool isNoWait, const char *format, ...)
 {
     va_list args;
     va_start(args, format);
-    printError(file, line, format, args);
+    printError(file, line, format, args, isNoWait);
 
     exit(EXIT_FAILURE);
 }
 
-char *readFile(const char *filename, size_t *len)
+char *readFile(const char *filename, size_t *len, State *state)
 {
     FILE *file = fopen(filename, "rb");
     if (file == NULL)
     {
-        error(__FILE__, __LINE__, " Could not open % s ", filename);
+        error(__FILE__, __LINE__, state->isNoWait, " Could not open % s ", filename);
     }
 
     char errorMessage[] = "Could not determine size of %s";
     if (fseek(file, 0, SEEK_END) < 0)
     {
-        error(__FILE__, __LINE__, errorMessage, filename);
+        error(__FILE__, __LINE__, state->isNoWait, errorMessage, filename);
     }
 
     *len = ftell(file);
 
     if (fseek(file, 0, SEEK_SET) < 0)
     {
-        error(__FILE__, __LINE__, errorMessage, filename);
+        error(__FILE__, __LINE__, state->isNoWait, errorMessage, filename);
     }
 
     char *bytes = malloc(*len);
 
     if (!bytes)
     {
-        error(__FILE__, __LINE__, "Allocation failed");
+        error(__FILE__, __LINE__, state->isNoWait, "Allocation failed", state->isNoWait);
     }
 
     if (fread(bytes, *len, 1, file) != 1)
     {
-        error(__FILE__, __LINE__, " Could not read from % s ", filename);
+        error(__FILE__, __LINE__, state->isNoWait, " Could not read from % s ", filename);
+    }
+
+    if (file != NULL)
+    {
+        fclose(file);
     }
 
     return bytes;
 }
 
-int16_t consumeTwoBytesAsSigned(Stream *instructions)
+int16_t consumeTwoBytesAsSigned(Stream *instructions, State *state)
 {
     if (instructions->position + 1 >= instructions->size)
     {
-        error(__FILE__, __LINE__, "reached end of instuctions stream");
+        error(__FILE__, __LINE__, state->isNoWait, "reached end of instuctions stream");
     }
 
     int16_t result = *((int16_t *)(instructions + instructions->position));
@@ -398,11 +413,11 @@ int16_t consumeTwoBytesAsSigned(Stream *instructions)
     return result;
 }
 
-uint8_t consumeByteAsUnsigned(Stream *instructions)
+uint8_t consumeByteAsUnsigned(Stream *instructions, State *state)
 {
     if (instructions->position >= instructions->size)
     {
-        error(__FILE__, __LINE__, "reached end of instuctions stream");
+        error(__FILE__, __LINE__, state->isNoWait, "reached end of instuctions stream");
     }
 
     uint8_t result = instructions->bytes[instructions->position];
@@ -412,11 +427,11 @@ uint8_t consumeByteAsUnsigned(Stream *instructions)
     return result;
 }
 
-int8_t consumeByteAsSigned(Stream *instructions)
+int8_t consumeByteAsSigned(Stream *instructions, State *state)
 {
     if (instructions->position >= instructions->size)
     {
-        error(__FILE__, __LINE__, "reached end of instuctions stream");
+        error(__FILE__, __LINE__, state->isNoWait, "reached end of instuctions stream");
     }
 
     int8_t result = instructions->bytes[instructions->position];
@@ -509,33 +524,33 @@ bool extractBit(uint8_t byte, uint8_t index)
     return extracted == 1;
 }
 
-void checkMod(const char *file, size_t line, uint8_t mod)
+void checkMod(const char *file, size_t line, uint8_t mod, State *state)
 {
     if (mod > 3)
     {
-        error(file, line, "Invalid mod %#X", mod);
+        error(file, line, state->isNoWait, "Invalid mod %#X", mod);
     }
 }
 
-void checkRm(const char *file, size_t line, uint8_t rm)
+void checkRm(const char *file, size_t line, uint8_t rm, State *state)
 {
     if (rm > 7)
     {
-        error(file, line, "Invalid rm  %#X", rm);
+        error(file, line, state->isNoWait, "Invalid rm  %#X", rm);
     }
 }
 
-void checkReg(const char *file, size_t line, uint8_t reg)
+void checkReg(const char *file, size_t line, uint8_t reg, State *state)
 {
     if (reg > 7)
     {
-        error(file, line, "Invalid reg %#X", reg);
+        error(file, line, state->isNoWait, "Invalid reg %#X", reg);
     }
 }
 
-Operand decodeRegOperand(bool wBit, uint8_t reg)
+Operand decodeRegOperand(bool wBit, uint8_t reg, State *state)
 {
-    checkReg(__FILE__, __LINE__, reg);
+    checkReg(__FILE__, __LINE__, reg, state);
 
     Operand result = {0};
     result.type = operand_type_register;
@@ -544,10 +559,10 @@ Operand decodeRegOperand(bool wBit, uint8_t reg)
     return result;
 }
 
-Operand decodeRmOperand(bool wBit, uint8_t mod, uint8_t rm, Stream *instructions)
+Operand decodeRmOperand(bool wBit, uint8_t mod, uint8_t rm, Stream *instructions, State *state)
 {
-    checkMod(__FILE__, __LINE__, mod);
-    checkRm(__FILE__, __LINE__, rm);
+    checkMod(__FILE__, __LINE__, mod, state);
+    checkRm(__FILE__, __LINE__, rm, state);
     assert(rm <= 7);
 
     Operand result = {0};
@@ -557,7 +572,7 @@ Operand decodeRmOperand(bool wBit, uint8_t mod, uint8_t rm, Stream *instructions
     {
         result.type = operand_type_memory;
         result.location.memory.regCount = 0;
-        result.location.memory.displacement = consumeTwoBytesAsSigned(instructions);
+        result.location.memory.displacement = consumeTwoBytesAsSigned(instructions, state);
     }
     else
     {
@@ -573,12 +588,12 @@ Operand decodeRmOperand(bool wBit, uint8_t mod, uint8_t rm, Stream *instructions
 
             if (mod == 1)
             {
-                int16_t displacement = consumeByteAsSigned(instructions);
+                int16_t displacement = consumeByteAsSigned(instructions, state);
                 result.location.memory.displacement = displacement;
             }
             else if (mod == 2)
             {
-                result.location.memory.displacement = consumeTwoBytesAsSigned(instructions);
+                result.location.memory.displacement = consumeTwoBytesAsSigned(instructions, state);
             }
         }
     }
@@ -623,17 +638,18 @@ void printInstruction(Instruction instruction)
 
     if (instruction.operandCount > 1)
     {
+        printf(",");
         printOperand(instruction.secondOperand);
     }
 }
 
-Instruction decodeRegMemToFromRegMem(bool dBit, bool wBit, uint8_t mod, uint8_t reg, uint8_t rm, Stream *instructions)
+Instruction decodeRegMemToFromRegMem(bool dBit, bool wBit, uint8_t mod, uint8_t reg, uint8_t rm, Stream *instructions, State *state)
 {
     Instruction result = {0};
 
     result.operandCount = 2;
-    Operand rmOperand = decodeRmOperand(wBit, mod, rm, instructions);
-    Operand regOperand = decodeRegOperand(wBit, reg);
+    Operand rmOperand = decodeRmOperand(wBit, mod, rm, instructions, state);
+    Operand regOperand = decodeRegOperand(wBit, reg, state);
 
     if (dBit)
     {
@@ -649,6 +665,11 @@ Instruction decodeRegMemToFromRegMem(bool dBit, bool wBit, uint8_t mod, uint8_t 
     return result;
 }
 
+bool cStringsEqual(char *left, char *right)
+{
+    return strcmp(left, right) == 0;
+}
+
 int main(int argc, char *argv[])
 {
     if (argc < 1)
@@ -656,11 +677,31 @@ int main(int argc, char *argv[])
         error(__FILE__, __LINE__, "Usage: %s <filename>", argv[0]);
     }
 
-    const char *fileName = argv[1];
+    State state = {0};
+
+    const char *fileName = NULL;
+
+    for (size_t argumentIndex = 1; argumentIndex < argc; argumentIndex++)
+    {
+        char *argument = argv[argumentIndex];
+
+        if (cStringsEqual(argument, "--nowait"))
+        {
+            state.isNoWait = true;
+        }
+        else if (fileName == NULL)
+        {
+            fileName = argument;
+        }
+        else
+        {
+            error(__FILE__, __LINE__, state.isNoWait, "Invalid argument %s", argument);
+        }
+    }
 
     size_t fileSize;
 
-    char *bytes = readFile(fileName, &fileSize);
+    char *bytes = readFile(fileName, &fileSize, &state);
 
     Stream instructions = {0};
 
@@ -669,7 +710,7 @@ int main(int argc, char *argv[])
 
     while (instructions.position < instructions.size)
     {
-        uint8_t firstByte = consumeByteAsUnsigned(&instructions);
+        uint8_t firstByte = consumeByteAsUnsigned(&instructions, &state);
 
         Instruction instruction = {0};
 
@@ -680,18 +721,18 @@ int main(int argc, char *argv[])
         {
             assert(instruction.type == instruction_none);
 
-            uint8_t secondByte = consumeByteAsUnsigned(&instructions);
+            uint8_t secondByte = consumeByteAsUnsigned(&instructions, &state);
             uint8_t mod = extractBits(secondByte, 6, 8);
             uint8_t reg = extractBits(secondByte, 3, 6);
             uint8_t rm = extractLowBits(secondByte, 3);
 
-            instruction = decodeRegMemToFromRegMem(dBit, wBit, mod, reg, rm, &instructions);
+            instruction = decodeRegMemToFromRegMem(dBit, wBit, mod, reg, rm, &instructions, &state);
             instruction.type = instruction_mov;
         }
 
         if (instruction.type == instruction_none)
         {
-            error(__FILE__, __LINE__, "Unknown instruction, first byte=%#X", firstByte);
+            error(__FILE__, __LINE__, state.isNoWait, "Unknown instruction, first byte=%#X", firstByte);
         }
 
         printInstruction(instruction);
@@ -699,7 +740,7 @@ int main(int argc, char *argv[])
         printf("\n");
     }
 
-    printPressEnterToContinue();
+    printPressEnterToContinue(state.isNoWait);
     if (bytes != NULL)
     {
         free(bytes);
