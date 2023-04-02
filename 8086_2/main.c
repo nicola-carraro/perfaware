@@ -116,19 +116,21 @@ void printPressEnterToContinue()
     }
 }
 
-void printError(const char *format, va_list args)
+void printError(const char *file, const size_t line, const char *format, va_list args)
 {
     char errorMessage[256];
     vsprintf(errorMessage, format, args);
     va_end(args);
+
+    printf("ERROR(%s:%zu): ", file, line);
     perror(errorMessage);
 }
 
-void error(const char *format, ...)
+void error(const char *file, const size_t line, const char *format, ...)
 {
     va_list args;
     va_start(args, format);
-    printError(format, args);
+    printError(file, line, format, args);
 
     exit(EXIT_FAILURE);
 }
@@ -138,31 +140,31 @@ char *readFile(const char *filename, size_t *len)
     FILE *file = fopen(filename, "rb");
     if (file == NULL)
     {
-        error(" Could not open % s ", filename);
+        error(__FILE__, __LINE__, " Could not open % s ", filename);
     }
 
     char errorMessage[] = "Could not determine size of %s";
     if (fseek(file, 0, SEEK_END) < 0)
     {
-        error(errorMessage, filename);
+        error(__FILE__, __LINE__, errorMessage, filename);
     }
 
     *len = ftell(file);
     if (fseek(file, 0, SEEK_SET) < 0)
     {
-        error(errorMessage, filename);
+        error(__FILE__, __LINE__, errorMessage, filename);
     }
 
     char *bytes = malloc(*len);
 
     if (!bytes)
     {
-        error("Allocation failed");
+        error(__FILE__, __LINE__, "Allocation failed");
     }
 
     if (fread(bytes, *len, 1, file) != 1)
     {
-        error(" Could not read from % s ", filename);
+        error(__FILE__, __LINE__, " Could not read from % s ", filename);
     }
 
     return bytes;
@@ -172,7 +174,7 @@ int main(int argc, char *argv[])
 {
     if (argc < 1)
     {
-        error("Usage: %s <filename>", argv[0]);
+        error(__FILE__, __LINE__, "Usage: %s <filename>", argv[0]);
     }
 
     const char *filename = argv[1];
