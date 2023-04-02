@@ -66,4 +66,5 @@ int main(void)
 {
 
     testDecoding("../computer_enhance/perfaware/part1/listing_0037_single_register_mov");
+    testDecoding("../computer_enhance/perfaware/part1/listing_0038_many_register_mov");
 }
