@@ -17,7 +17,8 @@ typedef enum
     sp,
     bp,
     si,
-    di
+    di,
+    none
 } Register;
 
 typedef enum
@@ -51,11 +52,11 @@ typedef enum
 typedef struct
 {
     OperandType type;
-    union location
+    union
     {
         MemoryLocation memory;
         RegisterLocation reg;
-    };
+    } location;
 } Operand;
 
 const struct
@@ -71,7 +72,37 @@ const struct
     {sp, "sp", false},
     {bp, "bp", false},
     {si, "si", false},
-    {di, "di", false}
+    {di, "di", false}};
+
+const struct
+{
+    RegisterLocation w0Reg;
+    RegisterLocation w1Reg;
+} RegFieldInfo[] = {
+    {{a, l}, {a, x}},
+    {{c, l}, {c, x}},
+    {{d, l}, {d, x}},
+    {{b, l}, {b, x}},
+    {{a, h}, {sp}},
+    {{c, h}, {bp}},
+    {{d, h}, {si}},
+    {{b, h}, {di}}};
+
+const struct
+{
+    RegisterLocation mod3W0Reg;
+    RegisterLocation mod3w1Reg;
+
+    MemoryLocation memoryLocation;
+} RmFieldInfo[] = {
+    {{a, l}, {a, x}, {{b, x}, {si}, 2}},
+    {{c, l}, {c, x}, {{b, x}, {di}, 2}},
+    {{d, l}, {d, x}, {{bp}, {si}, 2}},
+    {{b, l}, {b, x}, {{bp}, {di}, 2}},
+    {{a, h}, {sp}, {{si}, {none}, 1}},
+    {{c, h}, {bp}, {{di}, {none}, 1}},
+    {{d, h}, {si}, {{bp}, {none}, 1}},
+    {{b, h}, {di}, {{b, x}, {none}, 1}},
 };
 
 void printPressEnterToContinue()
