@@ -77,6 +77,16 @@ const struct
 
 const struct
 {
+    const RegisterPortion portion;
+    const char name[2];
+} RegisterPortionInfos[] = {
+    {reg_portion_x, "x"},
+    {reg_portion_l, "l"},
+    {reg_portion_h, "h"},
+};
+
+const struct
+{
     RegisterLocation w0Reg;
     RegisterLocation w1Reg;
 } RegFieldInfo[] = {
@@ -577,10 +587,33 @@ Operand decodeRmOperand(bool wBit, uint8_t mod, uint8_t rm, Stream *instructions
 
 void printOperand(Operand operand)
 {
+
+    if (operand.type == operand_type_register)
+    {
+
+        assert(RegisterInfos[operand.location.reg.reg].reg == operand.location.reg.reg);
+        printf(RegisterInfos[operand.location.reg.reg].name);
+
+        if (RegisterInfos[operand.location.reg.reg].isPartiallyAdressable)
+        {
+            assert(RegisterPortionInfos[operand.location.reg.portion].portion == operand.location.reg.portion);
+            printf(RegisterPortionInfos[operand.location.reg.portion].name);
+        }
+    }
+    else
+    {
+        assert(false && "Unimplemented");
+    }
 }
 
 void printInstruction(Instruction instruction)
 {
+    assert(instruction.type != instruction_none);
+    assert(InstructionNames[instruction.type].type == instruction.type);
+
+    const char *mnemonic = InstructionNames[instruction.type].name;
+    printf(mnemonic);
+
     if (instruction.operandCount > 0)
     {
         printOperand(instruction.firstOperand);
@@ -658,6 +691,8 @@ int main(int argc, char *argv[])
             instruction = decodeRegMemToFromRegMem(dBit, wBit, mod, reg, rm, &instructions);
             instruction.type = instruction_mov;
         }
+
+        printInstruction(instruction);
     }
 
     printPressEnterToContinue();
