@@ -854,16 +854,20 @@ int main(int argc, char *argv[])
 
             bool wBit = extractBit(firstByte, 3);
             bool sBit = extractBits(firstByte, 1, 2);
-            uint8_t rm = extractLowBits(firstByte, 3);
             uint8_t mod = extractBits(secondByte, 6, 8);
+            uint8_t reg = extractBits(secondByte, 3, 6);
+            uint8_t rm = extractLowBits(firstByte, 3);
 
             instruction = decodeImmediateToRegisterMemory(wBit, sBit, mod, rm, &instructions, &state);
 
-            if (mod == 0x00)
+            if (reg == 0x00)
             {
                 instruction.type = instruction_add;
             }
-            error(__FILE__, __LINE__, state.isNoWait, "Unknown instruction, first byte=%#X", firstByte);
+            else
+            {
+                error(__FILE__, __LINE__, state.isNoWait, "Unknown instruction, first byte=%#X, mod=%#X", firstByte, mod);
+            }
         }
 
         if (firstByte >= 0x28 && firstByte <= 0x2b)
