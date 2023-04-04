@@ -317,6 +317,7 @@ typedef struct
     Operand secondOperand;
     uint8_t operandCount;
     bool isWide;
+    size_t byteCount;
 } Instruction;
 
 typedef struct
@@ -815,6 +816,8 @@ Instruction decodeInstruction(State *state)
 {
     uint8_t firstByte = consumeByteAsUnsigned(state);
 
+    size_t initialStackPointer = state->instructions->position;
+
     Instruction instruction = {0};
 
     if (firstByte >= 0x88 && firstByte <= 0x8b)
@@ -917,6 +920,7 @@ Instruction decodeInstruction(State *state)
         error(__FILE__, __LINE__, state->isNoWait, "Unknown instruction, first byte=%#X", firstByte);
     }
 
+    instruction.byteCount = state->instructions->position - initialStackPointer;
     return instruction;
 }
 
