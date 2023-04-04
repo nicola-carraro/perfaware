@@ -44,10 +44,11 @@ typedef struct
     int16_t displacement;
 } MemoryLocation;
 
-typedef struct {
+typedef struct
+{
     int16_t value;
     bool isRelativeOffset;
-}Immediate;
+} Immediate;
 
 typedef enum
 {
@@ -414,7 +415,7 @@ int16_t consumeTwoBytesAsSigned(Stream *instructions, State *state)
 
     int16_t result = *((int16_t *)(instructions->bytes + instructions->position));
 
-    instructions->position++;
+    instructions->position += 2;
 
     return result;
 }
@@ -607,28 +608,69 @@ Operand decodeRmOperand(bool wBit, uint8_t mod, uint8_t rm, Stream *instructions
     return result;
 }
 
+void printRegister(RegisterLocation registerLocation)
+{
+    assert(RegisterInfos[registerLocation.reg].reg == registerLocation.reg);
+    printf(RegisterInfos[registerLocation.reg].name);
+    if (RegisterInfos[registerLocation.reg].isPartiallyAdressable)
+    {
+        assert(RegisterPortionInfos[registerLocation.portion].portion == registerLocation.portion);
+        printf(RegisterPortionInfos[registerLocation.portion].name);
+    }
+}
+
 void printOperand(Operand operand)
 {
 
     printf(" ");
-    if (operand.type == operand_type_register)
+    switch (operand.type)
+    {
+    case operand_type_register:
     {
 
-        assert(RegisterInfos[operand.payload.reg.reg].reg == operand.payload.reg.reg);
-        printf(RegisterInfos[operand.payload.reg.reg].name);
-
-        if (RegisterInfos[operand.payload.reg.reg].isPartiallyAdressable)
-        {
-            assert(RegisterPortionInfos[operand.payload.reg.portion].portion == operand.payload.reg.portion);
-            printf(RegisterPortionInfos[operand.payload.reg.portion].name);
-        }
+        printRegister(operand.payload.reg);
     }
-    else if(operand.type == operand_type_immediate){
+    break;
+    case operand_type_immediate:
+    {
         printf("%d", operand.payload.immediate.value);
     }
-    else
+    break;
+    case operand_type_memory:
+    {
+        printf("[");
+        if (operand.payload.memory.regCount > 0)
+        {
+            printRegister(operand.payload.memory.reg0);
+        }
+        if (operand.payload.memory.regCount > 1)
+        {
+            printf(" + ");
+            printRegister(operand.payload.memory.reg1);
+        }
+
+        if (operand.payload.memory.displacement > 0)
+        {
+            printf(" + ");
+            printf("%d", operand.payload.memory.displacement);
+        }
+        else if (operand.payload.memory.displacement < 0)
+        {
+            printf(" - ");
+            printf("%d", -operand.payload.memory.displacement);
+        }
+        else if (operand.payload.memory.regCount == 0)
+        {
+            printf("0");
+        }
+
+        printf("]");
+    }
+    break;
+    default:
     {
         assert(false && "Unimplemented");
+    }
     }
 }
 
@@ -674,31 +716,34 @@ Instruction decodeRegMemToFromRegMem(bool dBit, bool wBit, uint8_t mod, uint8_t 
     return result;
 }
 
-Operand decodeImmediateOperand(bool wBit, Stream *instructions, State *state){
+Operand decodeImmediateOperand(bool wBit, Stream *instructions, State *state)
+{
 
-Operand result = {0};
+    Operand result = {0};
 
-result.type = operand_type_immediate;
-result.payload.immediate.isRelativeOffset = false;
-if(wBit){
-    result.payload.immediate.value = consumeTwoBytesAsSigned(instructions, state);
-}
-else{
-    result.payload.immediate.value  = consumeByteAsSigned(instructions, state);
-}
-return result;
-}
-
-Instruction decodeImmediateToRegister(bool wBit, uint8_t reg, Stream *instructions, State *state){
-        Instruction result = {0};
-    
-        result.firstOperand = decodeRegOperand(wBit, reg, state);
-        result.secondOperand = decodeImmediateOperand(wBit, instructions, state);
-        result.operandCount = 2;
-        result.isWide = wBit;
-    
+    result.type = operand_type_immediate;
+    result.payload.immediate.isRelativeOffset = false;
+    if (wBit)
+    {
+        result.payload.immediate.value = consumeTwoBytesAsSigned(instructions, state);
+    }
+    else
+    {
+        result.payload.immediate.value = consumeByteAsSigned(instructions, state);
+    }
     return result;
+}
 
+Instruction decodeImmediateToRegister(bool wBit, uint8_t reg, Stream *instructions, State *state)
+{
+    Instruction result = {0};
+
+    result.firstOperand = decodeRegOperand(wBit, reg, state);
+    result.secondOperand = decodeImmediateOperand(wBit, instructions, state);
+    result.operandCount = 2;
+    result.isWide = wBit;
+
+    return result;
 }
 
 bool cStringsEqual(char *left, char *right)
@@ -750,12 +795,10 @@ int main(int argc, char *argv[])
 
         Instruction instruction = {0};
 
-        
-
         if (firstByte >= 0x88 && firstByte <= 0x8b)
         {
             bool wBit = extractLowBits(firstByte, 1);
-            bool dBit = extractBits(firstByte, 1, 1);
+            bool dBit = extractBits(firstByte, 1, 2);
             assert(instruction.type == instruction_none);
 
             uint8_t secondByte = consumeByteAsUnsigned(&instructions, &state);
@@ -766,12 +809,13 @@ int main(int argc, char *argv[])
             instruction = decodeRegMemToFromRegMem(dBit, wBit, mod, reg, rm, &instructions, &state);
             instruction.type = instruction_mov;
         }
-        if(firstByte >= 0xb0 && firstByte <= 0xbf){
+        if (firstByte >= 0xb0 && firstByte <= 0xbf)
+        {
             assert(instruction.type == instruction_none);
             bool wBit = extractBit(firstByte, 3);
             uint8_t reg = extractLowBits(firstByte, 3);
 
-            instruction = decodeImmediateToRegister(wBit, reg, &instructions,  &state);
+            instruction = decodeImmediateToRegister(wBit, reg, &instructions, &state);
             instruction.type = instruction_mov;
         }
 
