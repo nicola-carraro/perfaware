@@ -783,7 +783,7 @@ Instruction decodeImmediateToRegisterMemory(bool wBit, bool sBit, uint8_t mod, u
     return result;
 }
 
-Instruction decodeImmediateToAccumulator(bool wBit, Stream *instructions, State *state)
+Instruction decodeImmediateFromAccumulator(bool wBit, Stream *instructions, State *state)
 {
     Instruction result = {0};
 
@@ -885,14 +885,7 @@ int main(int argc, char *argv[])
             instruction = decodeRegMemToFromRegMem(dBit, wBit, mod, reg, rm, &instructions, &state);
             instruction.type = instruction_add;
         }
-        if (firstByte == 0x04 || firstByte == 0x05)
-        {
-            assert(instruction.type == instruction_none);
-            bool wBit = extractLowBits(firstByte, 1);
-            instruction = decodeImmediateToAccumulator(wBit, &instructions, &state);
 
-            instruction.type = instruction_add;
-        }
         if (firstByte >= 0x80 && firstByte <= 0x83)
         {
             assert(instruction.type == instruction_none);
@@ -906,16 +899,32 @@ int main(int argc, char *argv[])
 
             instruction = decodeImmediateToRegisterMemory(wBit, sBit, mod, rm, &instructions, &state);
 
-            if (reg == 0x00)
+            switch (reg)
+            {
+            case 0x00:
             {
                 instruction.type = instruction_add;
             }
-            else
+            break;
+            case 0x05:
             {
-                error(__FILE__, __LINE__, state.isNoWait, "Unknown instruction, first byte=%#X, mod=%#X", firstByte, mod);
+                instruction.type = instruction_sub;
+            }
+            break;
+            default:
+            {
+                error(__FILE__, __LINE__, state.isNoWait, "Unknown instruction, first byte=%#X, reg=%#X", firstByte, reg);
+            }
             }
         }
+        if (firstByte == 0x04 || firstByte == 0x05)
+        {
+            assert(instruction.type == instruction_none);
+            bool wBit = extractLowBits(firstByte, 1);
+            instruction = decodeImmediateFromAccumulator(wBit, &instructions, &state);
 
+            instruction.type = instruction_add;
+        }
         if (firstByte >= 0x28 && firstByte <= 0x2b)
         {
             assert(instruction.type == instruction_none);
@@ -929,7 +938,14 @@ int main(int argc, char *argv[])
             instruction = decodeRegMemToFromRegMem(dBit, wBit, mod, reg, rm, &instructions, &state);
             instruction.type = instruction_sub;
         }
+        if (firstByte == 0x2c || firstByte == 0x2d)
+        {
+            assert(instruction.type == instruction_none);
+            bool wBit = extractLowBits(firstByte, 1);
+            instruction = decodeImmediateFromAccumulator(wBit, &instructions, &state);
 
+            instruction.type = instruction_sub;
+        }
         if (firstByte >= 0x38 && firstByte <= 0x3b)
         {
             assert(instruction.type == instruction_none);
