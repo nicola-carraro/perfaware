@@ -329,6 +329,7 @@ typedef struct
 typedef struct
 {
     bool isNoWait;
+    Stream *instructions;
 } State;
 
 void printPressEnterToContinue(bool isNoWait)
@@ -407,44 +408,44 @@ char *readFile(const char *filename, size_t *len, State *state)
     return bytes;
 }
 
-int16_t consumeTwoBytesAsSigned(Stream *instructions, State *state)
+int16_t consumeTwoBytesAsSigned(State *state)
 {
-    if (instructions->position + 1 >= instructions->size)
+    if (state->instructions->position + 1 >= state->instructions->size)
     {
         error(__FILE__, __LINE__, state->isNoWait, "reached end of instuctions stream");
     }
 
-    int16_t result = *((int16_t *)(instructions->bytes + instructions->position));
+    int16_t result = *((int16_t *)(state->instructions->bytes + state->instructions->position));
 
-    instructions->position += 2;
+    state->instructions->position += 2;
 
     return result;
 }
 
-uint8_t consumeByteAsUnsigned(Stream *instructions, State *state)
+uint8_t consumeByteAsUnsigned(State *state)
 {
-    if (instructions->position >= instructions->size)
+    if (state->instructions->position >= state->instructions->size)
     {
         error(__FILE__, __LINE__, state->isNoWait, "reached end of instuctions stream");
     }
 
-    uint8_t result = instructions->bytes[instructions->position];
+    uint8_t result = state->instructions->bytes[state->instructions->position];
 
-    instructions->position++;
+    state->instructions->position++;
 
     return result;
 }
 
-int8_t consumeByteAsSigned(Stream *instructions, State *state)
+int8_t consumeByteAsSigned(State *state)
 {
-    if (instructions->position >= instructions->size)
+    if (state->instructions->position >= state->instructions->size)
     {
         error(__FILE__, __LINE__, state->isNoWait, "reached end of instuctions stream");
     }
 
-    int8_t result = instructions->bytes[instructions->position];
+    int8_t result = state->instructions->bytes[state->instructions->position];
 
-    instructions->position++;
+    state->instructions->position++;
 
     return result;
 }
@@ -567,7 +568,7 @@ Operand decodeRegOperand(bool wBit, uint8_t reg, State *state)
     return result;
 }
 
-Operand decodeRmOperand(bool wBit, uint8_t mod, uint8_t rm, Stream *instructions, State *state)
+Operand decodeRmOperand(bool wBit, uint8_t mod, uint8_t rm, State *state)
 {
     checkMod(__FILE__, __LINE__, mod, state);
     checkRm(__FILE__, __LINE__, rm, state);
@@ -580,7 +581,7 @@ Operand decodeRmOperand(bool wBit, uint8_t mod, uint8_t rm, Stream *instructions
     {
         result.type = operand_type_memory;
         result.payload.memory.regCount = 0;
-        result.payload.memory.displacement = consumeTwoBytesAsSigned(instructions, state);
+        result.payload.memory.displacement = consumeTwoBytesAsSigned(state);
     }
     else
     {
@@ -596,12 +597,12 @@ Operand decodeRmOperand(bool wBit, uint8_t mod, uint8_t rm, Stream *instructions
 
             if (mod == 1)
             {
-                int16_t displacement = consumeByteAsSigned(instructions, state);
+                int16_t displacement = consumeByteAsSigned(state);
                 result.payload.memory.displacement = displacement;
             }
             else if (mod == 2)
             {
-                result.payload.memory.displacement = consumeTwoBytesAsSigned(instructions, state);
+                result.payload.memory.displacement = consumeTwoBytesAsSigned(state);
             }
         }
     }
@@ -718,11 +719,11 @@ void printInstruction(Instruction instruction)
     }
 }
 
-Instruction decodeRegMemToFromRegMem(uint8_t firstByte, Stream *instructions, State *state)
+Instruction decodeRegMemToFromRegMem(uint8_t firstByte, State *state)
 {
     bool wBit = extractLowBits(firstByte, 1);
     bool dBit = extractBits(firstByte, 1, 2);
-    uint8_t secondByte = consumeByteAsUnsigned(instructions, state);
+    uint8_t secondByte = consumeByteAsUnsigned(state);
     uint8_t mod = extractBits(secondByte, 6, 8);
     uint8_t reg = extractBits(secondByte, 3, 6);
     uint8_t rm = extractLowBits(secondByte, 3);
@@ -730,7 +731,7 @@ Instruction decodeRegMemToFromRegMem(uint8_t firstByte, Stream *instructions, St
     Instruction result = {0};
 
     result.operandCount = 2;
-    Operand rmOperand = decodeRmOperand(wBit, mod, rm, instructions, state);
+    Operand rmOperand = decodeRmOperand(wBit, mod, rm, state);
     Operand regOperand = decodeRegOperand(wBit, reg, state);
 
     if (dBit)
@@ -747,7 +748,7 @@ Instruction decodeRegMemToFromRegMem(uint8_t firstByte, Stream *instructions, St
     return result;
 }
 
-Operand decodeImmediateOperand(bool wBit, bool sBit, Stream *instructions, State *state)
+Operand decodeImmediateOperand(bool wBit, bool sBit, State *state)
 {
 
     Operand result = {0};
@@ -757,40 +758,40 @@ Operand decodeImmediateOperand(bool wBit, bool sBit, Stream *instructions, State
     if (wBit && !sBit)
     {
 
-        result.payload.immediate.value = consumeTwoBytesAsSigned(instructions, state);
+        result.payload.immediate.value = consumeTwoBytesAsSigned(state);
     }
     else
     {
-        result.payload.immediate.value = consumeByteAsSigned(instructions, state);
+        result.payload.immediate.value = consumeByteAsSigned(state);
     }
     return result;
 }
 
-Instruction decodeImmediateToRegister(bool wBit, uint8_t reg, Stream *instructions, State *state)
+Instruction decodeImmediateToRegister(bool wBit, uint8_t reg, State *state)
 {
     Instruction result = {0};
 
     result.firstOperand = decodeRegOperand(wBit, reg, state);
-    result.secondOperand = decodeImmediateOperand(wBit, false, instructions, state);
+    result.secondOperand = decodeImmediateOperand(wBit, false, state);
     result.operandCount = 2;
     result.isWide = wBit;
 
     return result;
 }
 
-Instruction decodeImmediateToRegisterMemory(bool wBit, bool sBit, uint8_t mod, uint8_t rm, Stream *instructions, State *state)
+Instruction decodeImmediateToRegisterMemory(bool wBit, bool sBit, uint8_t mod, uint8_t rm, State *state)
 {
     Instruction result = {0};
 
-    result.firstOperand = decodeRmOperand(wBit, mod, rm, instructions, state);
-    result.secondOperand = decodeImmediateOperand(wBit, sBit, instructions, state);
+    result.firstOperand = decodeRmOperand(wBit, mod, rm, state);
+    result.secondOperand = decodeImmediateOperand(wBit, sBit, state);
     result.operandCount = 2;
     result.isWide = wBit;
 
     return result;
 }
 
-Instruction decodeImmediateFromAccumulator(bool wBit, Stream *instructions, State *state)
+Instruction decodeImmediateFromAccumulator(bool wBit, State *state)
 {
     Instruction result = {0};
 
@@ -798,7 +799,7 @@ Instruction decodeImmediateFromAccumulator(bool wBit, Stream *instructions, Stat
     result.firstOperand.payload.reg.reg = reg_a;
     result.firstOperand.payload.reg.portion = wBit ? reg_portion_x : reg_portion_l;
 
-    result.secondOperand = decodeImmediateOperand(wBit, false, instructions, state);
+    result.secondOperand = decodeImmediateOperand(wBit, false, state);
     result.operandCount = 2;
     result.isWide = wBit;
 
@@ -844,13 +845,14 @@ int main(int argc, char *argv[])
     char *bytes = readFile(fileName, &fileSize, &state);
 
     Stream instructions = {0};
-
     instructions.bytes = bytes;
     instructions.size = fileSize;
 
+    state.instructions = &instructions;
+
     while (instructions.position < instructions.size)
     {
-        uint8_t firstByte = consumeByteAsUnsigned(&instructions, &state);
+        uint8_t firstByte = consumeByteAsUnsigned(&state);
 
         Instruction instruction = {0};
 
@@ -858,7 +860,7 @@ int main(int argc, char *argv[])
         {
             assert(instruction.type == instruction_none);
 
-            instruction = decodeRegMemToFromRegMem(firstByte, &instructions, &state);
+            instruction = decodeRegMemToFromRegMem(firstByte, &state);
             instruction.type = instruction_mov;
         }
         if (firstByte >= 0xb0 && firstByte <= 0xbf)
@@ -867,7 +869,7 @@ int main(int argc, char *argv[])
             bool wBit = extractBit(firstByte, 3);
             uint8_t reg = extractLowBits(firstByte, 3);
 
-            instruction = decodeImmediateToRegister(wBit, reg, &instructions, &state);
+            instruction = decodeImmediateToRegister(wBit, reg, &state);
             instruction.type = instruction_mov;
         }
 
@@ -875,21 +877,21 @@ int main(int argc, char *argv[])
         {
             assert(instruction.type == instruction_none);
 
-            instruction = decodeRegMemToFromRegMem(firstByte, &instructions, &state);
+            instruction = decodeRegMemToFromRegMem(firstByte, &state);
             instruction.type = instruction_add;
         }
 
         if (firstByte >= 0x80 && firstByte <= 0x83)
         {
             assert(instruction.type == instruction_none);
-            uint8_t secondByte = consumeByteAsUnsigned(&instructions, &state);
+            uint8_t secondByte = consumeByteAsUnsigned(&state);
             bool wBit = extractLowBits(firstByte, 1);
             bool sBit = extractBits(firstByte, 1, 2);
             uint8_t mod = extractBits(secondByte, 6, 8);
             uint8_t reg = extractBits(secondByte, 3, 6);
             uint8_t rm = extractLowBits(secondByte, 3);
 
-            instruction = decodeImmediateToRegisterMemory(wBit, sBit, mod, rm, &instructions, &state);
+            instruction = decodeImmediateToRegisterMemory(wBit, sBit, mod, rm, &state);
 
             switch (reg)
             {
@@ -913,7 +915,7 @@ int main(int argc, char *argv[])
         {
             assert(instruction.type == instruction_none);
             bool wBit = extractLowBits(firstByte, 1);
-            instruction = decodeImmediateFromAccumulator(wBit, &instructions, &state);
+            instruction = decodeImmediateFromAccumulator(wBit, &state);
 
             instruction.type = instruction_add;
         }
@@ -921,14 +923,14 @@ int main(int argc, char *argv[])
         {
             assert(instruction.type == instruction_none);
 
-            instruction = decodeRegMemToFromRegMem(firstByte, &instructions, &state);
+            instruction = decodeRegMemToFromRegMem(firstByte, &state);
             instruction.type = instruction_sub;
         }
         if (firstByte == 0x2c || firstByte == 0x2d)
         {
             assert(instruction.type == instruction_none);
             bool wBit = extractLowBits(firstByte, 1);
-            instruction = decodeImmediateFromAccumulator(wBit, &instructions, &state);
+            instruction = decodeImmediateFromAccumulator(wBit, &state);
 
             instruction.type = instruction_sub;
         }
@@ -936,7 +938,7 @@ int main(int argc, char *argv[])
         {
             assert(instruction.type == instruction_none);
 
-            instruction = decodeRegMemToFromRegMem(firstByte, &instructions, &state);
+            instruction = decodeRegMemToFromRegMem(firstByte, &state);
             instruction.type = instruction_cmp;
         }
 
