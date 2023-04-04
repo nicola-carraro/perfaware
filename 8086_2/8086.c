@@ -412,7 +412,7 @@ int16_t consumeTwoBytesAsSigned(Stream *instructions, State *state)
         error(__FILE__, __LINE__, state->isNoWait, "reached end of instuctions stream");
     }
 
-    int16_t result = *((int16_t *)(instructions + instructions->position));
+    int16_t result = *((int16_t *)(instructions->bytes + instructions->position));
 
     instructions->position++;
 
