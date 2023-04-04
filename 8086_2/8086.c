@@ -683,6 +683,29 @@ void printInstruction(Instruction instruction)
     const char *mnemonic = InstructionNames[instruction.type].name;
     printf(mnemonic);
 
+    bool decoratorNeeded = false;
+
+    if (instruction.operandCount == 1 && instruction.firstOperand.type != operand_type_register)
+    {
+        decoratorNeeded = true;
+    }
+    if (instruction.operandCount == 2 && instruction.firstOperand.type != operand_type_register && instruction.secondOperand.type != operand_type_register)
+    {
+        decoratorNeeded = true;
+    }
+
+    if (decoratorNeeded)
+    {
+        if (instruction.isWide)
+        {
+            printf(" word");
+        }
+        else
+        {
+            printf(" byte");
+        }
+    }
+
     if (instruction.operandCount > 0)
     {
         printOperand(instruction.firstOperand);
@@ -754,6 +777,21 @@ Instruction decodeImmediateToRegisterMemory(bool wBit, bool sBit, uint8_t mod, u
 
     result.firstOperand = decodeRmOperand(wBit, mod, rm, instructions, state);
     result.secondOperand = decodeImmediateOperand(wBit, sBit, instructions, state);
+    result.operandCount = 2;
+    result.isWide = wBit;
+
+    return result;
+}
+
+Instruction decodeImmediateToAccumulator(bool wBit, Stream *instructions, State *state)
+{
+    Instruction result = {0};
+
+    result.firstOperand.type = operand_type_register;
+    result.firstOperand.payload.reg.reg = reg_a;
+    result.firstOperand.payload.reg.portion = wBit ? reg_portion_x : reg_portion_l;
+
+    result.secondOperand = decodeImmediateOperand(wBit, false, instructions, state);
     result.operandCount = 2;
     result.isWide = wBit;
 
@@ -847,16 +885,24 @@ int main(int argc, char *argv[])
             instruction = decodeRegMemToFromRegMem(dBit, wBit, mod, reg, rm, &instructions, &state);
             instruction.type = instruction_add;
         }
+        if (firstByte == 0x04 || firstByte == 0x05)
+        {
+            assert(instruction.type == instruction_none);
+            bool wBit = extractLowBits(firstByte, 1);
+            instruction = decodeImmediateToAccumulator(wBit, &instructions, &state);
+
+            instruction.type = instruction_add;
+        }
         if (firstByte >= 0x80 && firstByte <= 0x83)
         {
             assert(instruction.type == instruction_none);
             uint8_t secondByte = consumeByteAsUnsigned(&instructions, &state);
 
-            bool wBit = extractBit(firstByte, 3);
+            bool wBit = extractLowBits(firstByte, 1);
             bool sBit = extractBits(firstByte, 1, 2);
             uint8_t mod = extractBits(secondByte, 6, 8);
             uint8_t reg = extractBits(secondByte, 3, 6);
-            uint8_t rm = extractLowBits(firstByte, 3);
+            uint8_t rm = extractLowBits(secondByte, 3);
 
             instruction = decodeImmediateToRegisterMemory(wBit, sBit, mod, rm, &instructions, &state);
 
