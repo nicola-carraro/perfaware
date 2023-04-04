@@ -622,7 +622,7 @@ void printRegister(RegisterLocation registerLocation)
     }
 }
 
-void printOperand(Operand operand)
+void printOperand(Operand operand, size_t instructionByteCount)
 {
 
     printf(" ");
@@ -636,7 +636,14 @@ void printOperand(Operand operand)
     break;
     case operand_type_immediate:
     {
-        printf("%d", operand.payload.immediate.value);
+        if (operand.payload.immediate.isRelativeOffset)
+        {
+            printf("$%+zd", operand.payload.immediate.value + instructionByteCount);
+        }
+        else
+        {
+            printf("%d", operand.payload.immediate.value);
+        }
     }
     break;
     case operand_type_memory:
@@ -710,13 +717,13 @@ void printInstruction(Instruction instruction)
 
     if (instruction.operandCount > 0)
     {
-        printOperand(instruction.firstOperand);
+        printOperand(instruction.firstOperand, instruction.byteCount);
     }
 
     if (instruction.operandCount > 1)
     {
         printf(",");
-        printOperand(instruction.secondOperand);
+        printOperand(instruction.secondOperand, instruction.byteCount);
     }
 }
 
