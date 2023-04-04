@@ -414,7 +414,7 @@ int16_t consumeTwoBytesAsSigned(Stream *instructions, State *state)
 
     int16_t result = *((int16_t *)(instructions->bytes + instructions->position));
 
-    instructions->position++;
+    instructions->position+=2;
 
     return result;
 }
