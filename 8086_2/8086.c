@@ -225,6 +225,7 @@ const struct
     {instruction_mov, "mov"},
     {instruction_push, "push"},
     {instruction_pop, "pop"},
+    {instruction_xchg, "xchg"},
     {instruction_in, "in"},
     {instruction_out, "out"},
     {instruction_xlat, "xlat"},
@@ -716,15 +717,16 @@ Instruction decodeRegMemToFromRegMem(bool dBit, bool wBit, uint8_t mod, uint8_t 
     return result;
 }
 
-Operand decodeImmediateOperand(bool wBit, Stream *instructions, State *state)
+Operand decodeImmediateOperand(bool wBit, bool sBit, Stream *instructions, State *state)
 {
 
     Operand result = {0};
 
     result.type = operand_type_immediate;
     result.payload.immediate.isRelativeOffset = false;
-    if (wBit)
+    if (wBit && !sBit)
     {
+
         result.payload.immediate.value = consumeTwoBytesAsSigned(instructions, state);
     }
     else
@@ -739,7 +741,19 @@ Instruction decodeImmediateToRegister(bool wBit, uint8_t reg, Stream *instructio
     Instruction result = {0};
 
     result.firstOperand = decodeRegOperand(wBit, reg, state);
-    result.secondOperand = decodeImmediateOperand(wBit, instructions, state);
+    result.secondOperand = decodeImmediateOperand(wBit, false, instructions, state);
+    result.operandCount = 2;
+    result.isWide = wBit;
+
+    return result;
+}
+
+Instruction decodeImmediateToRegisterMemory(bool wBit, bool sBit, uint8_t mod, uint8_t rm, Stream *instructions, State *state)
+{
+    Instruction result = {0};
+
+    result.firstOperand = decodeRmOperand(wBit, mod, rm, instructions, state);
+    result.secondOperand = decodeImmediateOperand(wBit, sBit, instructions, state);
     result.operandCount = 2;
     result.isWide = wBit;
 
@@ -797,10 +811,10 @@ int main(int argc, char *argv[])
 
         if (firstByte >= 0x88 && firstByte <= 0x8b)
         {
-            bool wBit = extractLowBits(firstByte, 1);
-            bool dBit = extractBits(firstByte, 1, 2);
             assert(instruction.type == instruction_none);
 
+            bool wBit = extractLowBits(firstByte, 1);
+            bool dBit = extractBits(firstByte, 1, 2);
             uint8_t secondByte = consumeByteAsUnsigned(&instructions, &state);
             uint8_t mod = extractBits(secondByte, 6, 8);
             uint8_t reg = extractBits(secondByte, 3, 6);
@@ -817,6 +831,67 @@ int main(int argc, char *argv[])
 
             instruction = decodeImmediateToRegister(wBit, reg, &instructions, &state);
             instruction.type = instruction_mov;
+        }
+
+        if (firstByte >= 0x00 && firstByte <= 0x03)
+        {
+            assert(instruction.type == instruction_none);
+
+            bool wBit = extractLowBits(firstByte, 1);
+            bool dBit = extractBits(firstByte, 1, 2);
+            uint8_t secondByte = consumeByteAsUnsigned(&instructions, &state);
+            uint8_t mod = extractBits(secondByte, 6, 8);
+            uint8_t reg = extractBits(secondByte, 3, 6);
+            uint8_t rm = extractLowBits(secondByte, 3);
+
+            instruction = decodeRegMemToFromRegMem(dBit, wBit, mod, reg, rm, &instructions, &state);
+            instruction.type = instruction_add;
+        }
+        if (firstByte >= 0x80 && firstByte <= 0x83)
+        {
+            assert(instruction.type == instruction_none);
+            uint8_t secondByte = consumeByteAsUnsigned(&instructions, &state);
+
+            bool wBit = extractBit(firstByte, 3);
+            bool sBit = extractBits(firstByte, 1, 2);
+            uint8_t rm = extractLowBits(firstByte, 3);
+            uint8_t mod = extractBits(secondByte, 6, 8);
+
+            instruction = decodeImmediateToRegisterMemory(wBit, sBit, mod, rm, &instructions, &state);
+
+            if (mod == 0x00)
+            {
+                instruction.type = instruction_add;
+            }
+            error(__FILE__, __LINE__, state.isNoWait, "Unknown instruction, first byte=%#X", firstByte);
+        }
+
+        if (firstByte >= 0x28 && firstByte <= 0x2b)
+        {
+            assert(instruction.type == instruction_none);
+            bool wBit = extractLowBits(firstByte, 1);
+            bool dBit = extractBits(firstByte, 1, 2);
+            uint8_t secondByte = consumeByteAsUnsigned(&instructions, &state);
+            uint8_t mod = extractBits(secondByte, 6, 8);
+            uint8_t reg = extractBits(secondByte, 3, 6);
+            uint8_t rm = extractLowBits(secondByte, 3);
+
+            instruction = decodeRegMemToFromRegMem(dBit, wBit, mod, reg, rm, &instructions, &state);
+            instruction.type = instruction_sub;
+        }
+
+        if (firstByte >= 0x38 && firstByte <= 0x3b)
+        {
+            assert(instruction.type == instruction_none);
+            bool wBit = extractLowBits(firstByte, 1);
+            bool dBit = extractBits(firstByte, 1, 2);
+            uint8_t secondByte = consumeByteAsUnsigned(&instructions, &state);
+            uint8_t mod = extractBits(secondByte, 6, 8);
+            uint8_t reg = extractBits(secondByte, 3, 6);
+            uint8_t rm = extractLowBits(secondByte, 3);
+
+            instruction = decodeRegMemToFromRegMem(dBit, wBit, mod, reg, rm, &instructions, &state);
+            instruction.type = instruction_cmp;
         }
 
         if (instruction.type == instruction_none)
