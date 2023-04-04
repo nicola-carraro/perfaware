@@ -883,7 +883,6 @@ int main(int argc, char *argv[])
         {
             assert(instruction.type == instruction_none);
             uint8_t secondByte = consumeByteAsUnsigned(&instructions, &state);
-
             bool wBit = extractLowBits(firstByte, 1);
             bool sBit = extractBits(firstByte, 1, 2);
             uint8_t mod = extractBits(secondByte, 6, 8);
