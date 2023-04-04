@@ -191,7 +191,7 @@ typedef enum
     instruction_jnl,
     instruction_jnle,
     instruction_jnb,
-    instruction_jnbe,
+    instruction_ja,
     instruction_jnp,
     instruction_jno,
     instruction_jns,
@@ -286,7 +286,7 @@ const struct
     {instruction_jnl, "jnl"},
     {instruction_jnle, "jnle"},
     {instruction_jnb, "jnne"},
-    {instruction_jnbe, "jnbe"},
+    {instruction_ja, "ja"},
     {instruction_jnp, "jnp"},
     {instruction_jno, "jno"},
     {instruction_jns, "jns"},
@@ -812,6 +812,16 @@ Instruction decodeImmediateFromAccumulator(bool wBit, State *state)
     return result;
 }
 
+Instruction decodeJump(State *state)
+{
+    Instruction result = {0};
+    result.operandCount = 1;
+    result.firstOperand.type = operand_type_immediate;
+    result.firstOperand.payload.immediate.value = consumeByteAsUnsigned(state);
+    result.firstOperand.payload.immediate.isRelativeOffset = true;
+    return result;
+}
+
 Instruction decodeInstruction(State *state)
 {
     uint8_t firstByte = consumeByteAsUnsigned(state);
@@ -913,6 +923,146 @@ Instruction decodeInstruction(State *state)
 
         instruction = decodeRegMemToFromRegMem(firstByte, state);
         instruction.type = instruction_cmp;
+    }
+    if (firstByte == 0x70)
+    {
+        assert(instruction.type == instruction_none);
+        decodeJump(state);
+        instruction.type = instruction_jo;
+    }
+    if (firstByte == 0x71)
+    {
+        assert(instruction.type == instruction_none);
+
+        decodeJump(state);
+        instruction.type = instruction_jno;
+    }
+    if (firstByte == 0x72)
+    {
+        assert(instruction.type == instruction_none);
+
+        decodeJump(state);
+        instruction.type = instruction_jb;
+    }
+    if (firstByte == 0x73)
+    {
+        assert(instruction.type == instruction_none);
+
+        decodeJump(state);
+        instruction.type = instruction_jnb;
+    }
+    if (firstByte == 0x74)
+    {
+        assert(instruction.type == instruction_none);
+
+        decodeJump(state);
+        instruction.type = instruction_je;
+    }
+    if (firstByte == 0x75)
+    {
+        assert(instruction.type == instruction_none);
+
+        decodeJump(state);
+        instruction.type = instruction_jnz;
+    }
+    if (firstByte == 0x76)
+    {
+        assert(instruction.type == instruction_none);
+
+        decodeJump(state);
+        instruction.type = instruction_jbe;
+    }
+    if (firstByte == 0x77)
+    {
+        assert(instruction.type == instruction_none);
+
+        decodeJump(state);
+        instruction.type = instruction_ja;
+    }
+    if (firstByte == 0x78)
+    {
+        assert(instruction.type == instruction_none);
+
+        decodeJump(state);
+        instruction.type = instruction_js;
+    }
+    if (firstByte == 0x79)
+    {
+        assert(instruction.type == instruction_none);
+
+        decodeJump(state);
+        instruction.type = instruction_jns;
+    }
+    if (firstByte == 0x7a)
+    {
+        assert(instruction.type == instruction_none);
+
+        decodeJump(state);
+        instruction.type = instruction_jp;
+    }
+    if (firstByte == 0x7b)
+    {
+        assert(instruction.type == instruction_none);
+
+        decodeJump(state);
+        instruction.type = instruction_jnp;
+    }
+    if (firstByte == 0x7c)
+    {
+        assert(instruction.type == instruction_none);
+
+        decodeJump(state);
+        instruction.type = instruction_jnz;
+    }
+    if (firstByte == 0x7d)
+    {
+        assert(instruction.type == instruction_none);
+
+        decodeJump(state);
+        instruction.type = instruction_jnl;
+    }
+    if (firstByte == 0x7e)
+    {
+        assert(instruction.type == instruction_none);
+
+        decodeJump(state);
+        instruction.type = instruction_jle;
+    }
+    if (firstByte == 0x7f)
+    {
+        assert(instruction.type == instruction_none);
+
+        decodeJump(state);
+        instruction.type = instruction_jnle;
+    }
+    if (firstByte == 0xe0)
+    {
+        assert(instruction.type == instruction_none);
+
+        decodeJump(state);
+        instruction.type = instruction_loopnz;
+    }
+    if (firstByte == 0xe1)
+    {
+        assert(instruction.type == instruction_none);
+
+        decodeJump(state);
+        instruction.type = instruction_loopz;
+    }
+    if (firstByte == 0xe2)
+    {
+        assert(instruction.type == instruction_none);
+
+        decodeJump(state);
+        instruction.type = instruction_loop;
+    }
+
+    if (firstByte == 0xe3)
+    {
+        assert(instruction.type == instruction_none);
+
+        decodeJump(state);
+        instruction.type = instruction_jcxz;
     }
 
     if (instruction.type == instruction_none)
