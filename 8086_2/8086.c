@@ -324,7 +324,7 @@ typedef struct
 {
     char *bytes;
     size_t size;
-    size_t position;
+    size_t stackPointer;
 } Stream;
 
 typedef struct
@@ -411,42 +411,42 @@ char *readFile(const char *filename, size_t *len, State *state)
 
 int16_t consumeTwoBytesAsSigned(State *state)
 {
-    if (state->instructions->position + 1 >= state->instructions->size)
+    if (state->instructions->stackPointer + 1 >= state->instructions->size)
     {
         error(__FILE__, __LINE__, state->isNoWait, "reached end of instuctions stream");
     }
 
-    int16_t result = *((int16_t *)(state->instructions->bytes + state->instructions->position));
+    int16_t result = *((int16_t *)(state->instructions->bytes + state->instructions->stackPointer));
 
-    state->instructions->position += 2;
+    state->instructions->stackPointer += 2;
 
     return result;
 }
 
 uint8_t consumeByteAsUnsigned(State *state)
 {
-    if (state->instructions->position >= state->instructions->size)
+    if (state->instructions->stackPointer >= state->instructions->size)
     {
         error(__FILE__, __LINE__, state->isNoWait, "reached end of instuctions stream");
     }
 
-    uint8_t result = state->instructions->bytes[state->instructions->position];
+    uint8_t result = state->instructions->bytes[state->instructions->stackPointer];
 
-    state->instructions->position++;
+    state->instructions->stackPointer++;
 
     return result;
 }
 
 int8_t consumeByteAsSigned(State *state)
 {
-    if (state->instructions->position >= state->instructions->size)
+    if (state->instructions->stackPointer >= state->instructions->size)
     {
         error(__FILE__, __LINE__, state->isNoWait, "reached end of instuctions stream");
     }
 
-    int8_t result = state->instructions->bytes[state->instructions->position];
+    int8_t result = state->instructions->bytes[state->instructions->stackPointer];
 
-    state->instructions->position++;
+    state->instructions->stackPointer++;
 
     return result;
 }
@@ -816,7 +816,7 @@ Instruction decodeInstruction(State *state)
 {
     uint8_t firstByte = consumeByteAsUnsigned(state);
 
-    size_t initialStackPointer = state->instructions->position;
+    size_t initialStackPointer = state->instructions->stackPointer;
 
     Instruction instruction = {0};
 
@@ -920,7 +920,7 @@ Instruction decodeInstruction(State *state)
         error(__FILE__, __LINE__, state->isNoWait, "Unknown instruction, first byte=%#X", firstByte);
     }
 
-    instruction.byteCount = state->instructions->position - initialStackPointer;
+    instruction.byteCount = state->instructions->stackPointer - initialStackPointer;
     return instruction;
 }
 
@@ -968,7 +968,7 @@ int main(int argc, char *argv[])
 
     state.instructions = &instructions;
 
-    while (instructions.position < instructions.size)
+    while (instructions.stackPointer < instructions.size)
     {
 
         Instruction instruction = decodeInstruction(&state);
