@@ -811,6 +811,115 @@ Instruction decodeImmediateFromAccumulator(bool wBit, State *state)
     return result;
 }
 
+Instruction decodeInstruction(State *state)
+{
+    uint8_t firstByte = consumeByteAsUnsigned(state);
+
+    Instruction instruction = {0};
+
+    if (firstByte >= 0x88 && firstByte <= 0x8b)
+    {
+        assert(instruction.type == instruction_none);
+
+        instruction = decodeRegMemToFromRegMem(firstByte, state);
+        instruction.type = instruction_mov;
+    }
+    if (firstByte >= 0xb0 && firstByte <= 0xbf)
+    {
+        assert(instruction.type == instruction_none);
+        bool wBit = extractBit(firstByte, 3);
+        uint8_t reg = extractLowBits(firstByte, 3);
+
+        instruction = decodeImmediateToRegister(wBit, reg, state);
+        instruction.type = instruction_mov;
+    }
+
+    if (firstByte >= 0x00 && firstByte <= 0x03)
+    {
+        assert(instruction.type == instruction_none);
+
+        instruction = decodeRegMemToFromRegMem(firstByte, state);
+        instruction.type = instruction_add;
+    }
+
+    if (firstByte >= 0x80 && firstByte <= 0x83)
+    {
+        assert(instruction.type == instruction_none);
+        uint8_t secondByte = consumeByteAsUnsigned(state);
+
+        instruction = decodeImmediateToRegisterMemory(firstByte, secondByte, state);
+
+        uint8_t reg = extractBits(secondByte, 3, 6);
+        switch (reg)
+        {
+        case 0x00:
+        {
+            instruction.type = instruction_add;
+        }
+        break;
+        case 0x05:
+        {
+            instruction.type = instruction_sub;
+        }
+        break;
+        case 0x07:
+        {
+            instruction.type = instruction_cmp;
+        }
+        break;
+        default:
+        {
+            error(__FILE__, __LINE__, state->isNoWait, "Unknown instruction, first byte=%#X, reg=%#X", firstByte, reg);
+        }
+        }
+    }
+    if (firstByte == 0x04 || firstByte == 0x05)
+    {
+        assert(instruction.type == instruction_none);
+        bool wBit = extractLowBits(firstByte, 1);
+        instruction = decodeImmediateFromAccumulator(wBit, state);
+
+        instruction.type = instruction_add;
+    }
+    if (firstByte >= 0x28 && firstByte <= 0x2b)
+    {
+        assert(instruction.type == instruction_none);
+
+        instruction = decodeRegMemToFromRegMem(firstByte, state);
+        instruction.type = instruction_sub;
+    }
+    if (firstByte == 0x2c || firstByte == 0x2d)
+    {
+        assert(instruction.type == instruction_none);
+        bool wBit = extractLowBits(firstByte, 1);
+        instruction = decodeImmediateFromAccumulator(wBit, state);
+
+        instruction.type = instruction_sub;
+    }
+    if (firstByte == 0x3c || firstByte == 0x3d)
+    {
+        assert(instruction.type == instruction_none);
+        bool wBit = extractLowBits(firstByte, 1);
+        instruction = decodeImmediateFromAccumulator(wBit, state);
+
+        instruction.type = instruction_cmp;
+    }
+    if (firstByte >= 0x38 && firstByte <= 0x3b)
+    {
+        assert(instruction.type == instruction_none);
+
+        instruction = decodeRegMemToFromRegMem(firstByte, state);
+        instruction.type = instruction_cmp;
+    }
+
+    if (instruction.type == instruction_none)
+    {
+        error(__FILE__, __LINE__, state->isNoWait, "Unknown instruction, first byte=%#X", firstByte);
+    }
+
+    return instruction;
+}
+
 bool cStringsEqual(char *left, char *right)
 {
     return strcmp(left, right) == 0;
@@ -857,110 +966,8 @@ int main(int argc, char *argv[])
 
     while (instructions.position < instructions.size)
     {
-        uint8_t firstByte = consumeByteAsUnsigned(&state);
 
-        Instruction instruction = {0};
-
-        if (firstByte >= 0x88 && firstByte <= 0x8b)
-        {
-            assert(instruction.type == instruction_none);
-
-            instruction = decodeRegMemToFromRegMem(firstByte, &state);
-            instruction.type = instruction_mov;
-        }
-        if (firstByte >= 0xb0 && firstByte <= 0xbf)
-        {
-            assert(instruction.type == instruction_none);
-            bool wBit = extractBit(firstByte, 3);
-            uint8_t reg = extractLowBits(firstByte, 3);
-
-            instruction = decodeImmediateToRegister(wBit, reg, &state);
-            instruction.type = instruction_mov;
-        }
-
-        if (firstByte >= 0x00 && firstByte <= 0x03)
-        {
-            assert(instruction.type == instruction_none);
-
-            instruction = decodeRegMemToFromRegMem(firstByte, &state);
-            instruction.type = instruction_add;
-        }
-
-        if (firstByte >= 0x80 && firstByte <= 0x83)
-        {
-            assert(instruction.type == instruction_none);
-            uint8_t secondByte = consumeByteAsUnsigned(&state);
-
-            instruction = decodeImmediateToRegisterMemory(firstByte, secondByte, &state);
-
-            uint8_t reg = extractBits(secondByte, 3, 6);
-            switch (reg)
-            {
-            case 0x00:
-            {
-                instruction.type = instruction_add;
-            }
-            break;
-            case 0x05:
-            {
-                instruction.type = instruction_sub;
-            }
-            break;
-            case 0x07:
-            {
-                instruction.type = instruction_cmp;
-            }
-            break;
-            default:
-            {
-                error(__FILE__, __LINE__, state.isNoWait, "Unknown instruction, first byte=%#X, reg=%#X", firstByte, reg);
-            }
-            }
-        }
-        if (firstByte == 0x04 || firstByte == 0x05)
-        {
-            assert(instruction.type == instruction_none);
-            bool wBit = extractLowBits(firstByte, 1);
-            instruction = decodeImmediateFromAccumulator(wBit, &state);
-
-            instruction.type = instruction_add;
-        }
-        if (firstByte >= 0x28 && firstByte <= 0x2b)
-        {
-            assert(instruction.type == instruction_none);
-
-            instruction = decodeRegMemToFromRegMem(firstByte, &state);
-            instruction.type = instruction_sub;
-        }
-        if (firstByte == 0x2c || firstByte == 0x2d)
-        {
-            assert(instruction.type == instruction_none);
-            bool wBit = extractLowBits(firstByte, 1);
-            instruction = decodeImmediateFromAccumulator(wBit, &state);
-
-            instruction.type = instruction_sub;
-        }
-        if (firstByte == 0x3c || firstByte == 0x3d)
-        {
-            assert(instruction.type == instruction_none);
-            bool wBit = extractLowBits(firstByte, 1);
-            instruction = decodeImmediateFromAccumulator(wBit, &state);
-
-            instruction.type = instruction_cmp;
-        }
-        if (firstByte >= 0x38 && firstByte <= 0x3b)
-        {
-            assert(instruction.type == instruction_none);
-
-            instruction = decodeRegMemToFromRegMem(firstByte, &state);
-            instruction.type = instruction_cmp;
-        }
-
-        if (instruction.type == instruction_none)
-        {
-            error(__FILE__, __LINE__, state.isNoWait, "Unknown instruction, first byte=%#X", firstByte);
-        }
-
+        Instruction instruction = decodeInstruction(&state);
         printInstruction(instruction);
 
         printf("\n");
