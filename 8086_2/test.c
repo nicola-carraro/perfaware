@@ -62,7 +62,7 @@ void testDecoding(const char *inputFile)
     assert(memcmp(inputData, outputData, inputFileSize) == 0);
 }
 
-void test41()
+void testCurrent()
 {
     system("nasm data/listing41.asm -o data/listing41");
     testDecoding("data/listing41");
@@ -74,6 +74,6 @@ int main(void)
     testDecoding("../computer_enhance/perfaware/part1/listing_0037_single_register_mov");
     testDecoding("../computer_enhance/perfaware/part1/listing_0038_many_register_mov");
     testDecoding("../computer_enhance/perfaware/part1/listing_0039_more_movs");
-    test41();
+    testCurrent();
     // testDecoding("../computer_enhance/perfaware/part1/listing_0041_add_sub_cmp_jnz");
 }

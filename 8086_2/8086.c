@@ -779,8 +779,13 @@ Instruction decodeImmediateToRegister(bool wBit, uint8_t reg, State *state)
     return result;
 }
 
-Instruction decodeImmediateToRegisterMemory(bool wBit, bool sBit, uint8_t mod, uint8_t rm, State *state)
+Instruction decodeImmediateToRegisterMemory(uint8_t firstByte, uint8_t secondByte, State *state)
 {
+    bool wBit = extractLowBits(firstByte, 1);
+    bool sBit = extractBits(firstByte, 1, 2);
+    uint8_t mod = extractBits(secondByte, 6, 8);
+    uint8_t rm = extractLowBits(secondByte, 3);
+
     Instruction result = {0};
 
     result.firstOperand = decodeRmOperand(wBit, mod, rm, state);
@@ -885,14 +890,10 @@ int main(int argc, char *argv[])
         {
             assert(instruction.type == instruction_none);
             uint8_t secondByte = consumeByteAsUnsigned(&state);
-            bool wBit = extractLowBits(firstByte, 1);
-            bool sBit = extractBits(firstByte, 1, 2);
-            uint8_t mod = extractBits(secondByte, 6, 8);
+
+            instruction = decodeImmediateToRegisterMemory(firstByte, secondByte, &state);
+
             uint8_t reg = extractBits(secondByte, 3, 6);
-            uint8_t rm = extractLowBits(secondByte, 3);
-
-            instruction = decodeImmediateToRegisterMemory(wBit, sBit, mod, rm, &state);
-
             switch (reg)
             {
             case 0x00:
@@ -903,6 +904,11 @@ int main(int argc, char *argv[])
             case 0x05:
             {
                 instruction.type = instruction_sub;
+            }
+            break;
+            case 0x07:
+            {
+                instruction.type = instruction_cmp;
             }
             break;
             default:
@@ -933,6 +939,14 @@ int main(int argc, char *argv[])
             instruction = decodeImmediateFromAccumulator(wBit, &state);
 
             instruction.type = instruction_sub;
+        }
+        if (firstByte == 0x3c || firstByte == 0x3d)
+        {
+            assert(instruction.type == instruction_none);
+            bool wBit = extractLowBits(firstByte, 1);
+            instruction = decodeImmediateFromAccumulator(wBit, &state);
+
+            instruction.type = instruction_cmp;
         }
         if (firstByte >= 0x38 && firstByte <= 0x3b)
         {
