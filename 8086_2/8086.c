@@ -332,8 +332,25 @@ typedef struct
 typedef struct
 {
     bool isNoWait;
+    bool execute;
     Stream *instructions;
+    union
+    {
+        int16_t x;
+        struct
+        {
+            int8_t l;
+            int8_t h;
+        } lh;
+    } registers[8];
 } State;
+
+typedef union
+{
+    bool isWide;
+    int16_t word;
+    int8_t byte;
+} OpValue;
 
 void printPressEnterToContinue(bool isNoWait)
 {
@@ -1083,6 +1100,105 @@ Instruction decodeInstruction(State *state)
     return instruction;
 }
 
+void executeInstruction(Instruction instruction, State *state)
+{
+
+    OpValue secondOperandValue = {0};
+    if (instruction.operandCount == 2)
+    {
+
+        if (instruction.firstOperand.type == operand_type_register)
+        {
+            printf("    ;");
+            printRegister(instruction.firstOperand.payload.reg);
+            printf(":%#x--->", state->registers[instruction.firstOperand.payload.reg.reg].x);
+        }
+        else
+        {
+            assert(false && "Unimplemented");
+        }
+
+        secondOperandValue.isWide = instruction.isWide;
+
+        if (instruction.secondOperand.type == operand_type_register)
+        {
+            assert(instruction.secondOperand.payload.reg.reg != reg_none);
+            if (instruction.secondOperand.payload.reg.portion == reg_portion_x)
+            {
+                secondOperandValue.word = state->registers[instruction.secondOperand.payload.reg.reg].x;
+            }
+            else if (instruction.secondOperand.payload.reg.portion == reg_portion_l)
+            {
+                secondOperandValue.word = state->registers[instruction.secondOperand.payload.reg.reg].lh.l;
+            }
+            else
+            {
+                secondOperandValue.word = state->registers[instruction.secondOperand.payload.reg.reg].lh.h;
+            }
+        }
+        else if (instruction.secondOperand.type == operand_type_immediate)
+        {
+            if (instruction.isWide)
+            {
+                secondOperandValue.word = instruction.secondOperand.payload.immediate.value;
+            }
+            else
+            {
+                secondOperandValue.byte = (int8_t)instruction.secondOperand.payload.immediate.value;
+            }
+        }
+        else
+        {
+            assert(false && "Unimplemented");
+        }
+    }
+    else
+    {
+        assert(false && "Unimplemented");
+    }
+
+    if (instruction.type == instruction_mov)
+    {
+        if (instruction.firstOperand.type == operand_type_register)
+        {
+            assert(instruction.firstOperand.payload.reg.reg != reg_none);
+            assert(instruction.operandCount == 2);
+            if (instruction.secondOperand.payload.reg.portion == reg_portion_x)
+            {
+                assert(secondOperandValue.isWide);
+                state->registers[instruction.firstOperand.payload.reg.reg].x = secondOperandValue.word;
+            }
+            else if (instruction.secondOperand.payload.reg.portion == reg_portion_l)
+            {
+                assert(!secondOperandValue.isWide);
+                state->registers[instruction.firstOperand.payload.reg.reg].lh.l = secondOperandValue.byte;
+            }
+            else
+            {
+                assert(!secondOperandValue.isWide);
+                state->registers[instruction.firstOperand.payload.reg.reg].lh.h = secondOperandValue.byte;
+            }
+
+            printf("%#x", state->registers[instruction.firstOperand.payload.reg.reg].x);
+        }
+
+        else
+        {
+            assert(false && "Unimplemented");
+        }
+    }
+    else
+    {
+        assert(instruction.type == InstructionNames[instruction.type].type);
+        error(
+            __FILE__,
+            __LINE__,
+            state->isNoWait,
+            "Unimplemented instruction: %s",
+            InstructionNames[instruction.type].name);
+    }
+}
+
 bool cStringsEqual(char *left, char *right)
 {
     return strcmp(left, right) == 0;
@@ -1106,6 +1222,10 @@ int main(int argc, char *argv[])
         if (cStringsEqual(argument, "--nowait"))
         {
             state.isNoWait = true;
+        }
+        else if (cStringsEqual(argument, "--execute"))
+        {
+            state.execute = true;
         }
         else if (fileName == NULL)
         {
@@ -1132,6 +1252,11 @@ int main(int argc, char *argv[])
 
         Instruction instruction = decodeInstruction(&state);
         printInstruction(instruction);
+
+        if (state.execute)
+        {
+            executeInstruction(instruction, &state);
+        }
 
         printf("\n");
     }
