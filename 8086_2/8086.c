@@ -329,6 +329,7 @@ typedef struct
     uint16_t stackPointer;
 } Stream;
 
+#define REGISTER_COUNT 8
 typedef struct
 {
     bool isNoWait;
@@ -342,7 +343,7 @@ typedef struct
             int8_t l;
             int8_t h;
         } lh;
-    } registers[8];
+    } registers[REGISTER_COUNT];
 } State;
 
 typedef union
@@ -1100,56 +1101,37 @@ Instruction decodeInstruction(State *state)
     return instruction;
 }
 
-void executeInstruction(Instruction instruction, State *state)
+OpValue getSource(Operand source, bool isWide, State *state)
 {
+    OpValue result = {0};
+    printf("    ;");
 
-    OpValue secondOperandValue = {0};
-    if (instruction.operandCount == 2)
+    if (source.type == operand_type_register)
     {
-
-        if (instruction.firstOperand.type == operand_type_register)
+        printRegister(source.payload.reg);
+        assert(source.payload.reg.reg != reg_none);
+        if (source.payload.reg.portion == reg_portion_x)
         {
-            printf("    ;");
-            printRegister(instruction.firstOperand.payload.reg);
-            printf(":%#x--->", state->registers[instruction.firstOperand.payload.reg.reg].x);
+            result.word = state->registers[source.payload.reg.reg].x;
+        }
+        else if (source.payload.reg.portion == reg_portion_l)
+        {
+            result.word = state->registers[source.payload.reg.reg].lh.l;
         }
         else
         {
-            assert(false && "Unimplemented");
+            result.word = state->registers[source.payload.reg.reg].lh.h;
         }
-
-        secondOperandValue.isWide = instruction.isWide;
-
-        if (instruction.secondOperand.type == operand_type_register)
+    }
+    else if (source.type == operand_type_immediate)
+    {
+        if (isWide)
         {
-            assert(instruction.secondOperand.payload.reg.reg != reg_none);
-            if (instruction.secondOperand.payload.reg.portion == reg_portion_x)
-            {
-                secondOperandValue.word = state->registers[instruction.secondOperand.payload.reg.reg].x;
-            }
-            else if (instruction.secondOperand.payload.reg.portion == reg_portion_l)
-            {
-                secondOperandValue.word = state->registers[instruction.secondOperand.payload.reg.reg].lh.l;
-            }
-            else
-            {
-                secondOperandValue.word = state->registers[instruction.secondOperand.payload.reg.reg].lh.h;
-            }
-        }
-        else if (instruction.secondOperand.type == operand_type_immediate)
-        {
-            if (instruction.isWide)
-            {
-                secondOperandValue.word = instruction.secondOperand.payload.immediate.value;
-            }
-            else
-            {
-                secondOperandValue.byte = (int8_t)instruction.secondOperand.payload.immediate.value;
-            }
+            result.word = source.payload.immediate.value;
         }
         else
         {
-            assert(false && "Unimplemented");
+            result.byte = (int8_t)source.payload.immediate.value;
         }
     }
     else
@@ -1157,35 +1139,53 @@ void executeInstruction(Instruction instruction, State *state)
         assert(false && "Unimplemented");
     }
 
-    if (instruction.type == instruction_mov)
+    return result;
+}
+
+void setDestination(Operand destination, OpValue sourceValue, State *state)
+{
+
+    if (destination.type == operand_type_register)
     {
-        if (instruction.firstOperand.type == operand_type_register)
+
+        printf("   %#x--->", state->registers[destination.payload.reg.reg].x);
+
+        assert(destination.payload.reg.reg != reg_none);
+        if (destination.payload.reg.portion == reg_portion_x)
         {
-            assert(instruction.firstOperand.payload.reg.reg != reg_none);
-            assert(instruction.operandCount == 2);
-            if (instruction.secondOperand.payload.reg.portion == reg_portion_x)
-            {
-                assert(secondOperandValue.isWide);
-                state->registers[instruction.firstOperand.payload.reg.reg].x = secondOperandValue.word;
-            }
-            else if (instruction.secondOperand.payload.reg.portion == reg_portion_l)
-            {
-                assert(!secondOperandValue.isWide);
-                state->registers[instruction.firstOperand.payload.reg.reg].lh.l = secondOperandValue.byte;
-            }
-            else
-            {
-                assert(!secondOperandValue.isWide);
-                state->registers[instruction.firstOperand.payload.reg.reg].lh.h = secondOperandValue.byte;
-            }
-
-            printf("%#x", state->registers[instruction.firstOperand.payload.reg.reg].x);
+            assert(sourceValue.isWide);
+            state->registers[destination.payload.reg.reg].x = sourceValue.word;
         }
-
+        else if (destination.payload.reg.portion == reg_portion_l)
+        {
+            assert(!sourceValue.isWide);
+            state->registers[destination.payload.reg.reg].lh.l = sourceValue.byte;
+        }
         else
         {
-            assert(false && "Unimplemented");
+            assert(!sourceValue.isWide);
+            state->registers[destination.payload.reg.reg].lh.h = sourceValue.byte;
         }
+
+        printf("%#x", state->registers[destination.payload.reg.reg].x);
+    }
+
+    else
+    {
+        assert(false && "Unimplemented");
+    }
+}
+
+void executeInstruction(Instruction instruction, State *state)
+{
+
+    if (instruction.type == instruction_mov)
+    {
+        assert(instruction.operandCount == 2);
+
+        OpValue sourceValue = getSource(instruction.secondOperand, instruction.isWide, state);
+
+        setDestination(instruction.firstOperand, sourceValue, state);
     }
     else
     {
@@ -1259,6 +1259,14 @@ int main(int argc, char *argv[])
         }
 
         printf("\n");
+    }
+
+    if (state.execute)
+    {
+        for (size_t regIndex = 0; regIndex < REGISTER_COUNT; regIndex++)
+        {
+            printf("; %s = %d\n", RegisterInfos[regIndex].name, state.registers[regIndex].x);
+        }
     }
 
     printPressEnterToContinue(state.isNoWait);
