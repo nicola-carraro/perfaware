@@ -1104,11 +1104,9 @@ Instruction decodeInstruction(State *state)
 OpValue getSource(Operand source, bool isWide, State *state)
 {
     OpValue result = {0};
-    printf("    ;");
 
     if (source.type == operand_type_register)
     {
-        printRegister(source.payload.reg);
         assert(source.payload.reg.reg != reg_none);
         if (source.payload.reg.portion == reg_portion_x)
         {
@@ -1147,6 +1145,9 @@ void setDestination(Operand destination, OpValue sourceValue, State *state)
 
     if (destination.type == operand_type_register)
     {
+        printf("\t;");
+
+        printRegister(destination.payload.reg);
 
         printf("   %#x--->", state->registers[destination.payload.reg.reg].x);
 
@@ -1265,7 +1266,7 @@ int main(int argc, char *argv[])
     {
         for (size_t regIndex = 0; regIndex < REGISTER_COUNT; regIndex++)
         {
-            printf("; %s = %d\n", RegisterInfos[regIndex].name, state.registers[regIndex].x);
+            printf("; %s = \t%d\n", RegisterInfos[regIndex].name, state.registers[regIndex].x);
         }
     }
 
