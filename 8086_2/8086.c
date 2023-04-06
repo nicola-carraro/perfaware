@@ -1101,7 +1101,7 @@ Instruction decodeInstruction(State *state)
     return instruction;
 }
 
-OpValue getSource(Operand source, bool isWide, State *state)
+OpValue getOperandValue(Operand source, bool isWide, State *state)
 {
     OpValue result = {0};
 
@@ -1177,6 +1177,24 @@ void setDestination(Operand destination, OpValue sourceValue, State *state)
     }
 }
 
+OpValue opValueSubtract(OpValue left, OpValue right)
+{
+    assert(left.isWide == right.isWide);
+
+    OpValue result = {0};
+    result.isWide = left.isWide;
+    if (result.isWide)
+    {
+        result.word = left.word - right.word;
+    }
+    else
+    {
+        result.byte = left.byte - right.byte;
+    }
+
+    return result;
+}
+
 void executeInstruction(Instruction instruction, State *state)
 {
 
@@ -1184,9 +1202,16 @@ void executeInstruction(Instruction instruction, State *state)
     {
         assert(instruction.operandCount == 2);
 
-        OpValue sourceValue = getSource(instruction.secondOperand, instruction.isWide, state);
+        OpValue sourceValue = getOperandValue(instruction.secondOperand, instruction.isWide, state);
 
         setDestination(instruction.firstOperand, sourceValue, state);
+    }
+    else if (instruction.type == instruction_sub)
+    {
+        OpValue sourceValue = getOperandValue(instruction.secondOperand, instruction.isWide, state);
+        OpValue destinationValue = getOperandValue(instruction.firstOperand, instruction.isWide, state);
+
+        setDestination(instruction.firstOperand, opValueSubtract(sourceValue, destinationValue), state);
     }
     else
     {
