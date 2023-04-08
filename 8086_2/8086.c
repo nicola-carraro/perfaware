@@ -217,6 +217,34 @@ typedef enum
     instruction_seg
 } InstructionType;
 
+typedef enum
+{
+    flag_trap,
+    flag_direction,
+    flag_interrupt_enable,
+    flag_overflow,
+    flag_sign,
+    flag_zero,
+    flag_aux_carry,
+    flag_parity,
+    flag_carry
+} Flag;
+
+struct
+{
+    Flag flag;
+    char name;
+} FlagNames[] =
+    {{flag_trap, 'T'},
+     {flag_direction, 'D'},
+     {flag_interrupt_enable, 'I'},
+     {flag_overflow, 'O'},
+     {flag_sign, 'S'},
+     {flag_zero, 'Z'},
+     {flag_aux_carry, 'A'},
+     {flag_parity, 'P'},
+     {flag_carry, 'C'}};
+
 const struct
 {
     InstructionType type;
@@ -330,6 +358,8 @@ typedef struct
 } Stream;
 
 #define REGISTER_COUNT 8
+#define FLAG_COUNT 9
+
 typedef struct
 {
     bool isNoWait;
@@ -345,11 +375,7 @@ typedef struct
         } lh;
     } registers[REGISTER_COUNT];
 
-    struct
-    {
-        bool zeroFlag;
-        bool signFlag;
-    } flags;
+    bool flags[FLAG_COUNT];
 } State;
 
 typedef union
@@ -764,7 +790,6 @@ void printInstruction(Instruction instruction, State before, State after)
             location.portion = reg_portion_x;
             printRegister(location);
             printf("   %#x--->%#x", before.registers[reg].x, after.registers[reg].x);
-        
         }
     }
 }
@@ -1247,7 +1272,7 @@ void executeInstruction(Instruction instruction, State *state)
 
         if (isZero(result))
         {
-            state->flags.zeroFlag = true;
+            state->flags[flag_zero] = true;
         }
     }
     else
