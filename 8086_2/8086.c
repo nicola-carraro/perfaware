@@ -819,6 +819,7 @@ void printInstruction(Instruction instruction, State before, State after)
     }
     if (isFlagChange)
     {
+        printf(" Flags:");
         printFlags(&before);
         printf("->");
         printFlags(&after);
@@ -1273,11 +1274,24 @@ bool isZero(OpValue value)
 
     if (value.isWide)
     {
-        return value.value.byte == 0;
+        return value.value.word == 0;
     }
     else
     {
-        return value.value.word == 0;
+        return value.value.byte == 0;
+    }
+}
+
+bool isNegative(OpValue value)
+{
+
+    if (value.isWide)
+    {
+        return value.value.word < 0;
+    }
+    else
+    {
+        return value.value.byte < 0;
     }
 }
 
@@ -1304,6 +1318,11 @@ void executeInstruction(Instruction instruction, State *state)
         if (isZero(result))
         {
             state->flags[flag_zero] = true;
+        }
+
+        if (isNegative(result))
+        {
+            state->flags[flag_sign] = true;
         }
     }
     else
