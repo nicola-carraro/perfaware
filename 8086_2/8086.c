@@ -1337,6 +1337,27 @@ void updateSignFlag(OpValue result, State *state)
     }
 }
 
+void updateParityFlag(OpValue result, State *state)
+{
+    size_t setCount = 0;
+    for (uint8_t bitIndex = 0; bitIndex < 8; bitIndex++)
+    {
+        bool isSet = extractBit(result.value.byte, bitIndex);
+        if (isSet)
+        {
+            setCount++;
+        }
+    }
+    if (setCount % 2 == 0)
+    {
+        state->flags[flag_parity] = true;
+    }
+    else
+    {
+        state->flags[flag_parity] = false;
+    }
+}
+
 void executeInstruction(Instruction instruction, State *state)
 {
 
@@ -1359,6 +1380,7 @@ void executeInstruction(Instruction instruction, State *state)
 
         updateZeroFlag(result, state);
         updateSignFlag(result, state);
+        updateParityFlag(result, state);
     }
     else if (instruction.type == instruction_cmp)
     {
@@ -1370,6 +1392,7 @@ void executeInstruction(Instruction instruction, State *state)
 
         updateZeroFlag(result, state);
         updateSignFlag(result, state);
+        updateParityFlag(result, state);
     }
     else if (instruction.type == instruction_add)
     {
@@ -1382,6 +1405,7 @@ void executeInstruction(Instruction instruction, State *state)
 
         updateZeroFlag(result, state);
         updateSignFlag(result, state);
+        updateParityFlag(result, state);
     }
 
     else
