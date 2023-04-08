@@ -233,17 +233,17 @@ typedef enum
 struct
 {
     Flag flag;
-    char name;
+    char name[2];
 } FlagNames[] =
-    {{flag_trap, 'T'},
-     {flag_direction, 'D'},
-     {flag_interrupt_enable, 'I'},
-     {flag_overflow, 'O'},
-     {flag_sign, 'S'},
-     {flag_zero, 'Z'},
-     {flag_aux_carry, 'A'},
-     {flag_parity, 'P'},
-     {flag_carry, 'C'}};
+    {{flag_trap, "T"},
+     {flag_direction, "D"},
+     {flag_interrupt_enable, "I"},
+     {flag_overflow, "O"},
+     {flag_sign, "S"},
+     {flag_zero, "Z"},
+     {flag_aux_carry, "A"},
+     {flag_parity, "P"},
+     {flag_carry, "C"}};
 
 const struct
 {
@@ -378,11 +378,15 @@ typedef struct
     bool flags[FLAG_COUNT];
 } State;
 
-typedef union
+typedef struct
 {
     bool isWide;
-    int16_t word;
-    int8_t byte;
+    union
+    {
+        int16_t word;
+        int8_t byte;
+    } value;
+
 } OpValue;
 
 void printPressEnterToContinue(bool isNoWait)
@@ -736,6 +740,17 @@ void printOperand(Operand operand, uint16_t instructionByteCount)
     }
 }
 
+void printFlags(State *state)
+{
+    for (Flag flag = 0; flag < FLAG_COUNT; flag++)
+    {
+        if (state->flags[flag])
+        {
+            printf(FlagNames[flag].name);
+        }
+    }
+}
+
 void printInstruction(Instruction instruction, State before, State after)
 {
     assert(instruction.type != instruction_none);
@@ -792,12 +807,28 @@ void printInstruction(Instruction instruction, State before, State after)
             printf("   %#x--->%#x", before.registers[reg].x, after.registers[reg].x);
         }
     }
+
+    bool isFlagChange = false;
+    for (Flag flag = 0; flag < FLAG_COUNT; flag++)
+    {
+        if (before.flags[flag] != after.flags[flag])
+        {
+            isFlagChange = true;
+            break;
+        }
+    }
+    if (isFlagChange)
+    {
+        printFlags(&before);
+        printf("->");
+        printFlags(&after);
+    }
 }
 
 Instruction decodeRegMemToFromRegMem(uint8_t firstByte, State *state)
 {
-    bool wBit = extractLowBits(firstByte, 1);
-    bool dBit = extractBits(firstByte, 1, 2);
+    bool wBit = extractBit(firstByte, 0);
+    bool dBit = extractBit(firstByte, 1);
     uint8_t secondByte = consumeByteAsUnsigned(state);
     uint8_t mod = extractBits(secondByte, 6, 8);
     uint8_t reg = extractBits(secondByte, 3, 6);
@@ -857,8 +888,8 @@ Instruction decodeImmediateToRegister(bool wBit, uint8_t reg, State *state)
 
 Instruction decodeImmediateToRegisterMemory(uint8_t firstByte, uint8_t secondByte, State *state)
 {
-    bool wBit = extractLowBits(firstByte, 1);
-    bool sBit = extractBits(firstByte, 1, 2);
+    bool wBit = extractBit(firstByte, 0);
+    bool sBit = extractBit(firstByte, 1);
     uint8_t mod = extractBits(secondByte, 6, 8);
     uint8_t rm = extractLowBits(secondByte, 3);
 
@@ -980,7 +1011,7 @@ Instruction decodeInstruction(State *state)
     if (firstByte == 0x2c || firstByte == 0x2d)
     {
         assert(instruction.type == instruction_none);
-        bool wBit = extractLowBits(firstByte, 1);
+        bool wBit = extractBit(firstByte, 0);
         instruction = decodeImmediateFromAccumulator(wBit, state);
 
         instruction.type = instruction_sub;
@@ -988,7 +1019,7 @@ Instruction decodeInstruction(State *state)
     if (firstByte == 0x3c || firstByte == 0x3d)
     {
         assert(instruction.type == instruction_none);
-        bool wBit = extractLowBits(firstByte, 1);
+        bool wBit = extractBit(firstByte, 0);
         instruction = decodeImmediateFromAccumulator(wBit, state);
 
         instruction.type = instruction_cmp;
@@ -1159,26 +1190,26 @@ OpValue getOperandValue(Operand source, bool isWide, State *state)
         assert(source.payload.reg.reg != reg_none);
         if (source.payload.reg.portion == reg_portion_x)
         {
-            result.word = state->registers[source.payload.reg.reg].x;
+            result.value.word = state->registers[source.payload.reg.reg].x;
         }
         else if (source.payload.reg.portion == reg_portion_l)
         {
-            result.word = state->registers[source.payload.reg.reg].lh.l;
+            result.value.word = state->registers[source.payload.reg.reg].lh.l;
         }
         else
         {
-            result.word = state->registers[source.payload.reg.reg].lh.h;
+            result.value.word = state->registers[source.payload.reg.reg].lh.h;
         }
     }
     else if (source.type == operand_type_immediate)
     {
         if (isWide)
         {
-            result.word = source.payload.immediate.value;
+            result.value.word = source.payload.immediate.value;
         }
         else
         {
-            result.byte = (int8_t)source.payload.immediate.value;
+            result.value.byte = (int8_t)source.payload.immediate.value;
         }
     }
     else
@@ -1199,17 +1230,17 @@ void setDestination(Operand destination, OpValue sourceValue, State *state)
         if (destination.payload.reg.portion == reg_portion_x)
         {
             assert(sourceValue.isWide);
-            state->registers[destination.payload.reg.reg].x = sourceValue.word;
+            state->registers[destination.payload.reg.reg].x = sourceValue.value.word;
         }
         else if (destination.payload.reg.portion == reg_portion_l)
         {
             assert(!sourceValue.isWide);
-            state->registers[destination.payload.reg.reg].lh.l = sourceValue.byte;
+            state->registers[destination.payload.reg.reg].lh.l = sourceValue.value.byte;
         }
         else
         {
             assert(!sourceValue.isWide);
-            state->registers[destination.payload.reg.reg].lh.h = sourceValue.byte;
+            state->registers[destination.payload.reg.reg].lh.h = sourceValue.value.byte;
         }
     }
 
@@ -1221,17 +1252,17 @@ void setDestination(Operand destination, OpValue sourceValue, State *state)
 
 OpValue opValueSubtract(OpValue left, OpValue right)
 {
-    assert(!left.isWide == !right.isWide);
+    assert(left.isWide == right.isWide);
 
     OpValue result = {0};
-    left.isWide = left.isWide;
+    result.isWide = left.isWide;
     if (result.isWide)
     {
-        result.word = left.word - right.word;
+        result.value.word = left.value.word - right.value.word;
     }
     else
     {
-        result.byte = left.byte - right.byte;
+        result.value.byte = left.value.byte - right.value.byte;
     }
 
     return result;
@@ -1242,11 +1273,11 @@ bool isZero(OpValue value)
 
     if (value.isWide)
     {
-        return value.byte == 0;
+        return value.value.byte == 0;
     }
     else
     {
-        return value.word == 0;
+        return value.value.word == 0;
     }
 }
 
