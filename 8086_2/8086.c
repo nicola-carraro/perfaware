@@ -1269,6 +1269,24 @@ OpValue opValueSubtract(OpValue left, OpValue right)
     return result;
 }
 
+OpValue opValueAdd(OpValue left, OpValue right)
+{
+    assert(left.isWide == right.isWide);
+
+    OpValue result = {0};
+    result.isWide = left.isWide;
+    if (result.isWide)
+    {
+        result.value.word = left.value.word + right.value.word;
+    }
+    else
+    {
+        result.value.byte = left.value.byte + right.value.byte;
+    }
+
+    return result;
+}
+
 bool isZero(OpValue value)
 {
 
@@ -1349,6 +1367,18 @@ void executeInstruction(Instruction instruction, State *state)
         OpValue right = getOperandValue(instruction.secondOperand, instruction.isWide, state);
 
         OpValue result = opValueSubtract(left, right);
+
+        updateZeroFlag(result, state);
+        updateSignFlag(result, state);
+    }
+    else if (instruction.type == instruction_add)
+    {
+        OpValue left = getOperandValue(instruction.firstOperand, instruction.isWide, state);
+
+        OpValue right = getOperandValue(instruction.secondOperand, instruction.isWide, state);
+
+        OpValue result = opValueAdd(left, right);
+        setDestination(instruction.firstOperand, result, state);
 
         updateZeroFlag(result, state);
         updateSignFlag(result, state);
