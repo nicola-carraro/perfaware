@@ -1295,6 +1295,30 @@ bool isNegative(OpValue value)
     }
 }
 
+void updateZeroFlag(OpValue result, State *state)
+{
+    if (isZero(result))
+    {
+        state->flags[flag_zero] = true;
+    }
+    else
+    {
+        state->flags[flag_zero] = false;
+    }
+}
+
+void updateSignFlag(OpValue result, State *state)
+{
+    if (isNegative(result))
+    {
+        state->flags[flag_sign] = true;
+    }
+    else
+    {
+        state->flags[flag_sign] = false;
+    }
+}
+
 void executeInstruction(Instruction instruction, State *state)
 {
 
@@ -1315,16 +1339,21 @@ void executeInstruction(Instruction instruction, State *state)
 
         setDestination(instruction.firstOperand, result, state);
 
-        if (isZero(result))
-        {
-            state->flags[flag_zero] = true;
-        }
-
-        if (isNegative(result))
-        {
-            state->flags[flag_sign] = true;
-        }
+        updateZeroFlag(result, state);
+        updateSignFlag(result, state);
     }
+    else if (instruction.type == instruction_cmp)
+    {
+        OpValue left = getOperandValue(instruction.firstOperand, instruction.isWide, state);
+
+        OpValue right = getOperandValue(instruction.secondOperand, instruction.isWide, state);
+
+        OpValue result = opValueSubtract(left, right);
+
+        updateZeroFlag(result, state);
+        updateSignFlag(result, state);
+    }
+
     else
     {
         assert(instruction.type == InstructionNames[instruction.type].type);
