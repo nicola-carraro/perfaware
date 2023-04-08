@@ -80,4 +80,5 @@ int main(void)
     testDecoding("../computer_enhance/perfaware/part1/listing_0046_add_sub_cmp");
     testDecoding("../computer_enhance/perfaware/part1/listing_0046_add_sub_cmp");
     testDecoding("../computer_enhance/perfaware/part1/listing_0048_ip_register");
+    testDecoding("../computer_enhance/perfaware/part1/listing_0049_conditional_jumps");
 }

@@ -1408,7 +1408,13 @@ void executeInstruction(Instruction instruction, State *state)
         updateSignFlag(result, state);
         updateParityFlag(result, state);
     }
-
+    else if (instruction.type == instruction_jnz)
+    {
+        if (!state->flags[flag_zero])
+        {
+            state->instructions.instructionPointer += instruction.firstOperand.payload.immediate.value;
+        }
+    }
     else
     {
         assert(instruction.type == InstructionNames[instruction.type].type);
