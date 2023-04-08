@@ -1467,6 +1467,9 @@ int main(int argc, char *argv[])
         {
             printf("; %s = \t%d\n", RegisterInfos[regIndex].name, state.registers[regIndex].x);
         }
+
+        printf("Flags:");
+        printFlags(&state);
     }
 
     printPressEnterToContinue(state.isNoWait);
