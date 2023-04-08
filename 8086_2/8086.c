@@ -364,7 +364,7 @@ typedef struct
 {
     bool isNoWait;
     bool execute;
-    Stream *instructions;
+    Stream instructions;
     union
     {
         int16_t x;
@@ -467,42 +467,42 @@ char *readFile(const char *filename, size_t *len, State *state)
 
 int16_t consumeTwoBytesAsSigned(State *state)
 {
-    if (state->instructions->instructionPointer + 1 >= state->instructions->size)
+    if (state->instructions.instructionPointer + 1 >= state->instructions.size)
     {
         error(__FILE__, __LINE__, state->isNoWait, "reached end of instuctions stream");
     }
 
-    int16_t result = *((int16_t *)(state->instructions->bytes + state->instructions->instructionPointer));
+    int16_t result = *((int16_t *)(state->instructions.bytes + state->instructions.instructionPointer));
 
-    state->instructions->instructionPointer += 2;
+    state->instructions.instructionPointer += 2;
 
     return result;
 }
 
 uint8_t consumeByteAsUnsigned(State *state)
 {
-    if (state->instructions->instructionPointer >= state->instructions->size)
+    if (state->instructions.instructionPointer >= state->instructions.size)
     {
         error(__FILE__, __LINE__, state->isNoWait, "reached end of instuctions stream");
     }
 
-    uint8_t result = state->instructions->bytes[state->instructions->instructionPointer];
+    uint8_t result = state->instructions.bytes[state->instructions.instructionPointer];
 
-    state->instructions->instructionPointer++;
+    state->instructions.instructionPointer++;
 
     return result;
 }
 
 int8_t consumeByteAsSigned(State *state)
 {
-    if (state->instructions->instructionPointer >= state->instructions->size)
+    if (state->instructions.instructionPointer >= state->instructions.size)
     {
         error(__FILE__, __LINE__, state->isNoWait, "reached end of instuctions stream");
     }
 
-    int8_t result = state->instructions->bytes[state->instructions->instructionPointer];
+    int8_t result = state->instructions.bytes[state->instructions.instructionPointer];
 
-    state->instructions->instructionPointer++;
+    state->instructions.instructionPointer++;
 
     return result;
 }
@@ -824,6 +824,7 @@ void printInstruction(Instruction instruction, State before, State after)
         printf("->");
         printFlags(&after);
     }
+    printf(" ip:%#x--->%#x", before.instructions.instructionPointer, after.instructions.instructionPointer);
 }
 
 Instruction decodeRegMemToFromRegMem(uint8_t firstByte, State *state)
@@ -932,7 +933,7 @@ Instruction decodeJump(State *state)
 Instruction decodeInstruction(State *state)
 {
 
-    uint16_t initialStackPointer = state->instructions->instructionPointer;
+    uint16_t initialStackPointer = state->instructions.instructionPointer;
 
     uint8_t firstByte = consumeByteAsUnsigned(state);
 
@@ -1176,7 +1177,7 @@ Instruction decodeInstruction(State *state)
         error(__FILE__, __LINE__, state->isNoWait, "Unknown instruction, first byte=%#X", firstByte);
     }
 
-    instruction.byteCount = state->instructions->instructionPointer - initialStackPointer;
+    instruction.byteCount = state->instructions.instructionPointer - initialStackPointer;
     return instruction;
 }
 
@@ -1461,19 +1462,16 @@ int main(int argc, char *argv[])
     size_t fileSize;
 
     char *bytes = readFile(fileName, &fileSize, &state);
+    state.instructions.bytes = bytes;
+    state.instructions.size = fileSize;
 
-    Stream instructions = {0};
-    instructions.bytes = bytes;
-    instructions.size = fileSize;
-
-    state.instructions = &instructions;
-
-    while (instructions.instructionPointer < instructions.size)
+    while (state.instructions.instructionPointer < state.instructions.size)
     {
+
+        State before = state;
 
         Instruction instruction = decodeInstruction(&state);
 
-        State before = state;
         if (state.execute)
         {
             executeInstruction(instruction, &state);
@@ -1489,8 +1487,10 @@ int main(int argc, char *argv[])
     {
         for (size_t regIndex = 0; regIndex < REGISTER_COUNT; regIndex++)
         {
-            printf("; %s = \t%d\n", RegisterInfos[regIndex].name, state.registers[regIndex].x);
+            printf("; %s = \t%#x\n", RegisterInfos[regIndex].name, state.registers[regIndex].x);
         }
+
+        printf("; ip = \t %#x\n", state.instructions.instructionPointer);
 
         printf("Flags:");
         printFlags(&state);
