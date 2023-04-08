@@ -326,7 +326,7 @@ typedef struct
 {
     char *bytes;
     size_t size;
-    uint16_t stackPointer;
+    uint16_t instructionPointer;
 } Stream;
 
 #define REGISTER_COUNT 8
@@ -344,6 +344,12 @@ typedef struct
             int8_t h;
         } lh;
     } registers[REGISTER_COUNT];
+
+    struct
+    {
+        bool zeroFlag;
+        bool signFlag;
+    } flags;
 } State;
 
 typedef union
@@ -431,42 +437,42 @@ char *readFile(const char *filename, size_t *len, State *state)
 
 int16_t consumeTwoBytesAsSigned(State *state)
 {
-    if (state->instructions->stackPointer + 1 >= state->instructions->size)
+    if (state->instructions->instructionPointer + 1 >= state->instructions->size)
     {
         error(__FILE__, __LINE__, state->isNoWait, "reached end of instuctions stream");
     }
 
-    int16_t result = *((int16_t *)(state->instructions->bytes + state->instructions->stackPointer));
+    int16_t result = *((int16_t *)(state->instructions->bytes + state->instructions->instructionPointer));
 
-    state->instructions->stackPointer += 2;
+    state->instructions->instructionPointer += 2;
 
     return result;
 }
 
 uint8_t consumeByteAsUnsigned(State *state)
 {
-    if (state->instructions->stackPointer >= state->instructions->size)
+    if (state->instructions->instructionPointer >= state->instructions->size)
     {
         error(__FILE__, __LINE__, state->isNoWait, "reached end of instuctions stream");
     }
 
-    uint8_t result = state->instructions->bytes[state->instructions->stackPointer];
+    uint8_t result = state->instructions->bytes[state->instructions->instructionPointer];
 
-    state->instructions->stackPointer++;
+    state->instructions->instructionPointer++;
 
     return result;
 }
 
 int8_t consumeByteAsSigned(State *state)
 {
-    if (state->instructions->stackPointer >= state->instructions->size)
+    if (state->instructions->instructionPointer >= state->instructions->size)
     {
         error(__FILE__, __LINE__, state->isNoWait, "reached end of instuctions stream");
     }
 
-    int8_t result = state->instructions->bytes[state->instructions->stackPointer];
+    int8_t result = state->instructions->bytes[state->instructions->instructionPointer];
 
-    state->instructions->stackPointer++;
+    state->instructions->instructionPointer++;
 
     return result;
 }
@@ -704,7 +710,7 @@ void printOperand(Operand operand, uint16_t instructionByteCount)
     }
 }
 
-void printInstruction(Instruction instruction)
+void printInstruction(Instruction instruction, State before, State after)
 {
     assert(instruction.type != instruction_none);
     assert(InstructionNames[instruction.type].type == instruction.type);
@@ -746,6 +752,21 @@ void printInstruction(Instruction instruction)
         printf(",");
         printOperand(instruction.secondOperand, instruction.byteCount);
     }
+
+    printf("\t;");
+
+    for (Register reg = 0; reg < REG_COUNT; reg++)
+    {
+        if (before.registers[reg].x != after.registers[reg].x)
+        {
+            RegisterLocation location;
+            location.reg = reg;
+            location.portion = reg_portion_x;
+            printRegister(location);
+            printf("   %#x--->%#x", before.registers[reg].x, after.registers[reg].x);
+        
+        }
+    }
 }
 
 Instruction decodeRegMemToFromRegMem(uint8_t firstByte, State *state)
@@ -762,6 +783,7 @@ Instruction decodeRegMemToFromRegMem(uint8_t firstByte, State *state)
     result.operandCount = 2;
     Operand rmOperand = decodeRmOperand(wBit, mod, rm, state);
     Operand regOperand = decodeRegOperand(wBit, reg, state);
+    result.isWide = wBit;
 
     if (dBit)
     {
@@ -853,7 +875,7 @@ Instruction decodeJump(State *state)
 Instruction decodeInstruction(State *state)
 {
 
-    uint16_t initialStackPointer = state->instructions->stackPointer;
+    uint16_t initialStackPointer = state->instructions->instructionPointer;
 
     uint8_t firstByte = consumeByteAsUnsigned(state);
 
@@ -1097,13 +1119,15 @@ Instruction decodeInstruction(State *state)
         error(__FILE__, __LINE__, state->isNoWait, "Unknown instruction, first byte=%#X", firstByte);
     }
 
-    instruction.byteCount = state->instructions->stackPointer - initialStackPointer;
+    instruction.byteCount = state->instructions->instructionPointer - initialStackPointer;
     return instruction;
 }
 
 OpValue getOperandValue(Operand source, bool isWide, State *state)
 {
     OpValue result = {0};
+
+    result.isWide = isWide;
 
     if (source.type == operand_type_register)
     {
@@ -1145,11 +1169,6 @@ void setDestination(Operand destination, OpValue sourceValue, State *state)
 
     if (destination.type == operand_type_register)
     {
-        printf("\t;");
-
-        printRegister(destination.payload.reg);
-
-        printf("   %#x--->", state->registers[destination.payload.reg.reg].x);
 
         assert(destination.payload.reg.reg != reg_none);
         if (destination.payload.reg.portion == reg_portion_x)
@@ -1167,8 +1186,6 @@ void setDestination(Operand destination, OpValue sourceValue, State *state)
             assert(!sourceValue.isWide);
             state->registers[destination.payload.reg.reg].lh.h = sourceValue.byte;
         }
-
-        printf("%#x", state->registers[destination.payload.reg.reg].x);
     }
 
     else
@@ -1179,10 +1196,10 @@ void setDestination(Operand destination, OpValue sourceValue, State *state)
 
 OpValue opValueSubtract(OpValue left, OpValue right)
 {
-    assert(left.isWide == right.isWide);
+    assert(!left.isWide == !right.isWide);
 
     OpValue result = {0};
-    result.isWide = left.isWide;
+    left.isWide = left.isWide;
     if (result.isWide)
     {
         result.word = left.word - right.word;
@@ -1193,6 +1210,19 @@ OpValue opValueSubtract(OpValue left, OpValue right)
     }
 
     return result;
+}
+
+bool isZero(OpValue value)
+{
+
+    if (value.isWide)
+    {
+        return value.byte == 0;
+    }
+    else
+    {
+        return value.word == 0;
+    }
 }
 
 void executeInstruction(Instruction instruction, State *state)
@@ -1211,7 +1241,14 @@ void executeInstruction(Instruction instruction, State *state)
         OpValue sourceValue = getOperandValue(instruction.secondOperand, instruction.isWide, state);
         OpValue destinationValue = getOperandValue(instruction.firstOperand, instruction.isWide, state);
 
-        setDestination(instruction.firstOperand, opValueSubtract(sourceValue, destinationValue), state);
+        OpValue result = opValueSubtract(destinationValue, sourceValue);
+
+        setDestination(instruction.firstOperand, result, state);
+
+        if (isZero(result))
+        {
+            state->flags.zeroFlag = true;
+        }
     }
     else
     {
@@ -1273,16 +1310,19 @@ int main(int argc, char *argv[])
 
     state.instructions = &instructions;
 
-    while (instructions.stackPointer < instructions.size)
+    while (instructions.instructionPointer < instructions.size)
     {
 
         Instruction instruction = decodeInstruction(&state);
-        printInstruction(instruction);
 
+        State before = state;
         if (state.execute)
         {
             executeInstruction(instruction, &state);
         }
+        State after = state;
+
+        printInstruction(instruction, before, after);
 
         printf("\n");
     }
