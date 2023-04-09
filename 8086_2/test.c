@@ -64,8 +64,8 @@ void testDecoding(const char *inputFile)
 
 void testCurrent()
 {
-    system("nasm data/listing41.asm -o data/listing41");
-    testDecoding("data/listing41");
+    system("nasm data/listing42.asm -o data/listing42");
+    testDecoding("data/listing42");
 }
 
 int main(void)
@@ -81,4 +81,5 @@ int main(void)
     testDecoding("../computer_enhance/perfaware/part1/listing_0046_add_sub_cmp");
     testDecoding("../computer_enhance/perfaware/part1/listing_0048_ip_register");
     testDecoding("../computer_enhance/perfaware/part1/listing_0049_conditional_jumps");
+    testCurrent();
 }
