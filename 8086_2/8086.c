@@ -20,6 +20,10 @@ typedef enum
     reg_bp,
     reg_si,
     reg_di,
+    reg_cs,
+    reg_ds,
+    reg_ss,
+    reg_es,
     reg_none
 } Register;
 
@@ -81,7 +85,12 @@ const struct
     {reg_sp, "sp", false},
     {reg_bp, "bp", false},
     {reg_si, "si", false},
-    {reg_di, "di", false}};
+    {reg_di, "di", false},
+    {reg_cs, "cs", false},
+    {reg_ds, "ds", false},
+    {reg_ss, "ss", false},
+    {reg_es, "es", false},
+};
 
 const struct
 {
@@ -994,6 +1003,46 @@ Instruction decodeRegister(uint8_t firstByte, State *state)
     return result;
 }
 
+Instruction decodeSegmentRegister(uint8_t firstByte)
+{
+    Instruction result = {0};
+    result.operandCount = 1;
+    result.firstOperand.type = operand_type_register;
+    result.firstOperand.payload.reg.portion = reg_portion_x;
+    uint8_t reg = extractBits(firstByte, 3, 5);
+
+    switch (reg)
+    {
+    case 0x0:
+    {
+        result.firstOperand.payload.reg.reg = reg_es;
+    }
+    break;
+    case 0x1:
+    {
+        result.firstOperand.payload.reg.reg = reg_cs;
+    }
+    break;
+    case 0x2:
+    {
+        result.firstOperand.payload.reg.reg = reg_ss;
+    }
+    break;
+    case 0x3:
+    {
+        result.firstOperand.payload.reg.reg = reg_ds;
+    }
+    break;
+    default:
+    {
+        assert(false);
+    }
+    }
+
+    result.isWide = true;
+    return result;
+}
+
 Instruction decodeJump(State *state)
 {
     Instruction result = {0};
@@ -1087,6 +1136,12 @@ Instruction decodeInstruction(State *state)
     {
         assert(instruction.type == instruction_none);
         instruction = decodeRegister(firstByte, state);
+        instruction.type = instruction_push;
+    }
+    if (extractBits(firstByte, 5, 8) == 0x0 && extractLowBits(firstByte, 3) == 0x06)
+    {
+        assert(instruction.type == instruction_none);
+        instruction = decodeSegmentRegister(firstByte);
         instruction.type = instruction_push;
     }
     if (firstByte >= 0x00 && firstByte <= 0x03)
