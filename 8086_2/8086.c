@@ -1578,7 +1578,9 @@ Instruction decodeInstruction(State *state)
         instruction.operandCount = 2;
         if (vBit)
         {
-            assert(false && "Unimplemented");
+            instruction.secondOperand.type = operand_type_register;
+            instruction.secondOperand.payload.reg.reg = reg_c;
+            instruction.secondOperand.payload.reg.portion = reg_portion_l;
         }
         else
         {
