@@ -1212,6 +1212,13 @@ Instruction decodeInstruction(State *state)
 
             instruction.type = instruction_inc;
         }
+        else if (reg == 0x1)
+        {
+            bool wBit = extractBit(firstByte, 0);
+            instruction = decodeRegisterMemory(secondByte, wBit, state);
+
+            instruction.type = instruction_dec;
+        }
     }
     if (firstByte >= 0x50 && firstByte <= 0x57)
     {
@@ -1466,6 +1473,13 @@ Instruction decodeInstruction(State *state)
         instruction = decodeImmediateFromAccumulator(wBit, state);
 
         instruction.type = instruction_sbb;
+    }
+
+    if (firstByte >= 0x48 && firstByte <= 0x4f)
+    {
+        assert(instruction.type == instruction_none);
+        instruction = decodeRegister(firstByte, true, state);
+        instruction.type = instruction_dec;
     }
 
     if (firstByte == 0x3c || firstByte == 0x3d)
