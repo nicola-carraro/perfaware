@@ -1482,22 +1482,34 @@ Instruction decodeInstruction(State *state)
         instruction = decodeRegister(firstByte, true, state);
         instruction.type = instruction_dec;
     }
-
     if (firstByte == 0xf6 || firstByte == 0xf7)
     {
         assert(instruction.type == instruction_none);
         uint8_t secondByte = consumeByteAsUnsigned(state);
         uint8_t reg = extractBits(secondByte, 3, 6);
 
-        if (reg == 0x3)
+        switch (reg)
+        {
+        case 0x3:
         {
             bool wBit = extractBit(firstByte, 0);
             instruction = decodeRegisterMemory(secondByte, wBit, state);
 
             instruction.type = instruction_neg;
         }
+        break;
+        }
     }
-
+    if (firstByte == 0x3f)
+    {
+        assert(instruction.type == instruction_none);
+        instruction.type = instruction_aas;
+    }
+    if (firstByte == 0x2f)
+    {
+        assert(instruction.type == instruction_none);
+        instruction.type = instruction_das;
+    }
     if (firstByte == 0x3c || firstByte == 0x3d)
     {
         assert(instruction.type == instruction_none);
