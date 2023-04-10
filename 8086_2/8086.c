@@ -836,10 +836,8 @@ void printInstruction(Instruction instruction, State before, State after)
     printf(" ip:%#x--->%#x", before.instructions.instructionPointer, after.instructions.instructionPointer);
 }
 
-Instruction decodeBetweenRegAndMem(uint8_t firstByte, bool dBit, State *state)
+Instruction decodeRegMemToFromRegMem(bool dBit, bool wBit, State *state)
 {
-    bool wBit = extractBit(firstByte, 0);
-
     uint8_t secondByte = consumeByteAsUnsigned(state);
     uint8_t mod = extractBits(secondByte, 6, 8);
     uint8_t reg = extractBits(secondByte, 3, 6);
@@ -864,17 +862,6 @@ Instruction decodeBetweenRegAndMem(uint8_t firstByte, bool dBit, State *state)
     }
 
     return result;
-}
-
-Instruction decodeMemoryToRegister(int8_t firstByte, State *state)
-{
-    return decodeBetweenRegAndMem(firstByte, true, state);
-}
-
-Instruction decodeRegMemToFromRegMem(uint8_t firstByte, State *state)
-{
-    bool dBit = extractBit(firstByte, 1);
-    return decodeBetweenRegAndMem(firstByte, dBit, state);
 }
 
 Operand decodeImmediateOperand(bool wBit, bool sBit, State *state)
@@ -1155,8 +1142,10 @@ Instruction decodeInstruction(State *state)
     if (firstByte >= 0x88 && firstByte <= 0x8b)
     {
         assert(instruction.type == instruction_none);
+        bool wBit = extractBit(firstByte, 0);
+        bool dBit = extractBit(firstByte, 1);
 
-        instruction = decodeRegMemToFromRegMem(firstByte, state);
+        instruction = decodeRegMemToFromRegMem(dBit, wBit, state);
         instruction.type = instruction_mov;
     }
     if (firstByte == 0xc6 || firstByte == 0xc7)
@@ -1269,7 +1258,9 @@ Instruction decodeInstruction(State *state)
     if (firstByte == 0x86 || firstByte == 0x87)
     {
         assert(instruction.type == instruction_none);
-        instruction = decodeRegMemToFromRegMem(firstByte, state);
+        bool wBit = extractBit(firstByte, 0);
+        bool dBit = extractBit(firstByte, 1);
+        instruction = decodeRegMemToFromRegMem(dBit, wBit, state);
         instruction.type = instruction_xchg;
     }
     if (firstByte >= 0x90 && firstByte <= 0x97)
@@ -1310,19 +1301,20 @@ Instruction decodeInstruction(State *state)
     if (firstByte == 0x8d)
     {
         assert(instruction.type == instruction_none);
-        instruction = decodeMemoryToRegister(firstByte, state);
+        instruction = decodeRegMemToFromRegMem(true, true, state);
         instruction.type = instruction_lea;
     }
     if (firstByte == 0xc5)
     {
         assert(instruction.type == instruction_none);
-        instruction = decodeMemoryToRegister(firstByte, state);
+
+        instruction = decodeRegMemToFromRegMem(true, true, state);
         instruction.type = instruction_lds;
     }
     if (firstByte == 0xc4)
     {
         assert(instruction.type == instruction_none);
-        instruction = decodeMemoryToRegister(firstByte, state);
+        instruction = decodeRegMemToFromRegMem(true, true, state);
         instruction.type = instruction_les;
     }
     if (firstByte == 0x9f)
@@ -1348,8 +1340,9 @@ Instruction decodeInstruction(State *state)
     if (firstByte >= 0x00 && firstByte <= 0x03)
     {
         assert(instruction.type == instruction_none);
-
-        instruction = decodeRegMemToFromRegMem(firstByte, state);
+        bool wBit = extractBit(firstByte, 0);
+        bool dBit = extractBit(firstByte, 1);
+        instruction = decodeRegMemToFromRegMem(dBit, wBit, state);
 
         instruction.type = instruction_add;
     }
@@ -1398,7 +1391,9 @@ Instruction decodeInstruction(State *state)
     {
         assert(instruction.type == instruction_none);
 
-        instruction = decodeRegMemToFromRegMem(firstByte, state);
+        bool wBit = extractBit(firstByte, 0);
+        bool dBit = extractBit(firstByte, 1);
+        instruction = decodeRegMemToFromRegMem(dBit, wBit, state);
         instruction.type = instruction_sub;
     }
     if (firstByte == 0x2c || firstByte == 0x2d)
@@ -1421,7 +1416,9 @@ Instruction decodeInstruction(State *state)
     {
         assert(instruction.type == instruction_none);
 
-        instruction = decodeRegMemToFromRegMem(firstByte, state);
+        bool wBit = extractBit(firstByte, 0);
+        bool dBit = extractBit(firstByte, 1);
+        instruction = decodeRegMemToFromRegMem(dBit, wBit, state);
         instruction.type = instruction_cmp;
     }
     if (firstByte == 0x74)
