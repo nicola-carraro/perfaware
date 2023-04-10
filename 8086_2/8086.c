@@ -1325,6 +1325,26 @@ Instruction decodeInstruction(State *state)
         instruction = decodeMemoryToRegister(firstByte, state);
         instruction.type = instruction_les;
     }
+    if (firstByte == 0x9f)
+    {
+        assert(instruction.type == instruction_none);
+        instruction.type = instruction_lahf;
+    }
+    if (firstByte == 0x9e)
+    {
+        assert(instruction.type == instruction_none);
+        instruction.type = instruction_sahf;
+    }
+    if (firstByte == 0x9c)
+    {
+        assert(instruction.type == instruction_none);
+        instruction.type = instruction_pushf;
+    }
+    if (firstByte == 0x9d)
+    {
+        assert(instruction.type == instruction_none);
+        instruction.type = instruction_popf;
+    }
     if (firstByte >= 0x00 && firstByte <= 0x03)
     {
         assert(instruction.type == instruction_none);
