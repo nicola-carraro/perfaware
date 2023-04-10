@@ -1506,6 +1506,16 @@ Instruction decodeInstruction(State *state)
             instruction.type = instruction_imul;
         }
         break;
+        case 0x6:
+        {
+            instruction.type = instruction_div;
+        }
+        break;
+        case 0x7:
+        {
+            instruction.type = instruction_idiv;
+        }
+        break;
         }
     }
     if (firstByte == 0x3f)
