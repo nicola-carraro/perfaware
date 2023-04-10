@@ -1374,6 +1374,11 @@ Instruction decodeInstruction(State *state)
             instruction.type = instruction_sbb;
         }
         break;
+        case 0x04:
+        {
+            instruction.type = instruction_and;
+        }
+        break;
         case 0x05:
         {
             instruction.type = instruction_sub;
@@ -1398,7 +1403,6 @@ Instruction decodeInstruction(State *state)
 
         instruction.type = instruction_add;
     }
-
     if (firstByte >= 0x10 && firstByte <= 0x13)
     {
         assert(instruction.type == instruction_none);
@@ -1616,13 +1620,30 @@ Instruction decodeInstruction(State *state)
             instruction.type = instruction_shr;
         }
         break;
-
         case 0x7:
         {
             instruction.type = instruction_sar;
         }
         break;
         }
+    }
+
+    if (firstByte >= 0x20 && firstByte <= 0x23)
+    {
+        assert(instruction.type == instruction_none);
+        bool wBit = extractBit(firstByte, 0);
+        bool dBit = extractBit(firstByte, 1);
+        instruction = decodeRegMemToFromRegMem(dBit, wBit, state);
+
+        instruction.type = instruction_and;
+    }
+    if (firstByte == 0x24 || firstByte == 0x25)
+    {
+        assert(instruction.type == instruction_none);
+        bool wBit = extractLowBits(firstByte, 1);
+        instruction = decodeImmediateFromAccumulator(wBit, state);
+
+        instruction.type = instruction_and;
     }
 
     if (firstByte == 0x3c || firstByte == 0x3d)
