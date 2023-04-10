@@ -1319,6 +1319,12 @@ Instruction decodeInstruction(State *state)
         instruction = decodeMemoryToRegister(firstByte, state);
         instruction.type = instruction_lds;
     }
+    if (firstByte == 0xc4)
+    {
+        assert(instruction.type == instruction_none);
+        instruction = decodeMemoryToRegister(firstByte, state);
+        instruction.type = instruction_les;
+    }
     if (firstByte >= 0x00 && firstByte <= 0x03)
     {
         assert(instruction.type == instruction_none);
