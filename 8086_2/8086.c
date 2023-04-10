@@ -158,6 +158,7 @@ typedef enum
     instruction_sub,
     instruction_sbb,
     instruction_dec,
+    instruction_neg,
     instruction_cmp,
     instruction_aas,
     instruction_das,
@@ -282,6 +283,7 @@ const struct
     {instruction_sub, "sub"},
     {instruction_sbb, "sbb"},
     {instruction_dec, "dec"},
+    {instruction_neg, "neg"},
     {instruction_cmp, "cmp"},
     {instruction_aas, "aas"},
     {instruction_das, "das"},
@@ -1474,12 +1476,26 @@ Instruction decodeInstruction(State *state)
 
         instruction.type = instruction_sbb;
     }
-
     if (firstByte >= 0x48 && firstByte <= 0x4f)
     {
         assert(instruction.type == instruction_none);
         instruction = decodeRegister(firstByte, true, state);
         instruction.type = instruction_dec;
+    }
+
+    if (firstByte == 0xf6 || firstByte == 0xf7)
+    {
+        assert(instruction.type == instruction_none);
+        uint8_t secondByte = consumeByteAsUnsigned(state);
+        uint8_t reg = extractBits(secondByte, 3, 6);
+
+        if (reg == 0x3)
+        {
+            bool wBit = extractBit(firstByte, 0);
+            instruction = decodeRegisterMemory(secondByte, wBit, state);
+
+            instruction.type = instruction_neg;
+        }
     }
 
     if (firstByte == 0x3c || firstByte == 0x3d)
