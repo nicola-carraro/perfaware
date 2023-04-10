@@ -1487,15 +1487,23 @@ Instruction decodeInstruction(State *state)
         assert(instruction.type == instruction_none);
         uint8_t secondByte = consumeByteAsUnsigned(state);
         uint8_t reg = extractBits(secondByte, 3, 6);
-
+        bool wBit = extractBit(firstByte, 0);
+        instruction = decodeRegisterMemory(secondByte, wBit, state);
         switch (reg)
         {
         case 0x3:
         {
-            bool wBit = extractBit(firstByte, 0);
-            instruction = decodeRegisterMemory(secondByte, wBit, state);
-
             instruction.type = instruction_neg;
+        }
+        break;
+        case 0x4:
+        {
+            instruction.type = instruction_mul;
+        }
+        break;
+        case 0x5:
+        {
+            instruction.type = instruction_imul;
         }
         break;
         }
