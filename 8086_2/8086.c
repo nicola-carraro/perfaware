@@ -177,6 +177,7 @@ typedef enum
     instruction_rol,
     instruction_ror,
     instruction_rcl,
+    instruction_rcr,
     instruction_and,
     instruction_test,
     instruction_or,
@@ -302,6 +303,7 @@ const struct
     {instruction_rol, "rol"},
     {instruction_ror, "ror"},
     {instruction_rcl, "rcl"},
+    {instruction_rcr, "rcr"},
     {instruction_and, "and"},
     {instruction_test, "test"},
     {instruction_or, "or"},
@@ -1561,6 +1563,72 @@ Instruction decodeInstruction(State *state)
         assert(instruction.type == instruction_none);
         instruction.type = instruction_cwd;
     }
+
+    if (firstByte >= 0xd0 && firstByte <= 0xd3)
+    {
+        assert(instruction.type == instruction_none);
+        uint8_t secondByte = consumeByteAsUnsigned(state);
+        uint8_t mod = extractBits(secondByte, 6, 8);
+        uint8_t reg = extractBits(secondByte, 3, 6);
+        uint8_t rm = extractLowBits(secondByte, 3);
+
+        bool wBit = extractBit(firstByte, 0);
+        bool vBit = extractBit(firstByte, 1);
+        instruction.isWide = wBit;
+        instruction.operandCount = 2;
+        if (vBit)
+        {
+            assert(false && "Unimplemented");
+        }
+        else
+        {
+            instruction.secondOperand.type = operand_type_immediate;
+            instruction.secondOperand.payload.immediate.value = 1;
+        }
+
+        instruction.firstOperand = decodeRmOperand(wBit, mod, rm, state);
+
+        switch (reg)
+        {
+        case 0x0:
+        {
+            instruction.type = instruction_rol;
+        }
+        break;
+        case 0x1:
+        {
+            instruction.type = instruction_ror;
+        }
+        break;
+        case 0x2:
+        {
+            instruction.type = instruction_rcl;
+        }
+        break;
+        case 0x3:
+        {
+            instruction.type = instruction_rcr;
+        }
+        break;
+        case 0x4:
+        {
+            instruction.type = instruction_shl;
+        }
+        break;
+        case 0x5:
+        {
+            instruction.type = instruction_shr;
+        }
+        break;
+
+        case 0x7:
+        {
+            instruction.type = instruction_sar;
+        }
+        break;
+        }
+    }
+
     if (firstByte == 0x3c || firstByte == 0x3d)
     {
         assert(instruction.type == instruction_none);
