@@ -1043,7 +1043,24 @@ Instruction decodeSegmentRegister(uint8_t firstByte)
     return result;
 }
 
-Instruction decodeJump(State *state)
+Instruction decodeRegisterWithAccumulator(uint8_t firstByte, State *state)
+{
+    Instruction result = {0};
+    result.operandCount = 2;
+    result.isWide = true;
+
+    uint8_t reg = extractLowBits(firstByte, 3);
+    result.firstOperand = decodeRegOperand(true, reg, state);
+
+    result.secondOperand.type = operand_type_register;
+    result.secondOperand.payload.reg.reg = reg_a;
+    result.secondOperand.payload.reg.portion = reg_portion_x;
+
+    return result;
+}
+
+Instruction
+decodeJump(State *state)
 {
     Instruction result = {0};
     result.operandCount = 1;
@@ -1175,6 +1192,18 @@ Instruction decodeInstruction(State *state)
             error(__FILE__, __LINE__, state->isNoWait, "Unknown instruction, first byte=%#X, reg=%#X", firstByte, reg);
         }
         }
+    }
+    if (firstByte == 0x86 || firstByte == 0x87)
+    {
+        assert(instruction.type == instruction_none);
+        instruction = decodeRegMemToFromRegMem(firstByte, state);
+        instruction.type = instruction_xchg;
+    }
+    if (firstByte >= 0x90 && firstByte <= 0x97)
+    {
+        assert(instruction.type == instruction_none);
+        instruction = decodeRegisterWithAccumulator(firstByte, state);
+        instruction.type = instruction_xchg;
     }
     if (firstByte >= 0x00 && firstByte <= 0x03)
     {
