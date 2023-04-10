@@ -1411,14 +1411,22 @@ Instruction decodeInstruction(State *state)
 
         instruction.type = instruction_adc;
     }
-
     if (firstByte >= 0x40 && firstByte <= 0x47)
     {
         assert(instruction.type == instruction_none);
         instruction = decodeRegister(firstByte, true, state);
         instruction.type = instruction_inc;
     }
-
+    if (firstByte == 0x37)
+    {
+        assert(instruction.type == instruction_none);
+        instruction.type = instruction_aaa;
+    }
+    if (firstByte == 0x27)
+    {
+        assert(instruction.type == instruction_none);
+        instruction.type = instruction_daa;
+    }
     if (firstByte >= 0x28 && firstByte <= 0x2b)
     {
         assert(instruction.type == instruction_none);
