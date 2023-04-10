@@ -836,10 +836,10 @@ void printInstruction(Instruction instruction, State before, State after)
     printf(" ip:%#x--->%#x", before.instructions.instructionPointer, after.instructions.instructionPointer);
 }
 
-Instruction decodeRegMemToFromRegMem(uint8_t firstByte, State *state)
+Instruction decodeBetweenRegAndMem(uint8_t firstByte, bool dBit, State *state)
 {
     bool wBit = extractBit(firstByte, 0);
-    bool dBit = extractBit(firstByte, 1);
+
     uint8_t secondByte = consumeByteAsUnsigned(state);
     uint8_t mod = extractBits(secondByte, 6, 8);
     uint8_t reg = extractBits(secondByte, 3, 6);
@@ -864,6 +864,17 @@ Instruction decodeRegMemToFromRegMem(uint8_t firstByte, State *state)
     }
 
     return result;
+}
+
+Instruction decodeMemoryToRegister(int8_t firstByte, State *state)
+{
+    return decodeBetweenRegAndMem(firstByte, true, state);
+}
+
+Instruction decodeRegMemToFromRegMem(uint8_t firstByte, State *state)
+{
+    bool dBit = extractBit(firstByte, 1);
+    return decodeBetweenRegAndMem(firstByte, dBit, state);
 }
 
 Operand decodeImmediateOperand(bool wBit, bool sBit, State *state)
@@ -1295,6 +1306,12 @@ Instruction decodeInstruction(State *state)
     {
         assert(instruction.type == instruction_none);
         instruction.type = instruction_xlat;
+    }
+    if (firstByte == 0x8d)
+    {
+        assert(instruction.type == instruction_none);
+        instruction = decodeMemoryToRegister(firstByte, state);
+        instruction.type = instruction_lea;
     }
     if (firstByte >= 0x00 && firstByte <= 0x03)
     {
