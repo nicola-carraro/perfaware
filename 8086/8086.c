@@ -1,693 +1,524 @@
 #define _CRT_SECURE_NO_WARNINGS
 
 #include "stdio.h"
+#include "stdlib.h"
+#include "stdarg.h"
+#include "stdbool.h"
 #include "stdint.h"
 #include "assert.h"
-#include "stdbool.h"
 #include "string.h"
 
-char *getRegisterName(uint8_t registerIndex, bool wBit);
-
-void decodeDirectAddressing(FILE *input, char *dest);
-
-uint8_t readUnsignedByte(FILE *input);
-
-#define ARR_COUNT(a) (sizeof(a) / sizeof(*a))
+#define REG_COUNT 8
 
 typedef enum
 {
-    none,
-    mov,
-    push,
-    pop,
-    xchg,
-    in,
-    out,
-    xlat,
-    lea,
-    lds,
-    les,
-    lahf,
-    sahf,
-    pushf,
-    popf,
-    add,
-    adc,
-    inc,
-    aaa,
-    daa,
-    sub,
-    sbb,
-    dec,
-    cmp,
-    aas,
-    das,
-    mul,
-    imul,
-    aam,
-    div,
-    idiv,
-    aad,
-    cbw,
-    cwd,
-    not,
-    shl,
-    shr,
-    sar,
-    rol,
-    ror,
-    rcl,
-    and,
-    test,
-    or
-    ,
-    xor,
-    rep,
-    movs,
-    cmps,
-    scas,
-    lods,
-    stds,
-    call,
-    jmp,
-    ret,
-    je,
-    jle,
-    jb,
-    jbe,
-    jp,
-    jo,
-    js,
-    jnz,
-    jnl,
-    jnle,
-    jnb,
-    jnbe,
-    jnp,
-    jno,
-    jns,
-    loop,
-    loopz,
-    loopnz,
-    jcxz,
-    interrupt,
-    into,
-    iret,
-    clc,
-    cmc,
-    stc,
-    cld,
-    std,
-    cli,
-    sti,
-    hlt,
-    wait,
-    esc,
-    lock,
-    segment
-} InstructionType;
-
-typedef enum
-{
-    ax,
-    bx,
-    cx,
-    dx,
-    sp,
-    bp,
-    si,
-    di
+    reg_a,
+    reg_b,
+    reg_c,
+    reg_d,
+    reg_sp,
+    reg_bp,
+    reg_si,
+    reg_di,
+    reg_cs,
+    reg_ds,
+    reg_ss,
+    reg_es,
+    reg_none
 } Register;
+
+typedef enum
+{
+    reg_portion_x,
+    reg_portion_l,
+    reg_portion_h
+} RegisterPortion;
 
 typedef struct
 {
     Register reg;
-    char name[3];
-} RegName;
-
-char regNames[8][3] = {
-    "ax",
-    "bx",
-    "cx",
-    "dx",
-    "sp",
-    "bp",
-    "si",
-    "di"};
-
-typedef enum
-{
-    low,
-    high,
-    x
-} RegisterUsage;
+    RegisterPortion portion;
+} RegisterLocation;
 
 typedef struct
 {
-    uint8_t rem;
-    struct
-    {
-        Register reg;
-        RegisterUsage usage;
-    } w0Reg;
-    struct
-    {
-        Register reg;
-        RegisterUsage usage;
-    } w1Reg;
-    struct
-    {
-        struct mem
-        {
-            Register reg;
-            RegisterUsage usage;
-        } mem[2];
-        uint8_t regCount;
-    } mem;
-} OperandValue;
+    RegisterLocation reg0;
+    RegisterLocation reg1;
+    uint8_t regCount;
+    int16_t displacement;
+} MemoryLocation;
 
-OperandValue operandValues[] = {
-    {0, {ax, low}, {ax, x}, {{{bx, x}, {si, x}}, 2}},
-    {1, {cx, low}, {cx, x}, {{{bx, x}, {di, x}}, 2}},
-    {2, {dx, low}, {dx, x}, {{{bp, x}, {si, x}}, 2}},
-    {3, {bx, low}, {bx, low}, {{{bp, x}, {di, x}}, 2}},
-    {4, {ax, high}, {sp, x}, {{{si, x}}, 1}},
-    {5, {cx, high}, {bp, x}, {{{di, x}}, 1}},
-    {6, {dx, high}, {si, x}, {{{bp, x}}, 1}},
-    {7, {bx, high}, {di, x}, {{{bx, x}}, 1}}};
+typedef struct
+{
+    int16_t value;
+    bool isRelativeOffset;
+} Immediate;
 
 typedef enum
 {
-    memoryOperand,
-    registerOperand,
-    immediateOperand
+    operand_type_memory,
+    operand_type_register,
+    operand_type_immediate
 } OperandType;
 
 typedef struct
 {
     OperandType type;
-    Register reg;
-    RegisterUsage usage;
-    int16_t value;
-    char string[256];
+    union
+    {
+        MemoryLocation memory;
+        RegisterLocation reg;
+        Immediate immediate;
+    } payload;
 } Operand;
+
+const struct
+{
+    const Register reg;
+    const char name[3];
+    const bool isPartiallyAdressable;
+} RegisterInfos[] = {
+    {reg_a, "a", true},
+    {reg_b, "b", true},
+    {reg_c, "c", true},
+    {reg_d, "d", true},
+    {reg_sp, "sp", false},
+    {reg_bp, "bp", false},
+    {reg_si, "si", false},
+    {reg_di, "di", false},
+    {reg_cs, "cs", false},
+    {reg_ds, "ds", false},
+    {reg_ss, "ss", false},
+    {reg_es, "es", false},
+};
+
+const struct
+{
+    const RegisterPortion portion;
+    const char name[2];
+} RegisterPortionInfos[] = {
+    {reg_portion_x, "x"},
+    {reg_portion_l, "l"},
+    {reg_portion_h, "h"},
+};
+
+const struct
+{
+    RegisterLocation w0Reg;
+    RegisterLocation w1Reg;
+} RegFieldInfo[] = {
+    {{reg_a, reg_portion_l}, {reg_a, reg_portion_x}},
+    {{reg_c, reg_portion_l}, {reg_c, reg_portion_x}},
+    {{reg_d, reg_portion_l}, {reg_d, reg_portion_x}},
+    {{reg_b, reg_portion_l}, {reg_b, reg_portion_x}},
+    {{reg_a, reg_portion_h}, {reg_sp}},
+    {{reg_c, reg_portion_h}, {reg_bp}},
+    {{reg_d, reg_portion_h}, {reg_si}},
+    {{reg_b, reg_portion_h}, {reg_di}}};
+
+const struct
+{
+    RegisterLocation mod3W0Reg;
+    RegisterLocation mod3w1Reg;
+
+    MemoryLocation memoryLocation;
+} RmFieldInfo[] = {
+    {{reg_a, reg_portion_l}, {reg_a, reg_portion_x}, {{reg_b, reg_portion_x}, {reg_si}, 2}},
+    {{reg_c, reg_portion_l}, {reg_c, reg_portion_x}, {{reg_b, reg_portion_x}, {reg_di}, 2}},
+    {{reg_d, reg_portion_l}, {reg_d, reg_portion_x}, {{reg_bp}, {reg_si}, 2}},
+    {{reg_b, reg_portion_l}, {reg_b, reg_portion_x}, {{reg_bp}, {reg_di}, 2}},
+    {{reg_a, reg_portion_h}, {reg_sp}, {{reg_si}, {reg_none}, 1}},
+    {{reg_c, reg_portion_h}, {reg_bp}, {{reg_di}, {reg_none}, 1}},
+    {{reg_d, reg_portion_h}, {reg_si}, {{reg_bp}, {reg_none}, 1}},
+    {{reg_b, reg_portion_h}, {reg_di}, {{reg_b, reg_portion_x}, {reg_none}, 1}},
+};
+
+typedef enum
+{
+    instruction_none,
+    instruction_mov,
+    instruction_push,
+    instruction_pop,
+    instruction_xchg,
+    instruction_in,
+    instruction_out,
+    instruction_xlat,
+    instruction_lea,
+    instruction_lds,
+    instruction_les,
+    instruction_lahf,
+    instruction_sahf,
+    instruction_pushf,
+    instruction_popf,
+    instruction_add,
+    instruction_adc,
+    instruction_inc,
+    instruction_aaa,
+    instruction_daa,
+    instruction_sub,
+    instruction_sbb,
+    instruction_dec,
+    instruction_neg,
+    instruction_cmp,
+    instruction_aas,
+    instruction_das,
+    instruction_mul,
+    instruction_imul,
+    instruction_aam,
+    instruction_div,
+    instruction_idiv,
+    instruction_aad,
+    instruction_cbw,
+    instruction_cwd,
+    instruction_not,
+    instruction_shl,
+    instruction_shr,
+    instruction_sar,
+    instruction_rol,
+    instruction_ror,
+    instruction_rcl,
+    instruction_rcr,
+    instruction_and,
+    instruction_test,
+    instruction_or,
+    instruction_xor,
+    instruction_rep,
+    instruction_movs,
+    instruction_cmps,
+    instruction_scas,
+    instruction_lods,
+    instruction_stds,
+    instruction_call,
+    instruction_jmp,
+    instruction_ret,
+    instruction_je,
+    instruction_jl,
+    instruction_jle,
+    instruction_jb,
+    instruction_jbe,
+    instruction_jp,
+    instruction_jo,
+    instruction_js,
+    instruction_jnz,
+    instruction_jnl,
+    instruction_jnle,
+    instruction_jnb,
+    instruction_ja,
+    instruction_jnp,
+    instruction_jno,
+    instruction_jns,
+    instruction_loop,
+    instruction_loopz,
+    instruction_loopnz,
+    instruction_jcxz,
+    instruction_int,
+    instruction_into,
+    instruction_iret,
+    instruction_clc,
+    instruction_cmc,
+    instruction_stc,
+    instruction_cld,
+    instruction_std,
+    instruction_cli,
+    instruction_sti,
+    instruction_hlt,
+    instruction_wait,
+    instruction_esc,
+    instruction_lock,
+    instruction_seg
+} InstructionType;
+
+typedef enum
+{
+    flag_trap,
+    flag_direction,
+    flag_interrupt_enable,
+    flag_overflow,
+    flag_sign,
+    flag_zero,
+    flag_aux_carry,
+    flag_parity,
+    flag_carry
+} Flag;
+
+struct
+{
+    Flag flag;
+    char name[2];
+} FlagNames[] =
+    {{flag_trap, "T"},
+     {flag_direction, "D"},
+     {flag_interrupt_enable, "I"},
+     {flag_overflow, "O"},
+     {flag_sign, "S"},
+     {flag_zero, "Z"},
+     {flag_aux_carry, "A"},
+     {flag_parity, "P"},
+     {flag_carry, "C"}};
+
+const struct
+{
+    InstructionType type;
+    char name[10];
+} InstructionNames[] = {
+    {instruction_none, ""},
+    {instruction_mov, "mov"},
+    {instruction_push, "push"},
+    {instruction_pop, "pop"},
+    {instruction_xchg, "xchg"},
+    {instruction_in, "in"},
+    {instruction_out, "out"},
+    {instruction_xlat, "xlat"},
+    {instruction_lea, "lea"},
+    {instruction_lds, "lds"},
+    {instruction_les, "les"},
+    {instruction_lahf, "lahf"},
+    {instruction_sahf, "sahf"},
+    {instruction_pushf, "pushf"},
+    {instruction_popf, "popf"},
+    {instruction_add, "add"},
+    {instruction_adc, "adc"},
+    {instruction_inc, "inc"},
+    {instruction_aaa, "aaa"},
+    {instruction_daa, "daa"},
+    {instruction_sub, "sub"},
+    {instruction_sbb, "sbb"},
+    {instruction_dec, "dec"},
+    {instruction_neg, "neg"},
+    {instruction_cmp, "cmp"},
+    {instruction_aas, "aas"},
+    {instruction_das, "das"},
+    {instruction_mul, "mul"},
+    {instruction_imul, "imul"},
+    {instruction_aam, "aam"},
+    {instruction_div, "div"},
+    {instruction_idiv, "idiv"},
+    {instruction_aad, "aad"},
+    {instruction_cbw, "cbw"},
+    {instruction_cwd, "cwd"},
+    {instruction_not, "not"},
+    {instruction_shl, "shl"},
+    {instruction_shr, "shr"},
+    {instruction_sar, "sar"},
+    {instruction_rol, "rol"},
+    {instruction_ror, "ror"},
+    {instruction_rcl, "rcl"},
+    {instruction_rcr, "rcr"},
+    {instruction_and, "and"},
+    {instruction_test, "test"},
+    {instruction_or, "or"},
+    {instruction_xor, "xor"},
+    {instruction_rep, "rep"},
+    {instruction_movs, "movs"},
+    {instruction_cmps, "cmps"},
+    {instruction_scas, "scas"},
+    {instruction_lods, "lods"},
+    {instruction_stds, "stds"},
+    {instruction_call, "call"},
+    {instruction_jmp, "jmp"},
+    {instruction_ret, "ret"},
+    {instruction_je, "je"},
+    {instruction_jl, "jl"},
+    {instruction_jle, "jle"},
+    {instruction_jb, "jb"},
+    {instruction_jbe, "jbe"},
+    {instruction_jp, "jp"},
+    {instruction_jo, "jo"},
+    {instruction_js, "js"},
+    {instruction_jnz, "jnz"},
+    {instruction_jnl, "jnl"},
+    {instruction_jnle, "jnle"},
+    {instruction_jnb, "jnb"},
+    {instruction_ja, "ja"},
+    {instruction_jnp, "jnp"},
+    {instruction_jno, "jno"},
+    {instruction_jns, "jns"},
+    {instruction_loop, "loop"},
+    {instruction_loopz, "loopz"},
+    {instruction_loopnz, "loopnz"},
+    {instruction_jcxz, "jcxz"},
+    {instruction_int, "int"},
+    {instruction_into, "into"},
+    {instruction_iret, "iret"},
+    {instruction_clc, "clc"},
+    {instruction_cmc, "cmc"},
+    {instruction_stc, "stc"},
+    {instruction_cld, "cld"},
+    {instruction_std, "std"},
+    {instruction_cli, "cli"},
+    {instruction_sti, "sti"},
+    {instruction_hlt, "hlt"},
+    {instruction_wait, "wait"},
+    {instruction_esc, "esc"},
+    {instruction_lock, "lock"},
+    {instruction_seg, "seg"}};
 
 typedef struct
 {
     InstructionType type;
-    bool wBit;
-    bool sBit;
-    bool dBit;
-    bool vBit;
-    bool zBit;
-    uint8_t mod;
+    Operand firstOperand;
+    Operand secondOperand;
     uint8_t operandCount;
-    Operand operands[2];
+    bool isWide;
+    bool needsDecorator;
+    uint16_t byteCount;
 } Instruction;
 
 typedef struct
 {
-    uint8_t registerIndex;
-    char w0RegName[3];
-    char w1RegName[3];
-    char rmExpression[20];
-} RegisterName;
+    char *bytes;
+    size_t size;
+    uint16_t instructionPointer;
+} Stream;
 
-RegisterName registerNames[] = {
-    {0, "al", "ax", "[bx + si%s]"},
-    {1, "cl", "cx", "[bx + di%s]"},
-    {2, "dl", "dx", "[bp + si%s]"},
-    {3, "bl", "bx", "[bp + di%s]"},
-    {4, "ah", "sp", "[si%s]"},
-    {5, "ch", "bp", "[di%s]"},
-    {6, "dh", "si", "[bp%s]"},
-    {7, "bh", "di", "[bx%s]"}};
+#define REGISTER_COUNT 8
+#define FLAG_COUNT 9
 
-struct
+typedef struct
 {
+    bool isNoWait;
+    bool execute;
+    Stream instructions;
     union
     {
+        int16_t x;
         struct
         {
-            uint16_t ax;
-            uint16_t bx;
-            uint16_t cx;
-            uint16_t dx;
-            uint16_t sp;
-            uint16_t bp;
-            uint16_t si;
-            uint16_t di;
-        } individualRegs;
-        uint16_t allRegs[8];
-    } regs;
+            int8_t l;
+            int8_t h;
+        } lh;
+    } registers[REGISTER_COUNT];
 
-} cpu = {0};
+    bool flags[FLAG_COUNT];
+} State;
 
-bool extractWBit(uint8_t firstByte)
+typedef struct
 {
-    bool result = firstByte & 0x01;
+    bool isWide;
+    union
+    {
+        int16_t word;
+        int8_t byte;
+    } value;
+
+} OpValue;
+
+void printPressEnterToContinue(bool isNoWait)
+{
+    if (isNoWait)
+    {
+        return;
+    }
+    printf("; Press enter to continue...");
+
+    char byte;
+    if (fread(&byte, 1, 1, stdin) != 1)
+    {
+        perror("Could not read from standard input");
+    }
+}
+
+void printError(const char *file, const size_t line, const char *format, va_list args, bool isNoWait)
+{
+    char errorMessage[256];
+    vsprintf(errorMessage, format, args);
+    va_end(args);
+
+    printf("ERROR(%s:%zu): \n", file, line);
+    perror(errorMessage);
+    printPressEnterToContinue(isNoWait);
+}
+
+void error(const char *file, const size_t line, bool isNoWait, const char *format, ...)
+{
+    va_list args;
+    va_start(args, format);
+    printError(file, line, format, args, isNoWait);
+
+    exit(EXIT_FAILURE);
+}
+
+char *readFile(const char *filename, size_t *len, State *state)
+{
+    FILE *file = fopen(filename, "rb");
+    if (file == NULL)
+    {
+        error(__FILE__, __LINE__, state->isNoWait, " Could not open % s ", filename);
+    }
+
+    char errorMessage[] = "Could not determine size of %s";
+    if (fseek(file, 0, SEEK_END) < 0)
+    {
+        error(__FILE__, __LINE__, state->isNoWait, errorMessage, filename);
+    }
+
+    *len = ftell(file);
+
+    if (fseek(file, 0, SEEK_SET) < 0)
+    {
+        error(__FILE__, __LINE__, state->isNoWait, errorMessage, filename);
+    }
+
+    char *bytes = malloc(*len);
+
+    if (!bytes)
+    {
+        error(__FILE__, __LINE__, state->isNoWait, "Allocation failed", state->isNoWait);
+    }
+
+    if (fread(bytes, *len, 1, file) != 1)
+    {
+        error(__FILE__, __LINE__, state->isNoWait, " Could not read from % s ", filename);
+    }
+
+    if (file != NULL)
+    {
+        fclose(file);
+    }
+
+    return bytes;
+}
+
+int16_t consumeTwoBytesAsSigned(State *state)
+{
+    if (state->instructions.instructionPointer + 1 >= state->instructions.size)
+    {
+        error(__FILE__, __LINE__, state->isNoWait, "reached end of instuctions stream");
+    }
+
+    int16_t result = *((int16_t *)(state->instructions.bytes + state->instructions.instructionPointer));
+
+    state->instructions.instructionPointer += 2;
 
     return result;
 }
 
-bool extractDOrSBit(uint8_t firstByte)
+uint8_t consumeByteAsUnsigned(State *state)
 {
-    bool result = (firstByte & 0x02) >> 1;
+    if (state->instructions.instructionPointer >= state->instructions.size)
+    {
+        error(__FILE__, __LINE__, state->isNoWait, "reached end of instuctions stream");
+    }
+
+    uint8_t result = state->instructions.bytes[state->instructions.instructionPointer];
+
+    state->instructions.instructionPointer++;
 
     return result;
 }
 
-void extractHighBits(int16_t *dest, FILE *input)
+int8_t consumeByteAsSigned(State *state)
 {
-    uint8_t highBits = readUnsignedByte(input);
-    *dest |= (((uint16_t)highBits) << 8);
-}
-
-int16_t decodeDisplacement(uint8_t mod, uint8_t wBit, FILE *input, char *displacementExpression)
-{
-    int16_t displacement = 0;
-
-    if (mod == 0)
+    if (state->instructions.instructionPointer >= state->instructions.size)
     {
-        displacementExpression[0] = 0;
-    }
-    else
-    {
-        uint8_t thirdByte = readUnsignedByte(input);
-        bool sign = thirdByte >> 7;
-
-        bool isSigned = false;
-        displacement = thirdByte;
-        if (sign && wBit && mod == 1)
-        {
-            displacement = displacement | (0xff << 8);
-            isSigned = true;
-        }
-
-        if (mod == 2)
-        {
-            extractHighBits(&displacement, input);
-        }
-        sprintf(displacementExpression, " %s %d", isSigned ? "" : "+", displacement);
+        error(__FILE__, __LINE__, state->isNoWait, "reached end of instuctions stream");
     }
 
-    return displacement;
-}
+    int8_t result = state->instructions.bytes[state->instructions.instructionPointer];
 
-uint8_t extractMod(uint8_t secondByte)
-{
-    uint8_t result = secondByte >> 6;
+    state->instructions.instructionPointer++;
 
     return result;
-}
-
-uint8_t extractRmField(uint8_t byte)
-{
-    uint8_t result = (byte & 0x07);
-
-    return result;
-}
-
-void decodeImmediateToAccumulator(FILE *input, uint8_t firstByte, uint8_t secondByte)
-{
-    int16_t immediate = secondByte;
-    bool wBit = extractWBit(firstByte);
-    if (wBit)
-    {
-        extractHighBits(&immediate, input);
-        printf("ax, ");
-    }
-    else
-    {
-        bool sign = secondByte >> 7;
-
-        if (sign)
-        {
-            immediate = immediate | (0xff << 8);
-        }
-        printf("al, ");
-    }
-
-    printf("%d", immediate);
-}
-
-void decodeRegisterMemory(FILE *input, uint8_t firstByte, uint8_t secondByte)
-{
-
-    uint8_t rmField = extractRmField(secondByte);
-    uint8_t mod = extractMod(secondByte);
-    bool dBit = extractDOrSBit(firstByte);
-    bool wBit = extractWBit(firstByte);
-
-    if (wBit)
-    {
-        printf("word ");
-    }
-    else
-    {
-        printf("byte ");
-    }
-
-    if (mod == 3) // Register
-    {
-        char *rmFieldRegName = getRegisterName(rmField, wBit);
-
-        if (dBit)
-        {
-            printf("%s", rmFieldRegName);
-        }
-        else
-        {
-            printf("%s, ", rmFieldRegName);
-        }
-    }
-    else if (mod < 3) // Memory
-    {
-        char templateExpression[256];
-        strcpy(templateExpression, registerNames[rmField].rmExpression);
-
-        char displacementExpression[256];
-        decodeDisplacement(mod, wBit, input, displacementExpression);
-        char memoryExpression[256];
-
-        if (mod == 0 && rmField == 6)
-        {
-
-            decodeDirectAddressing(input, memoryExpression);
-        }
-        else
-        {
-            sprintf(memoryExpression, templateExpression, displacementExpression);
-        }
-
-        if (dBit)
-        {
-            printf("%s", memoryExpression);
-        }
-        else
-        {
-            printf("%s, ", memoryExpression);
-        }
-    }
-    else
-    {
-        assert(false && "Unknown mod field");
-    }
-}
-
-uint8_t readUnsignedByte(FILE *input)
-{
-    uint8_t result = 0;
-    if (fread(&result, sizeof(result), 1, input) != 1)
-    {
-        assert(false && "Could not read");
-    }
-
-    return result;
-}
-
-Instruction decodeRegisterMemoryToFromMemory(FILE *input, uint8_t secondByte, bool dBit, bool wBit)
-{
-    Instruction result = {0};
-
-    uint8_t mod = extractMod(secondByte);
-
-    uint8_t regField = (secondByte & 0x3f) >> 3;
-    uint8_t rmField = extractRmField(secondByte);
-
-    char *regFieldRegName = getRegisterName(regField, wBit);
-
-    if (mod == 3) // Register to register
-    {
-        char *rmFieldRegName = getRegisterName(rmField, wBit);
-
-        OperandValue regOperandValue = operandValues[regField];
-        Register regRegister = wBit ? regOperandValue.w1Reg.reg : regOperandValue.w0Reg.reg;
-        RegisterUsage regRegisterUsage = wBit ? regOperandValue.w1Reg.usage : regOperandValue.w0Reg.usage;
-        Operand regOperand = {0};
-        strcpy(regOperand.string, regFieldRegName);
-        regOperand.reg = regRegister;
-        regOperand.type = registerOperand;
-        regOperand.usage = regRegisterUsage;
-
-        OperandValue rmOperandValue = operandValues[rmField];
-        Register rmRegister = wBit ? rmOperandValue.w1Reg.reg : rmOperandValue.w0Reg.reg;
-        RegisterUsage rmRegisterUsage = wBit ? rmOperandValue.w1Reg.usage : rmOperandValue.w0Reg.usage;
-        Operand rmOperand = {0};
-        strcpy(rmOperand.string, rmFieldRegName);
-        rmOperand.reg = rmRegister;
-        rmOperand.type = registerOperand;
-        rmOperand.usage = rmRegisterUsage;
-
-        if (dBit)
-        {
-            result.operands[0] = regOperand;
-            result.operands[1] = rmOperand;
-            printf("%s, ", regFieldRegName);
-            printf("%s", rmFieldRegName);
-        }
-        else
-        {
-            result.operands[0] = rmOperand;
-            result.operands[1] = regOperand;
-            printf("%s, ", rmFieldRegName);
-            printf("%s", regFieldRegName);
-        }
-    }
-    else if (mod < 3) // Between memory and register
-    {
-        char templateExpression[256];
-        strcpy(templateExpression, registerNames[rmField].rmExpression);
-
-        char displacementExpression[256];
-        decodeDisplacement(mod, wBit, input, displacementExpression);
-        char memoryExpression[256];
-
-        if (mod == 0 && rmField == 6)
-        {
-
-            decodeDirectAddressing(input, memoryExpression);
-        }
-        else
-        {
-            sprintf(memoryExpression, templateExpression, displacementExpression);
-        }
-
-        if (dBit)
-        {
-            printf("%s, ", regFieldRegName);
-            printf("%s", memoryExpression);
-        }
-        else
-        {
-            printf("%s, ", memoryExpression);
-            printf("%s", regFieldRegName);
-        }
-    }
-    else
-    {
-        assert(false && "Unknown mod field");
-    }
-
-    return result;
-}
-
-char *getRegisterName(uint8_t registerIndex, bool wBit)
-{
-
-    assert(registerIndex < ARR_COUNT(registerNames) && "Register index out of range");
-
-    RegisterName *registerName = registerNames + registerIndex;
-
-    assert(registerIndex == registerName->registerIndex && "Wrong register index");
-
-    if (registerName->registerIndex == registerIndex)
-    {
-        if (wBit)
-        {
-            return registerName->w1RegName;
-        }
-        else
-        {
-            return registerName->w0RegName;
-        }
-    }
-
-    assert(false && "Invalid register");
-
-    return 0;
-}
-
-int8_t readSignedByte(FILE *input)
-{
-    int8_t result;
-    if (fread(&result, sizeof(result), 1, input) == 1)
-    {
-        return result;
-    }
-    else
-    {
-        assert(false && "Error while reading from file");
-        return 0;
-    }
-}
-
-void decodeJump(int8_t secondByte)
-{
-
-    printf("$%+d", secondByte + 2);
-}
-
-void decodeDirectAddressing(FILE *input, char *buffer)
-{
-    uint8_t byte = readUnsignedByte(input);
-    int16_t constant = byte;
-
-    extractHighBits(&constant, input);
-    sprintf(buffer, "[%d]", constant);
-}
-
-void printAccumulator(bool wBit)
-{
-    if (wBit)
-    {
-        printf("ax, ");
-    }
-    else
-    {
-        printf("al, ");
-    }
-}
-
-void decodeSegmentRegister(uint8_t regField)
-{
-    if (regField == 0x00)
-    {
-        printf("es");
-    }
-    else if (regField == 0x01)
-    {
-        printf("cs");
-    }
-    else if (regField == 0x02)
-    {
-        printf("ss");
-    }
-    else if (regField == 0x03)
-    {
-        printf("ds");
-    }
-    else
-    {
-        assert(false && "Invalid segment register");
-    }
-}
-
-Instruction decodeImmediateToRegisterOrMemory(FILE *input, uint8_t mod, uint8_t firstByte, uint8_t secondByte, bool hasSignBit)
-{
-    Instruction instruction = {0};
-
-    bool sBit = extractDOrSBit(firstByte);
-    bool wBit = extractWBit(firstByte);
-
-    uint8_t rmField = extractRmField(secondByte);
-
-    char displacementExpression[256] = {0};
-
-    if (mod == 1 || mod == 2)
-    {
-        decodeDisplacement(mod, wBit, input, displacementExpression);
-
-        char dest[256];
-        uint8_t byte = readUnsignedByte(input);
-
-        int16_t immediate = byte;
-        if (mod == 2)
-        {
-
-            if (wBit && !(hasSignBit && sBit))
-            {
-                extractHighBits(&immediate, input);
-            }
-        }
-
-        if (mod == 1 || mod == 2)
-        {
-            if (wBit)
-            {
-                printf("word ");
-            }
-            else
-            {
-                printf("byte ");
-            }
-        }
-
-        sprintf(dest, registerNames[rmField].rmExpression, displacementExpression);
-        printf("%s, ", dest);
-        printf("%d", immediate);
-    }
-
-    else
-    {
-        char dest[256];
-        if (mod == 0)
-        {
-            if (wBit)
-            {
-                printf("word ");
-            }
-            else
-            {
-                printf("byte ");
-            }
-
-            if (rmField == 6)
-            { // direct addressing
-                decodeDirectAddressing(input, dest);
-            }
-            else
-            {
-                sprintf(dest, registerNames[rmField].rmExpression, "");
-            }
-        }
-        else
-        {
-            memcpy(dest, getRegisterName(rmField, wBit), 3);
-        }
-
-        uint8_t byte = readUnsignedByte(input);
-
-        int16_t immediate = byte;
-
-        OperandValue operandValue = operandValues[rmField];
-
-        Register reg = wBit ? operandValue.w1Reg.reg : operandValue.w0Reg.reg;
-
-        RegisterUsage usage = wBit ? operandValue.w1Reg.usage : operandValue.w0Reg.usage;
-
-        char *regName = regNames[reg];
-
-        instruction.operands[0].value = immediate;
-        instruction.operands[0].type = immediateOperand;
-        instruction.operands[1].type = registerOperand;
-        instruction.operands[1].reg = reg;
-        instruction.operands[1].usage = usage;
-        strcpy(instruction.operands[1].string, regName);
-
-        bool isWord = false;
-        if (sBit == 0 && wBit == 1)
-        {
-            isWord = true;
-            extractHighBits(&immediate, input);
-        }
-
-        printf("%s, ", dest);
-
-        printf("%u", immediate);
-    }
-
-    return instruction;
 }
 
 uint8_t extractLowBits(uint8_t byte, uint8_t bitsToExtract)
@@ -773,740 +604,1549 @@ bool extractBit(uint8_t byte, uint8_t index)
     return extracted == 1;
 }
 
-int main(int argc, char *argv[])
+void checkMod(const char *file, size_t line, uint8_t mod, State *state)
 {
-
-    char *programName = argv[0];
-
-    if (argc < 2)
+    if (mod > 3)
     {
-        printf("Usage: %s <input file>\n", programName);
+        error(file, line, state->isNoWait, "Invalid mod %#X", mod);
+    }
+}
 
-        return 1;
+void checkRm(const char *file, size_t line, uint8_t rm, State *state)
+{
+    if (rm > 7)
+    {
+        error(file, line, state->isNoWait, "Invalid rm  %#X", rm);
+    }
+}
+
+void checkReg(const char *file, size_t line, uint8_t reg, State *state)
+{
+    if (reg > 7)
+    {
+        error(file, line, state->isNoWait, "Invalid reg %#X", reg);
+    }
+}
+
+Operand decodeRegOperand(bool wBit, uint8_t reg, State *state)
+{
+    checkReg(__FILE__, __LINE__, reg, state);
+
+    Operand result = {0};
+    result.type = operand_type_register;
+    result.payload.reg = wBit ? RegFieldInfo[reg].w1Reg : RegFieldInfo[reg].w0Reg;
+
+    return result;
+}
+
+Operand decodeRmOperand(bool wBit, uint8_t mod, uint8_t rm, State *state)
+{
+    checkMod(__FILE__, __LINE__, mod, state);
+    checkRm(__FILE__, __LINE__, rm, state);
+    assert(rm <= 7);
+
+    Operand result = {0};
+
+    bool immediateAddressing = (mod == 0 && rm == 6);
+    if (immediateAddressing)
+    {
+        result.type = operand_type_memory;
+        result.payload.memory.regCount = 0;
+        result.payload.memory.displacement = consumeTwoBytesAsSigned(state);
+    }
+    else
+    {
+        if (mod == 3)
+        {
+            result.type = operand_type_register;
+            result.payload.reg = wBit ? RmFieldInfo[rm].mod3w1Reg : RmFieldInfo[rm].mod3W0Reg;
+        }
+        else
+        {
+            result.type = operand_type_memory;
+            result.payload.memory = RmFieldInfo[rm].memoryLocation;
+
+            if (mod == 1)
+            {
+                int16_t displacement = consumeByteAsSigned(state);
+                result.payload.memory.displacement = displacement;
+            }
+            else if (mod == 2)
+            {
+                result.payload.memory.displacement = consumeTwoBytesAsSigned(state);
+            }
+        }
     }
 
-    char *inputName = argv[1];
+    return result;
+}
 
-    FILE *input = fopen(inputName, "r");
+void printRegister(RegisterLocation registerLocation)
+{
+    assert(RegisterInfos[registerLocation.reg].reg == registerLocation.reg);
+    printf(RegisterInfos[registerLocation.reg].name);
+    if (RegisterInfos[registerLocation.reg].isPartiallyAdressable)
+    {
+        assert(RegisterPortionInfos[registerLocation.portion].portion == registerLocation.portion);
+        printf(RegisterPortionInfos[registerLocation.portion].name);
+    }
+}
 
-    if (input != NULL)
+void printOperand(Operand operand, uint16_t instructionByteCount)
+{
+
+    printf(" ");
+    switch (operand.type)
+    {
+    case operand_type_register:
     {
 
-        printf(";%s\n", inputName);
-        printf("bits 16\n");
+        printRegister(operand.payload.reg);
+    }
+    break;
+    case operand_type_immediate:
+    {
+        if (operand.payload.immediate.isRelativeOffset)
+        {
+            printf("$%+d", operand.payload.immediate.value + instructionByteCount);
+        }
+        else
+        {
+            printf("%d", operand.payload.immediate.value);
+        }
+    }
+    break;
+    case operand_type_memory:
+    {
+        printf("[");
+        if (operand.payload.memory.regCount > 0)
+        {
+            printRegister(operand.payload.memory.reg0);
+        }
+        if (operand.payload.memory.regCount > 1)
+        {
+            printf(" + ");
+            printRegister(operand.payload.memory.reg1);
+        }
 
-        uint8_t firstByte;
+        if (operand.payload.memory.displacement > 0)
+        {
+            printf(" + ");
+            printf("%d", operand.payload.memory.displacement);
+        }
+        else if (operand.payload.memory.displacement < 0)
+        {
+            printf(" - ");
+            printf("%d", -operand.payload.memory.displacement);
+        }
+        else if (operand.payload.memory.regCount == 0)
+        {
+            printf("0");
+        }
 
-        // Instruction instruction = {0};
+        printf("]");
+    }
+    break;
+    default:
+    {
+        assert(false && "Unimplemented");
+    }
+    }
+}
 
-        while (fread(&firstByte, sizeof(firstByte), 1, input) == 1)
+void printFlags(State *state)
+{
+    for (Flag flag = 0; flag < FLAG_COUNT; flag++)
+    {
+        if (state->flags[flag])
+        {
+            printf(FlagNames[flag].name);
+        }
+    }
+}
+
+void printInstruction(Instruction instruction, State before, State after)
+{
+    assert(instruction.type != instruction_none);
+    assert(InstructionNames[instruction.type].type == instruction.type);
+
+    const char *mnemonic = InstructionNames[instruction.type].name;
+    printf(mnemonic);
+
+    if (instruction.needsDecorator)
+    {
+        if (instruction.isWide)
+        {
+            printf(" word");
+        }
+        else
+        {
+            printf(" byte");
+        }
+    }
+
+    if (instruction.operandCount > 0)
+    {
+        printOperand(instruction.firstOperand, instruction.byteCount);
+    }
+
+    if (instruction.operandCount > 1)
+    {
+        printf(",");
+        printOperand(instruction.secondOperand, instruction.byteCount);
+    }
+
+    printf("\t;");
+
+    for (Register reg = 0; reg < REG_COUNT; reg++)
+    {
+        if (before.registers[reg].x != after.registers[reg].x)
+        {
+            RegisterLocation location;
+            location.reg = reg;
+            location.portion = reg_portion_x;
+            printRegister(location);
+            printf("   %#x--->%#x", before.registers[reg].x, after.registers[reg].x);
+        }
+    }
+
+    bool isFlagChange = false;
+    for (Flag flag = 0; flag < FLAG_COUNT; flag++)
+    {
+        if (before.flags[flag] != after.flags[flag])
+        {
+            isFlagChange = true;
+            break;
+        }
+    }
+    if (isFlagChange)
+    {
+        printf(" Flags:");
+        printFlags(&before);
+        printf("->");
+        printFlags(&after);
+    }
+    printf(" ip:%#x--->%#x", before.instructions.instructionPointer, after.instructions.instructionPointer);
+}
+
+Instruction decodeRegMemToFromRegMem(bool dBit, bool wBit, State *state)
+{
+    uint8_t secondByte = consumeByteAsUnsigned(state);
+    uint8_t mod = extractBits(secondByte, 6, 8);
+    uint8_t reg = extractBits(secondByte, 3, 6);
+    uint8_t rm = extractLowBits(secondByte, 3);
+
+    Instruction result = {0};
+
+    result.operandCount = 2;
+    Operand rmOperand = decodeRmOperand(wBit, mod, rm, state);
+    Operand regOperand = decodeRegOperand(wBit, reg, state);
+    result.isWide = wBit;
+
+    if (dBit)
+    {
+        result.firstOperand = regOperand;
+        result.secondOperand = rmOperand;
+    }
+    else
+    {
+        result.firstOperand = rmOperand;
+        result.secondOperand = regOperand;
+    }
+
+    return result;
+}
+
+Operand decodeImmediateOperand(bool wBit, bool sBit, State *state)
+{
+
+    Operand result = {0};
+
+    result.type = operand_type_immediate;
+    result.payload.immediate.isRelativeOffset = false;
+    if (wBit && !sBit)
+    {
+
+        result.payload.immediate.value = consumeTwoBytesAsSigned(state);
+    }
+    else
+    {
+        result.payload.immediate.value = consumeByteAsSigned(state);
+    }
+    return result;
+}
+
+Instruction decodeImmediateToRegister(bool wBit, uint8_t reg, State *state)
+{
+    Instruction result = {0};
+
+    result.firstOperand = decodeRegOperand(wBit, reg, state);
+    result.secondOperand = decodeImmediateOperand(wBit, false, state);
+    result.operandCount = 2;
+    result.isWide = wBit;
+
+    return result;
+}
+
+Instruction decodeImmediateToRegisterMemory(uint8_t firstByte, bool sBit, uint8_t secondByte, State *state)
+{
+    bool wBit = extractBit(firstByte, 0);
+    uint8_t mod = extractBits(secondByte, 6, 8);
+    uint8_t rm = extractLowBits(secondByte, 3);
+
+    Instruction result = {0};
+
+    result.firstOperand = decodeRmOperand(wBit, mod, rm, state);
+    result.secondOperand = decodeImmediateOperand(wBit, sBit, state);
+    result.operandCount = 2;
+    result.isWide = wBit;
+
+    return result;
+}
+
+Instruction decodeImmediateFromAccumulator(bool wBit, State *state)
+{
+    Instruction result = {0};
+
+    result.firstOperand.type = operand_type_register;
+    result.firstOperand.payload.reg.reg = reg_a;
+    result.firstOperand.payload.reg.portion = wBit ? reg_portion_x : reg_portion_l;
+
+    result.secondOperand = decodeImmediateOperand(wBit, false, state);
+    result.operandCount = 2;
+    result.isWide = wBit;
+
+    return result;
+}
+
+Instruction decodeMemoryToAccumulator(uint8_t firstByte, State *state)
+{
+    Instruction instruction = {0};
+    instruction.operandCount = 2;
+    bool wBit = extractBit(firstByte, 0);
+
+    instruction.firstOperand.type = operand_type_register;
+    instruction.firstOperand.payload.reg.reg = reg_a;
+    if (wBit)
+    {
+        instruction.firstOperand.payload.reg.portion = reg_portion_x;
+    }
+    else
+    {
+        instruction.firstOperand.payload.reg.portion = reg_portion_l;
+    }
+
+    instruction.secondOperand.type = operand_type_memory;
+    instruction.secondOperand.payload.memory.regCount = 0;
+    instruction.secondOperand.payload.memory.displacement = consumeTwoBytesAsSigned(state);
+
+    instruction.isWide = wBit;
+
+    return instruction;
+}
+
+Instruction decodeAccumulatorToMemory(uint8_t firstByte, State *state)
+{
+    Instruction instruction = {0};
+    instruction.operandCount = 2;
+    bool wBit = extractBit(firstByte, 0);
+
+    instruction.firstOperand.type = operand_type_memory;
+    instruction.firstOperand.payload.memory.regCount = 0;
+    instruction.firstOperand.payload.memory.displacement = consumeTwoBytesAsSigned(state);
+
+    instruction.secondOperand.type = operand_type_register;
+    instruction.secondOperand.payload.reg.reg = reg_a;
+    if (wBit)
+    {
+        instruction.secondOperand.payload.reg.portion = reg_portion_x;
+    }
+    else
+    {
+        instruction.secondOperand.payload.reg.portion = reg_portion_l;
+    }
+
+    instruction.isWide = wBit;
+
+    return instruction;
+}
+
+Instruction decodeRegisterMemory(uint8_t secondByte, bool isWide, State *state)
+{
+    Instruction result = {0};
+
+    uint8_t rm = extractLowBits(secondByte, 3);
+    uint8_t mod = extractBits(secondByte, 6, 8);
+    result.operandCount = 1;
+    result.firstOperand = decodeRmOperand(isWide, mod, rm, state);
+    result.isWide = isWide;
+
+    return result;
+}
+
+Instruction decodeRegister(uint8_t firstByte, bool wBit, State *state)
+{
+    Instruction result = {0};
+    result.operandCount = 1;
+    uint8_t reg = extractLowBits(firstByte, 3);
+    result.firstOperand = decodeRegOperand(wBit, reg, state);
+    result.isWide = true;
+    return result;
+}
+
+Instruction decodeSegmentRegister(uint8_t firstByte)
+{
+    Instruction result = {0};
+    result.operandCount = 1;
+    result.firstOperand.type = operand_type_register;
+    result.firstOperand.payload.reg.portion = reg_portion_x;
+    uint8_t reg = extractBits(firstByte, 3, 5);
+
+    switch (reg)
+    {
+    case 0x0:
+    {
+        result.firstOperand.payload.reg.reg = reg_es;
+    }
+    break;
+    case 0x1:
+    {
+        result.firstOperand.payload.reg.reg = reg_cs;
+    }
+    break;
+    case 0x2:
+    {
+        result.firstOperand.payload.reg.reg = reg_ss;
+    }
+    break;
+    case 0x3:
+    {
+        result.firstOperand.payload.reg.reg = reg_ds;
+    }
+    break;
+    default:
+    {
+        assert(false);
+    }
+    }
+
+    result.isWide = true;
+    return result;
+}
+
+Instruction decodeRegisterWithAccumulator(uint8_t firstByte, State *state)
+{
+    Instruction result = {0};
+    result.operandCount = 2;
+    result.isWide = true;
+
+    uint8_t reg = extractLowBits(firstByte, 3);
+    result.firstOperand = decodeRegOperand(true, reg, state);
+
+    result.secondOperand.type = operand_type_register;
+    result.secondOperand.payload.reg.reg = reg_a;
+    result.secondOperand.payload.reg.portion = reg_portion_x;
+
+    return result;
+}
+
+Instruction
+decodeJump(State *state)
+{
+    Instruction result = {0};
+    result.operandCount = 1;
+    result.firstOperand.type = operand_type_immediate;
+    result.firstOperand.payload.immediate.value = consumeByteAsSigned(state);
+    result.firstOperand.payload.immediate.isRelativeOffset = true;
+    return result;
+}
+
+Instruction decodeFixedPort(bool isDest, uint8_t firstByte, State *state)
+{
+    Instruction result = {0};
+    result.operandCount = 2;
+    bool wBit = extractBit(firstByte, 0);
+    result.isWide = wBit;
+
+    Operand port = {0};
+    port.type = operand_type_immediate;
+    port.payload.immediate.value = consumeByteAsUnsigned(state);
+
+    Operand other = {0};
+
+    other.type = operand_type_register;
+    other.payload.reg.reg = reg_a;
+    other.payload.reg.portion = wBit ? reg_portion_x : reg_portion_l;
+
+    if (isDest)
+    {
+        result.firstOperand = port;
+        result.secondOperand = other;
+    }
+    else
+    {
+        result.firstOperand = other;
+        result.secondOperand = port;
+    }
+
+    return result;
+}
+
+Instruction decodeVariablePort(bool isDest, uint8_t firstByte)
+{
+    Instruction result = {0};
+    bool wBit = extractBit(firstByte, 0);
+    result.isWide = wBit;
+    result.operandCount = 2;
+
+    Operand port = {0};
+    port.type = operand_type_register;
+    port.payload.reg.reg = reg_d;
+    port.payload.reg.portion = reg_portion_x;
+
+    Operand other = {0};
+    other.type = operand_type_register;
+    other.payload.reg.reg = reg_a;
+    other.payload.reg.portion = wBit ? reg_portion_x : reg_portion_l;
+
+    if (isDest)
+    {
+        result.firstOperand = port;
+        result.secondOperand = other;
+    }
+    else
+    {
+        result.firstOperand = other;
+        result.secondOperand = port;
+    }
+
+    return result;
+}
+
+Instruction decodeInstruction(State *state)
+{
+
+    uint16_t initialStackPointer = state->instructions.instructionPointer;
+
+    uint8_t firstByte = consumeByteAsUnsigned(state);
+
+    Instruction instruction = {0};
+
+    if (firstByte >= 0x88 && firstByte <= 0x8b)
+    {
+        assert(instruction.type == instruction_none);
+        bool wBit = extractBit(firstByte, 0);
+        bool dBit = extractBit(firstByte, 1);
+
+        instruction = decodeRegMemToFromRegMem(dBit, wBit, state);
+        instruction.type = instruction_mov;
+    }
+    if (firstByte == 0xc6 || firstByte == 0xc7)
+    {
+        assert(instruction.type == instruction_none);
+        uint8_t secondByte = consumeByteAsUnsigned(state);
+
+        instruction = decodeImmediateToRegisterMemory(firstByte, false, secondByte, state);
+
+        uint8_t reg = extractBits(secondByte, 3, 6);
+        switch (reg)
+        {
+        case 0x00:
+        {
+            instruction.type = instruction_mov;
+        }
+        break;
+        default:
+        {
+            error(__FILE__, __LINE__, state->isNoWait, "Unknown instruction, first byte=%#X, reg=%#X", firstByte, reg);
+        }
+        }
+    }
+    if (firstByte >= 0xb0 && firstByte <= 0xbf)
+    {
+        assert(instruction.type == instruction_none);
+        bool wBit = extractBit(firstByte, 3);
+        uint8_t reg = extractLowBits(firstByte, 3);
+
+        instruction = decodeImmediateToRegister(wBit, reg, state);
+        instruction.type = instruction_mov;
+    }
+    if (firstByte == 0xa0 || firstByte == 0xa1)
+    {
+        assert(instruction.type == instruction_none);
+        instruction = decodeMemoryToAccumulator(firstByte, state);
+        instruction.type = instruction_mov;
+    }
+    if (firstByte == 0xa2 || firstByte == 0xa3)
+    {
+        assert(instruction.type == instruction_none);
+        instruction = decodeAccumulatorToMemory(firstByte, state);
+
+        instruction.type = instruction_mov;
+    }
+    if (firstByte == 0xfe || firstByte == 0xff)
+    {
+        assert(instruction.type == instruction_none);
+        uint8_t secondByte = consumeByteAsUnsigned(state);
+        uint8_t reg = extractBits(secondByte, 3, 6);
+
+        if (firstByte == 0xff && reg == 0x6)
         {
 
-            firstByte = firstByte & 0xff;
-
-            uint8_t opcode = firstByte >> 2;
-            if (firstByte == 0xc5)
-            {
-                printf("lds ");
-                uint8_t secondByte = readUnsignedByte(input);
-                decodeRegisterMemoryToFromMemory(input, secondByte, true, true);
-            }
-            else if (firstByte >= 0xa0 && firstByte <= 0xa1)
-            {
-                uint8_t secondByte = readUnsignedByte(input);
-                printf("mov "); // Memory to accumulator
-
-                printf("ax, ");
-                uint8_t thirdByte = readUnsignedByte(input);
-
-                int16_t address = secondByte | (thirdByte << 8);
-
-                printf("[%d]", address);
-            }
-            else if (firstByte >= 0xa2 && firstByte <= 0xa3)
-            {
-                uint8_t secondByte = readUnsignedByte(input);
-                printf("mov "); // Accumulator to memory
-                uint8_t thirdByte = readUnsignedByte(input);
-                int16_t address = secondByte | (thirdByte << 8);
-
-                printf("[%d], ", address);
-                printf("ax");
-            }
-            else if (firstByte >= 0x88 && firstByte <= 0x8b)
-            {
-                uint8_t secondByte = readUnsignedByte(input);
-                printf("mov ");
-                uint8_t dBit = extractDOrSBit(firstByte);
-                uint8_t wBit = extractWBit(firstByte);
-
-                Instruction instruction = decodeRegisterMemoryToFromMemory(input, secondByte, dBit, wBit);
-
-                int16_t valueToMove;
-
-                Register fromReg = instruction.operands[1].reg;
-                RegisterUsage fromRegUsage = instruction.operands[1].usage;
-                int16_t fromRegValue = cpu.regs.allRegs[fromReg];
-
-                if (fromRegUsage == low)
-                {
-                    valueToMove = fromRegValue & 0x00ff;
-                }
-                else if (fromRegUsage == high)
-                {
-                    valueToMove = fromRegValue >> 8;
-                }
-                else
-                {
-                    valueToMove = fromRegValue;
-                }
-
-                Register toReg = instruction.operands[0].reg;
-                RegisterUsage toRegUsage = instruction.operands[0].usage;
-
-                int16_t initialValue = cpu.regs.allRegs[toReg];
-
-                if (toRegUsage == x)
-                {
-                    cpu.regs.allRegs[toReg] = valueToMove;
-                }
-                else if (toRegUsage == low)
-                {
-                    cpu.regs.allRegs[toReg] |= valueToMove;
-                }
-                else if (toRegUsage == high)
-                {
-                    cpu.regs.allRegs[toReg] |= (valueToMove << 8);
-                }
-
-                int16_t finalValue = cpu.regs.allRegs[toReg];
-                printf(" %s: %#X-->%#X", instruction.operands[1].string, initialValue, finalValue);
-            }
-            else if (firstByte >= 0xc6 && firstByte <= 0xc7)
-            {
-                uint8_t secondByte = readUnsignedByte(input);
-                uint8_t mod = extractMod(secondByte);
-
-                uint8_t reg = extractBits(secondByte, 3, 6);
-                assert(reg == 0 && "Unimplemented");
-                printf("mov ");
-                Instruction instruction = decodeImmediateToRegisterOrMemory(input, mod, firstByte, secondByte, false);
-
-                int16_t initialValue = cpu.regs.allRegs[reg];
-
-                if (instruction.operands[0].usage == x)
-                {
-                    cpu.regs.allRegs[reg] = instruction.operands[0].value;
-                }
-                else if (instruction.operands[0].usage == low)
-                {
-                    cpu.regs.allRegs[reg] |= (instruction.operands[0].value & 0x0f);
-                }
-                else if (instruction.operands[0].usage == high)
-                {
-                    cpu.regs.allRegs[reg] |= (instruction.operands[0].value << 8);
-                }
-
-                int16_t finalValue = cpu.regs.allRegs[reg];
-                printf(" %s: %#X-->%#X", instruction.operands[1].string, initialValue, finalValue);
-            }
-            else if (firstByte >= 0xb0 && firstByte <= 0xbf)
-            {
-                uint8_t secondByte = readUnsignedByte(input);
-                // Immediate-to-register mov
-                printf("mov ");
-                bool wBit = (firstByte & 0x08) >> 3;
-
-                uint8_t regField = firstByte & 0x07;
-                char *regFieldRegName = getRegisterName(regField, wBit);
-
-                int16_t immediate = secondByte;
-
-                OperandValue operandValue = operandValues[regField];
-
-                Register reg = wBit ? operandValue.w1Reg.reg : operandValue.w0Reg.reg;
-
-                RegisterUsage usage = wBit ? operandValue.w1Reg.usage : operandValue.w0Reg.usage;
-
-                int16_t initialValue = cpu.regs.allRegs[reg];
-
-                if (usage == x)
-                {
-                    cpu.regs.allRegs[reg] = immediate;
-                }
-                else if (usage == low)
-                {
-                    cpu.regs.allRegs[reg] |= (immediate & 0x0f);
-                }
-                else if (usage == high)
-                {
-                    cpu.regs.allRegs[reg] |= (immediate << 8);
-                }
-
-                int16_t finalValue = cpu.regs.allRegs[reg];
-
-                if (wBit)
-                {
-                    extractHighBits(&immediate, input);
-                }
-
-                printf("%s, ", regFieldRegName);
-                printf("%u", immediate);
-
-                printf(" %s: %#X-->%#X", regFieldRegName, initialValue, finalValue);
-            }
-            else if (firstByte == 0xc4)
-            {
-                printf("les ");
-                uint8_t secondByte = readUnsignedByte(input);
-                decodeRegisterMemoryToFromMemory(input, secondByte, true, true);
-            }
-            else if (firstByte == 0x37)
-            {
-                printf("aaa");
-            }
-            else if (firstByte == 0x27)
-            {
-                printf("daa");
-            }
-            else if (firstByte == 0x3f)
-            {
-                printf("aas");
-            }
-            else if (firstByte == 0x2f)
-            {
-                printf("das");
-            }
-            else if (firstByte == 0xc4)
-            {
-                printf("les ");
-                uint8_t secondByte = readUnsignedByte(input);
-                decodeRegisterMemoryToFromMemory(input, secondByte, true, true);
-            }
-            else if (firstByte == 0x9f)
-            {
-                printf("lahf ");
-            }
-            else if (firstByte == 0x9e)
-            {
-                printf("sahf ");
-            }
-            else if (firstByte == 0x9c)
-            {
-                printf("pushf ");
-            }
-            else if (firstByte == 0x9d)
-            {
-                printf("popf ");
-            }
-
-            else if (opcode == 0x00)
-            {
-                uint8_t secondByte = readUnsignedByte(input);
-                printf("add ");
-                bool dBit = extractDOrSBit(firstByte);
-                bool wBit = extractWBit(firstByte);
-                decodeRegisterMemoryToFromMemory(input, secondByte, dBit, wBit);
-            }
-            else if (opcode == 0x04)
-            {
-                uint8_t secondByte = readUnsignedByte(input);
-                printf("adc ");
-                bool dBit = extractDOrSBit(firstByte);
-                bool wBit = extractWBit(firstByte);
-                decodeRegisterMemoryToFromMemory(input, secondByte, dBit, wBit);
-            }
-            else if (opcode == 0x0e)
-            {
-                uint8_t secondByte = readUnsignedByte(input);
-                printf("cmp ");
-                bool dBit = extractDOrSBit(firstByte);
-                bool wBit = extractWBit(firstByte);
-                decodeRegisterMemoryToFromMemory(input, secondByte, dBit, wBit);
-            }
-            else if ((firstByte >> 1) == 0x1e)
-            {
-                uint8_t secondByte = readUnsignedByte(input);
-                printf("cmp ");
-                decodeImmediateToAccumulator(input, firstByte, secondByte);
-            }
-            else if ((firstByte >> 1) == 0x2)
-            {
-                uint8_t secondByte = readUnsignedByte(input);
-                printf("add ");
-                decodeImmediateToAccumulator(input, firstByte, secondByte);
-            }
-            else if ((firstByte >> 1) == 0x0a)
-            {
-                uint8_t secondByte = readUnsignedByte(input);
-                printf("adc ");
-                decodeImmediateToAccumulator(input, firstByte, secondByte);
-            }
-            else if (firstByte >= 0x2c && firstByte <= 0x2d)
-            {
-                uint8_t secondByte = readUnsignedByte(input);
-                printf("sub ");
-                decodeImmediateToAccumulator(input, firstByte, secondByte);
-            }
-            else if (firstByte >= 0x1c && firstByte <= 0x1d)
-            {
-                uint8_t secondByte = readUnsignedByte(input);
-                printf("sbb ");
-                decodeImmediateToAccumulator(input, firstByte, secondByte);
-            }
-
-            else if (firstByte >= 0x28 && firstByte <= 0x2b)
-            {
-                uint8_t secondByte = readUnsignedByte(input);
-                printf("sub ");
-                bool dBit = extractDOrSBit(firstByte);
-                bool wBit = extractWBit(firstByte);
-                decodeRegisterMemoryToFromMemory(input, secondByte, dBit, wBit);
-            }
-            else if (firstByte >= 0x18 && firstByte <= 0x1b)
-            {
-                uint8_t secondByte = readUnsignedByte(input);
-                printf("sbb ");
-                bool dBit = extractDOrSBit(firstByte);
-                bool wBit = extractWBit(firstByte);
-                decodeRegisterMemoryToFromMemory(input, secondByte, dBit, wBit);
-            }
-            else if (firstByte >= 0xfd && firstByte <= 0xff)
-            {
-
-                uint8_t secondByte = readUnsignedByte(input);
-                uint8_t rem = extractBits(secondByte, 3, 6);
-                if (firstByte == 0xff && rem == 0x06)
-                {
-                    printf("push ");
-                }
-                else if (rem == 0x00)
-                {
-                    printf("inc ");
-                }
-                else if (rem == 0x01)
-                {
-                    printf("dec ");
-                }
-                else
-                {
-                    assert(false && "Unimplemented");
-                }
-                decodeRegisterMemory(input, firstByte, secondByte);
-            }
-            else if (firstByte >= 0xf6 && firstByte <= 0xf7)
-            {
-                uint8_t secondByte = readUnsignedByte(input);
-                uint8_t rem = extractBits(secondByte, 3, 6);
-
-                if (rem == 0x03)
-                {
-                    printf("neg ");
-                }
-                else if (rem == 0x04)
-                {
-                    printf("mul ");
-                }
-                else if (rem == 0x05)
-                {
-                    printf("imul ");
-                }
-                else if (rem == 0x06)
-                {
-                    printf("div ");
-                }
-                else if (rem == 0x07)
-                {
-                    printf("idiv ");
-                }
-                else
-                {
-                    assert(false && "Unimplemented");
-                }
-
-                decodeRegisterMemory(input, firstByte, secondByte);
-            }
-            else if (firstByte >= 0x40 && firstByte <= 0x47)
-            {
-                printf("inc ");
-                uint8_t rem = extractLowBits(firstByte, 3);
-                char *regExpression = getRegisterName(rem, 1);
-                printf(regExpression);
-            }
-            else if (firstByte == 0xd4)
-            {
-                uint8_t secondByte = readUnsignedByte(input);
-
-                if (secondByte == 0x0a)
-                {
-                    printf("aam");
-                }
-                else
-                {
-                    assert(false && "Unimplemented");
-                }
-            }
-            else if (firstByte >= 0x48 && firstByte <= 0x4f)
-            {
-                printf("dec ");
-                uint8_t rem = extractLowBits(firstByte, 3);
-                char *regExpression = getRegisterName(rem, 1);
-                printf(regExpression);
-            }
-            else if (opcode == 0x20)
-            {
-                uint8_t secondByte = readUnsignedByte(input);
-                uint8_t mod = extractMod(secondByte);
-                uint8_t instructionExtension = (secondByte >> 3) & 0x07;
-                switch (instructionExtension)
-                {
-                case 0:
-                {
-                    printf("add ");
-                }
-                break;
-                case 2:
-                {
-                    printf("adc ");
-                }
-                break;
-                case 3:
-                {
-                    printf("sbb ");
-                }
-                break;
-                case 5:
-                {
-                    printf("sub ");
-                }
-                break;
-                case 7:
-                {
-                    printf("cmp ");
-                }
-                break;
-                default:
-                {
-                    assert(false && "Unimplemented");
-                }
-                }
-                decodeImmediateToRegisterOrMemory(input, mod, firstByte, secondByte, true);
-            }
-            else if (firstByte == 0x70)
-            {
-                uint8_t secondByte = readUnsignedByte(input);
-                printf("jo ");
-                decodeJump(secondByte);
-            }
-            else if (firstByte == 0x71)
-            {
-                uint8_t secondByte = readUnsignedByte(input);
-
-                printf("jno ");
-                decodeJump(secondByte);
-            }
-            else if (firstByte == 0x72)
-            {
-                uint8_t secondByte = readUnsignedByte(input);
-
-                printf("jb ");
-                decodeJump(secondByte);
-            }
-            else if (firstByte == 0x73)
-            {
-                uint8_t secondByte = readUnsignedByte(input);
-
-                printf("jnb ");
-                decodeJump(secondByte);
-            }
-            else if (firstByte == 0x74)
-            {
-                uint8_t secondByte = readUnsignedByte(input);
-
-                printf("je ");
-                decodeJump(secondByte);
-            }
-            else if (firstByte == 0x75)
-            {
-                int8_t secondByte = readSignedByte(input);
-
-                printf("jnz ");
-                decodeJump(secondByte);
-            }
-            else if (firstByte == 0x76)
-            {
-                int8_t secondByte = readSignedByte(input);
-
-                printf("jbe ");
-                decodeJump(secondByte);
-            }
-            else if (firstByte == 0x77)
-            {
-                int8_t secondByte = readSignedByte(input);
-
-                printf("ja ");
-                decodeJump(secondByte);
-            }
-            else if (firstByte == 0x78)
-            {
-                int8_t secondByte = readSignedByte(input);
-
-                printf("js ");
-                decodeJump(secondByte);
-            }
-            else if (firstByte == 0x79)
-            {
-                int8_t secondByte = readSignedByte(input);
-
-                printf("jns ");
-                decodeJump(secondByte);
-            }
-            else if (firstByte == 0x7a)
-            {
-                int8_t secondByte = readUnsignedByte(input);
-
-                printf("jp ");
-                decodeJump(secondByte);
-            }
-            else if (firstByte == 0x7b)
-            {
-                int8_t secondByte = readUnsignedByte(input);
-
-                printf("jnp ");
-                decodeJump(secondByte);
-            }
-            else if (firstByte == 0x7c)
-            {
-                int8_t secondByte = readUnsignedByte(input);
-
-                printf("jl ");
-                decodeJump(secondByte);
-            }
-            else if (firstByte == 0x7d)
-            {
-                int8_t secondByte = readUnsignedByte(input);
-
-                printf("jnl ");
-                decodeJump(secondByte);
-            }
-            else if (firstByte == 0x7e)
-            {
-                int8_t secondByte = readUnsignedByte(input);
-
-                printf("jle ");
-                decodeJump(secondByte);
-            }
-            else if (firstByte == 0x7f)
-            {
-                int8_t secondByte = readSignedByte(input);
-
-                printf("jg ");
-                decodeJump(secondByte);
-            }
-            else if (firstByte == 0xe0)
-            {
-                int8_t secondByte = readSignedByte(input);
-
-                printf("loopnz ");
-                decodeJump(secondByte);
-            }
-            else if (firstByte == 0xe1)
-            {
-                int8_t secondByte = readSignedByte(input);
-
-                printf("loopz ");
-                decodeJump(secondByte);
-            }
-            else if (firstByte == 0xe2)
-            {
-                int8_t secondByte = readSignedByte(input);
-
-                printf("loop ");
-                decodeJump(secondByte);
-            }
-
-            else if (firstByte == 0xe3)
-            {
-                int8_t secondByte = readSignedByte(input);
-
-                printf("jcxz ");
-                decodeJump(secondByte);
-            }
-
-            else if ((firstByte >> 3) == 0xa)
-            {
-                printf("push ");
-
-                uint8_t regField = firstByte & 0x07;
-                char *regFieldRegName = getRegisterName(regField, 1);
-
-                printf(regFieldRegName);
-            }
-            else if (((firstByte >> 6) == 0) && ((firstByte & 0x07) == 0x06))
-            {
-                printf("push ");
-                uint8_t regField = (firstByte >> 3) & 0x03;
-
-                decodeSegmentRegister(regField);
-            }
-
-            else if (firstByte == 0x8f)
-            {
-
-                printf("pop ");
-
-                uint8_t secondByte = readUnsignedByte(input);
-                uint8_t secondByteInstructionPattern = ((secondByte >> 3) & 0x07);
-                assert(secondByteInstructionPattern == 0x00 && "Unimplemented instruction pattern");
-                decodeRegisterMemory(input, firstByte, secondByte);
-            }
-
-            else if (firstByte >= 0x58 && firstByte <= 0x5f)
-            {
-
-                printf("pop ");
-
-                uint8_t regField = firstByte & 0x07;
-                char *regFieldRegName = getRegisterName(regField, 1);
-
-                printf(regFieldRegName);
-            }
-            else if (((firstByte >> 6) == 0) && ((firstByte & 0x07) == 0x07))
-            {
-                printf("pop ");
-                uint8_t regField = (firstByte >> 3) & 0x03;
-
-                decodeSegmentRegister(regField);
-            }
-            else if ((firstByte >> 1) == 0x43)
-            {
-                printf("xchg ");
-                uint8_t secondByte = readUnsignedByte(input);
-                bool dBit = extractDOrSBit(firstByte);
-                bool wBit = extractWBit(firstByte);
-                decodeRegisterMemoryToFromMemory(input, secondByte, dBit, wBit);
-            }
-            else if ((firstByte >> 3) == 0x12)
-            {
-                // Register with accumulator
-                printf("xchg ");
-                printf("ax, ");
-                uint8_t regField = firstByte & 0x07;
-                char *regFieldRegName = getRegisterName(regField, 1);
-                printf(regFieldRegName);
-            }
-            else if ((firstByte >> 1) == 0x72)
-            {
-                printf("in ");
-                bool wBit = extractWBit(firstByte);
-                uint8_t secondByte = readSignedByte(input);
-
-                int16_t fixedPort = secondByte;
-                bool sign = secondByte >> 7;
-
-                if (wBit && sign)
-                {
-                    fixedPort = fixedPort | (0xff << 8);
-                }
-
-                printAccumulator(wBit);
-
-                printf("%d", fixedPort);
-            }
-            else if ((firstByte >> 1) == 0x76)
-            {
-                printf("in ");
-
-                bool wBit = extractWBit(firstByte);
-
-                printAccumulator(wBit);
-
-                printf("dx");
-            }
-            else if ((firstByte >> 1) == 0x73)
-            {
-                printf("out ");
-                bool wBit = extractWBit(firstByte);
-                uint8_t secondByte = readSignedByte(input);
-
-                int16_t fixedPort = secondByte;
-                bool sign = secondByte >> 7;
-
-                if (wBit && sign)
-                {
-                    fixedPort = fixedPort | (0xff << 8);
-                }
-
-                printf("%d, ", fixedPort);
-                if (wBit && sign)
-                {
-                    fixedPort = fixedPort | (0xff << 8);
-                }
-
-                if (wBit)
-                {
-                    printf("ax");
-                }
-                else
-                {
-                    printf("al");
-                }
-            }
-
-            else if ((firstByte >> 1) == 0x77)
-            {
-                printf("out ");
-                printf("dx, ");
-
-                bool wBit = extractWBit(firstByte);
-
-                if (wBit)
-                {
-                    printf("ax");
-                }
-                else
-                {
-                    printf("al");
-                }
-            }
-            else if (firstByte == 0xd7)
-            {
-                printf("xlat");
-            }
-            else if (firstByte == 0x8d)
-            {
-                printf("lea ");
-                uint8_t secondByte = readUnsignedByte(input);
-                decodeRegisterMemoryToFromMemory(input, secondByte, true, true);
-            }
-
-            else
-            {
-                assert(false && "Unknown instruction");
-            }
-
-            printf("\n");
+            instruction = decodeRegisterMemory(secondByte, true, state);
+
+            instruction.type = instruction_push;
+        }
+
+        if (reg == 0x0)
+        {
+            bool wBit = extractBit(firstByte, 0);
+            instruction = decodeRegisterMemory(secondByte, wBit, state);
+
+            instruction.type = instruction_inc;
+        }
+        else if (reg == 0x1)
+        {
+            bool wBit = extractBit(firstByte, 0);
+            instruction = decodeRegisterMemory(secondByte, wBit, state);
+
+            instruction.type = instruction_dec;
+        }
+    }
+    if (firstByte >= 0x50 && firstByte <= 0x57)
+    {
+        assert(instruction.type == instruction_none);
+        instruction = decodeRegister(firstByte, true, state);
+        instruction.type = instruction_push;
+    }
+    if (extractBits(firstByte, 5, 8) == 0x0 && extractLowBits(firstByte, 3) == 0x06)
+    {
+        assert(instruction.type == instruction_none);
+        instruction = decodeSegmentRegister(firstByte);
+        instruction.type = instruction_push;
+    }
+    if (firstByte >= 0x58 && firstByte <= 0x5f)
+    {
+        assert(instruction.type == instruction_none);
+        instruction = decodeRegister(firstByte, true, state);
+        instruction.type = instruction_pop;
+    }
+    if (extractBits(firstByte, 5, 8) == 0x0 && extractLowBits(firstByte, 3) == 0x7)
+    {
+        assert(instruction.type == instruction_none);
+        instruction = decodeSegmentRegister(firstByte);
+        instruction.type = instruction_pop;
+    }
+    if (firstByte == 0x8f)
+    {
+        assert(instruction.type == instruction_none);
+        uint8_t secondByte = consumeByteAsUnsigned(state);
+        instruction = decodeRegisterMemory(secondByte, true, state);
+        uint8_t reg = extractBits(secondByte, 3, 6);
+
+        switch (reg)
+        {
+        case 0x00:
+        {
+            instruction.type = instruction_pop;
+        }
+        break;
+        default:
+        {
+            error(__FILE__, __LINE__, state->isNoWait, "Unknown instruction, first byte=%#X, reg=%#X", firstByte, reg);
+        }
+        }
+    }
+    if (firstByte == 0x86 || firstByte == 0x87)
+    {
+        assert(instruction.type == instruction_none);
+        bool wBit = extractBit(firstByte, 0);
+        bool dBit = extractBit(firstByte, 1);
+        instruction = decodeRegMemToFromRegMem(dBit, wBit, state);
+        instruction.type = instruction_xchg;
+    }
+    if (firstByte >= 0x90 && firstByte <= 0x97)
+    {
+        assert(instruction.type == instruction_none);
+        instruction = decodeRegisterWithAccumulator(firstByte, state);
+        instruction.type = instruction_xchg;
+    }
+    if (firstByte == 0xe4 || firstByte == 0xe5)
+    {
+        assert(instruction.type == instruction_none);
+        instruction = decodeFixedPort(false, firstByte, state);
+        instruction.type = instruction_in;
+    }
+    if (firstByte == 0xec || firstByte == 0xed)
+    {
+        assert(instruction.type == instruction_none);
+        instruction = decodeVariablePort(false, firstByte);
+        instruction.type = instruction_in;
+    }
+    if (firstByte == 0xe6 || firstByte == 0xe7)
+    {
+        assert(instruction.type == instruction_none);
+        instruction = decodeFixedPort(true, firstByte, state);
+        instruction.type = instruction_out;
+    }
+    if (firstByte == 0xee || firstByte == 0xef)
+    {
+        assert(instruction.type == instruction_none);
+        instruction = decodeVariablePort(true, firstByte);
+        instruction.type = instruction_out;
+    }
+    if (firstByte == 0xd7)
+    {
+        assert(instruction.type == instruction_none);
+        instruction.type = instruction_xlat;
+    }
+    if (firstByte == 0x8d)
+    {
+        assert(instruction.type == instruction_none);
+        instruction = decodeRegMemToFromRegMem(true, true, state);
+        instruction.type = instruction_lea;
+    }
+    if (firstByte == 0xc5)
+    {
+        assert(instruction.type == instruction_none);
+
+        instruction = decodeRegMemToFromRegMem(true, true, state);
+        instruction.type = instruction_lds;
+    }
+    if (firstByte == 0xc4)
+    {
+        assert(instruction.type == instruction_none);
+        instruction = decodeRegMemToFromRegMem(true, true, state);
+        instruction.type = instruction_les;
+    }
+    if (firstByte == 0x9f)
+    {
+        assert(instruction.type == instruction_none);
+        instruction.type = instruction_lahf;
+    }
+    if (firstByte == 0x9e)
+    {
+        assert(instruction.type == instruction_none);
+        instruction.type = instruction_sahf;
+    }
+    if (firstByte == 0x9c)
+    {
+        assert(instruction.type == instruction_none);
+        instruction.type = instruction_pushf;
+    }
+    if (firstByte == 0x9d)
+    {
+        assert(instruction.type == instruction_none);
+        instruction.type = instruction_popf;
+    }
+    if (firstByte >= 0x00 && firstByte <= 0x03)
+    {
+        assert(instruction.type == instruction_none);
+        bool wBit = extractBit(firstByte, 0);
+        bool dBit = extractBit(firstByte, 1);
+        instruction = decodeRegMemToFromRegMem(dBit, wBit, state);
+
+        instruction.type = instruction_add;
+    }
+    if (firstByte >= 0x80 && firstByte <= 0x83)
+    {
+        assert(instruction.type == instruction_none);
+        uint8_t secondByte = consumeByteAsUnsigned(state);
+        bool sBit = extractBit(firstByte, 1);
+
+        instruction = decodeImmediateToRegisterMemory(firstByte, sBit, secondByte, state);
+
+        uint8_t reg = extractBits(secondByte, 3, 6);
+        switch (reg)
+        {
+        case 0x00:
+        {
+            instruction.type = instruction_add;
+        }
+        break;
+        case 0x02:
+        {
+            instruction.type = instruction_adc;
+        }
+        break;
+        case 0x03:
+        {
+            instruction.type = instruction_sbb;
+        }
+        break;
+        case 0x04:
+        {
+            instruction.type = instruction_and;
+        }
+        break;
+        case 0x05:
+        {
+            instruction.type = instruction_sub;
+        }
+        break;
+        case 0x07:
+        {
+            instruction.type = instruction_cmp;
+        }
+        break;
+        default:
+        {
+            error(__FILE__, __LINE__, state->isNoWait, "Unknown instruction, first byte=%#X, reg=%#X", firstByte, reg);
+        }
+        }
+    }
+    if (firstByte == 0x04 || firstByte == 0x05)
+    {
+        assert(instruction.type == instruction_none);
+        bool wBit = extractLowBits(firstByte, 1);
+        instruction = decodeImmediateFromAccumulator(wBit, state);
+
+        instruction.type = instruction_add;
+    }
+    if (firstByte >= 0x10 && firstByte <= 0x13)
+    {
+        assert(instruction.type == instruction_none);
+        bool wBit = extractBit(firstByte, 0);
+        bool dBit = extractBit(firstByte, 1);
+        instruction = decodeRegMemToFromRegMem(dBit, wBit, state);
+
+        instruction.type = instruction_adc;
+    }
+    if (firstByte == 0x14 || firstByte == 0x15)
+    {
+        assert(instruction.type == instruction_none);
+        bool wBit = extractLowBits(firstByte, 1);
+        instruction = decodeImmediateFromAccumulator(wBit, state);
+
+        instruction.type = instruction_adc;
+    }
+    if (firstByte >= 0x40 && firstByte <= 0x47)
+    {
+        assert(instruction.type == instruction_none);
+        instruction = decodeRegister(firstByte, true, state);
+        instruction.type = instruction_inc;
+    }
+    if (firstByte == 0x37)
+    {
+        assert(instruction.type == instruction_none);
+        instruction.type = instruction_aaa;
+    }
+    if (firstByte == 0x27)
+    {
+        assert(instruction.type == instruction_none);
+        instruction.type = instruction_daa;
+    }
+    if (firstByte >= 0x28 && firstByte <= 0x2b)
+    {
+        assert(instruction.type == instruction_none);
+
+        bool wBit = extractBit(firstByte, 0);
+        bool dBit = extractBit(firstByte, 1);
+        instruction = decodeRegMemToFromRegMem(dBit, wBit, state);
+        instruction.type = instruction_sub;
+    }
+    if (firstByte == 0x2c || firstByte == 0x2d)
+    {
+        assert(instruction.type == instruction_none);
+        bool wBit = extractBit(firstByte, 0);
+        instruction = decodeImmediateFromAccumulator(wBit, state);
+
+        instruction.type = instruction_sub;
+    }
+
+    if (firstByte >= 0x18 && firstByte <= 0x1b)
+    {
+        assert(instruction.type == instruction_none);
+
+        bool wBit = extractBit(firstByte, 0);
+        bool dBit = extractBit(firstByte, 1);
+        instruction = decodeRegMemToFromRegMem(dBit, wBit, state);
+        instruction.type = instruction_sbb;
+    }
+    if (firstByte == 0x1c || firstByte == 0x1d)
+    {
+        assert(instruction.type == instruction_none);
+        bool wBit = extractBit(firstByte, 0);
+        instruction = decodeImmediateFromAccumulator(wBit, state);
+
+        instruction.type = instruction_sbb;
+    }
+    if (firstByte >= 0x48 && firstByte <= 0x4f)
+    {
+        assert(instruction.type == instruction_none);
+        instruction = decodeRegister(firstByte, true, state);
+        instruction.type = instruction_dec;
+    }
+    if (firstByte == 0xf6 || firstByte == 0xf7)
+    {
+        assert(instruction.type == instruction_none);
+        uint8_t secondByte = consumeByteAsUnsigned(state);
+        uint8_t reg = extractBits(secondByte, 3, 6);
+        bool wBit = extractBit(firstByte, 0);
+        instruction = decodeRegisterMemory(secondByte, wBit, state);
+        switch (reg)
+        {
+        case 0x2:
+        {
+            instruction.type = instruction_not;
+        }
+        break;
+        case 0x3:
+        {
+            instruction.type = instruction_neg;
+        }
+        break;
+        case 0x4:
+        {
+            instruction.type = instruction_mul;
+        }
+        break;
+        case 0x5:
+        {
+            instruction.type = instruction_imul;
+        }
+        break;
+        case 0x6:
+        {
+            instruction.type = instruction_div;
+        }
+        break;
+        case 0x7:
+        {
+            instruction.type = instruction_idiv;
+        }
+        break;
+        }
+    }
+    if (firstByte == 0x3f)
+    {
+        assert(instruction.type == instruction_none);
+        instruction.type = instruction_aas;
+    }
+    if (firstByte == 0x2f)
+    {
+        assert(instruction.type == instruction_none);
+        instruction.type = instruction_das;
+    }
+    if (firstByte == 0xd4)
+    {
+        assert(instruction.type == instruction_none);
+        uint8_t secondByte = consumeByteAsUnsigned(state);
+        if (secondByte == 0x0a)
+        {
+            instruction.type = instruction_aam;
+        }
+    }
+    if (firstByte == 0xd5)
+    {
+        assert(instruction.type == instruction_none);
+        uint8_t secondByte = consumeByteAsUnsigned(state);
+        if (secondByte == 0x0a)
+        {
+            instruction.type = instruction_aad;
+        }
+    }
+    if (firstByte == 0x98)
+    {
+        assert(instruction.type == instruction_none);
+        instruction.type = instruction_cbw;
+    }
+    if (firstByte == 0x99)
+    {
+        assert(instruction.type == instruction_none);
+        instruction.type = instruction_cwd;
+    }
+
+    if (firstByte >= 0xd0 && firstByte <= 0xd3)
+    {
+        assert(instruction.type == instruction_none);
+        uint8_t secondByte = consumeByteAsUnsigned(state);
+        uint8_t mod = extractBits(secondByte, 6, 8);
+        uint8_t reg = extractBits(secondByte, 3, 6);
+        uint8_t rm = extractLowBits(secondByte, 3);
+
+        bool wBit = extractBit(firstByte, 0);
+        bool vBit = extractBit(firstByte, 1);
+        instruction.isWide = wBit;
+        instruction.operandCount = 2;
+        if (vBit)
+        {
+            instruction.secondOperand.type = operand_type_register;
+            instruction.secondOperand.payload.reg.reg = reg_c;
+            instruction.secondOperand.payload.reg.portion = reg_portion_l;
+        }
+        else
+        {
+            instruction.secondOperand.type = operand_type_immediate;
+            instruction.secondOperand.payload.immediate.value = 1;
+        }
+
+        instruction.firstOperand = decodeRmOperand(wBit, mod, rm, state);
+
+        if (instruction.firstOperand.type == operand_type_memory)
+        {
+            instruction.needsDecorator = true;
+        }
+
+        switch (reg)
+        {
+        case 0x0:
+        {
+            instruction.type = instruction_rol;
+        }
+        break;
+        case 0x1:
+        {
+            instruction.type = instruction_ror;
+        }
+        break;
+        case 0x2:
+        {
+            instruction.type = instruction_rcl;
+        }
+        break;
+        case 0x3:
+        {
+            instruction.type = instruction_rcr;
+        }
+        break;
+        case 0x4:
+        {
+            instruction.type = instruction_shl;
+        }
+        break;
+        case 0x5:
+        {
+            instruction.type = instruction_shr;
+        }
+        break;
+        case 0x7:
+        {
+            instruction.type = instruction_sar;
+        }
+        break;
+        }
+    }
+
+    if (firstByte >= 0x20 && firstByte <= 0x23)
+    {
+        assert(instruction.type == instruction_none);
+        bool wBit = extractBit(firstByte, 0);
+        bool dBit = extractBit(firstByte, 1);
+        instruction = decodeRegMemToFromRegMem(dBit, wBit, state);
+
+        instruction.type = instruction_and;
+    }
+    if (firstByte == 0x24 || firstByte == 0x25)
+    {
+        assert(instruction.type == instruction_none);
+        bool wBit = extractLowBits(firstByte, 1);
+        instruction = decodeImmediateFromAccumulator(wBit, state);
+
+        instruction.type = instruction_and;
+    }
+
+    if (firstByte == 0x3c || firstByte == 0x3d)
+    {
+        assert(instruction.type == instruction_none);
+        bool wBit = extractBit(firstByte, 0);
+        instruction = decodeImmediateFromAccumulator(wBit, state);
+
+        instruction.type = instruction_cmp;
+    }
+    if (firstByte >= 0x38 && firstByte <= 0x3b)
+    {
+        assert(instruction.type == instruction_none);
+
+        bool wBit = extractBit(firstByte, 0);
+        bool dBit = extractBit(firstByte, 1);
+        instruction = decodeRegMemToFromRegMem(dBit, wBit, state);
+        instruction.type = instruction_cmp;
+    }
+    if (firstByte == 0x74)
+    {
+        assert(instruction.type == instruction_none);
+
+        instruction = decodeJump(state);
+        instruction.type = instruction_je;
+    }
+    if (firstByte == 0x7c)
+    {
+        assert(instruction.type == instruction_none);
+
+        instruction = decodeJump(state);
+        instruction.type = instruction_jl;
+    }
+    if (firstByte == 0x7e)
+    {
+        assert(instruction.type == instruction_none);
+
+        instruction = decodeJump(state);
+        instruction.type = instruction_jle;
+    }
+    if (firstByte == 0x72)
+    {
+        assert(instruction.type == instruction_none);
+
+        instruction = decodeJump(state);
+        instruction.type = instruction_jb;
+    }
+    if (firstByte == 0x76)
+    {
+        assert(instruction.type == instruction_none);
+
+        instruction = decodeJump(state);
+        instruction.type = instruction_jbe;
+    }
+    if (firstByte == 0x7a)
+    {
+        assert(instruction.type == instruction_none);
+
+        instruction = decodeJump(state);
+        instruction.type = instruction_jp;
+    }
+    if (firstByte == 0x70)
+    {
+        assert(instruction.type == instruction_none);
+        instruction = decodeJump(state);
+        instruction.type = instruction_jo;
+    }
+    if (firstByte == 0x78)
+    {
+        assert(instruction.type == instruction_none);
+
+        instruction = decodeJump(state);
+        instruction.type = instruction_js;
+    }
+    if (firstByte == 0x75)
+    {
+        assert(instruction.type == instruction_none);
+
+        instruction = decodeJump(state);
+        instruction.type = instruction_jnz;
+    }
+    if (firstByte == 0x7d)
+    {
+        assert(instruction.type == instruction_none);
+
+        instruction = decodeJump(state);
+        instruction.type = instruction_jnl;
+    }
+    if (firstByte == 0x7f)
+    {
+        assert(instruction.type == instruction_none);
+
+        instruction = decodeJump(state);
+        instruction.type = instruction_jnle;
+    }
+    if (firstByte == 0x73)
+    {
+        assert(instruction.type == instruction_none);
+
+        instruction = decodeJump(state);
+        instruction.type = instruction_jnb;
+    }
+    if (firstByte == 0x77)
+    {
+        assert(instruction.type == instruction_none);
+
+        instruction = decodeJump(state);
+        instruction.type = instruction_ja;
+    }
+    if (firstByte == 0x7b)
+    {
+        assert(instruction.type == instruction_none);
+
+        instruction = decodeJump(state);
+        instruction.type = instruction_jnp;
+    }
+    if (firstByte == 0x71)
+    {
+        assert(instruction.type == instruction_none);
+
+        instruction = decodeJump(state);
+        instruction.type = instruction_jno;
+    }
+    if (firstByte == 0x79)
+    {
+        assert(instruction.type == instruction_none);
+
+        instruction = decodeJump(state);
+        instruction.type = instruction_jns;
+    }
+    if (firstByte == 0xe2)
+    {
+        assert(instruction.type == instruction_none);
+
+        instruction = decodeJump(state);
+        instruction.type = instruction_loop;
+    }
+    if (firstByte == 0xe1)
+    {
+        assert(instruction.type == instruction_none);
+
+        instruction = decodeJump(state);
+        instruction.type = instruction_loopz;
+    }
+    if (firstByte == 0xe0)
+    {
+        assert(instruction.type == instruction_none);
+
+        instruction = decodeJump(state);
+        instruction.type = instruction_loopnz;
+    }
+    if (firstByte == 0xe3)
+    {
+        assert(instruction.type == instruction_none);
+
+        instruction = decodeJump(state);
+        instruction.type = instruction_jcxz;
+    }
+    if (instruction.type == instruction_none)
+    {
+        error(__FILE__, __LINE__, state->isNoWait, "Unknown instruction, first byte=%#X", firstByte);
+    }
+
+    if (
+        instruction.operandCount == 1 && instruction.firstOperand.type != operand_type_register && !(instruction.firstOperand.type == operand_type_immediate && instruction.firstOperand.payload.immediate.isRelativeOffset))
+    {
+        instruction.needsDecorator = true;
+    }
+    if (instruction.operandCount == 2 && instruction.firstOperand.type != operand_type_register && instruction.secondOperand.type != operand_type_register)
+    {
+        instruction.needsDecorator = true;
+    }
+
+    instruction.byteCount = state->instructions.instructionPointer - initialStackPointer;
+    return instruction;
+}
+
+OpValue getOperandValue(Operand source, bool isWide, State *state)
+{
+    OpValue result = {0};
+
+    result.isWide = isWide;
+
+    if (source.type == operand_type_register)
+    {
+        assert(source.payload.reg.reg != reg_none);
+        if (source.payload.reg.portion == reg_portion_x)
+        {
+            result.value.word = state->registers[source.payload.reg.reg].x;
+        }
+        else if (source.payload.reg.portion == reg_portion_l)
+        {
+            result.value.word = state->registers[source.payload.reg.reg].lh.l;
+        }
+        else
+        {
+            result.value.word = state->registers[source.payload.reg.reg].lh.h;
+        }
+    }
+    else if (source.type == operand_type_immediate)
+    {
+        if (isWide)
+        {
+            result.value.word = source.payload.immediate.value;
+        }
+        else
+        {
+            result.value.byte = (int8_t)source.payload.immediate.value;
         }
     }
     else
     {
-        perror("Error: Could not open input file");
+        assert(false && "Unimplemented");
     }
 
-    printf("Final registers:\n");
-    printf("ax:%#X\n", cpu.regs.individualRegs.ax);
-    printf("bx:%#X\n", cpu.regs.individualRegs.bx);
-    printf("cx:%#X\n", cpu.regs.individualRegs.cx);
-    printf("dx:%#X\n", cpu.regs.individualRegs.dx);
-    printf("sp:%#X\n", cpu.regs.individualRegs.sp);
-    printf("bp:%#X\n", cpu.regs.individualRegs.bp);
-    printf("si:%#X\n", cpu.regs.individualRegs.si);
-    printf("di:%#X\n", cpu.regs.individualRegs.di);
+    return result;
+}
 
-    printf("; Press enter to continue...");
+void setDestination(Operand destination, OpValue sourceValue, State *state)
+{
 
-    char byte;
-    fread(&byte, sizeof(byte), 1, stdin);
+    if (destination.type == operand_type_register)
+    {
+
+        assert(destination.payload.reg.reg != reg_none);
+        if (destination.payload.reg.portion == reg_portion_x)
+        {
+            assert(sourceValue.isWide);
+            state->registers[destination.payload.reg.reg].x = sourceValue.value.word;
+        }
+        else if (destination.payload.reg.portion == reg_portion_l)
+        {
+            assert(!sourceValue.isWide);
+            state->registers[destination.payload.reg.reg].lh.l = sourceValue.value.byte;
+        }
+        else
+        {
+            assert(!sourceValue.isWide);
+            state->registers[destination.payload.reg.reg].lh.h = sourceValue.value.byte;
+        }
+    }
+
+    else
+    {
+        assert(false && "Unimplemented");
+    }
+}
+
+OpValue opValueSubtract(OpValue left, OpValue right)
+{
+    assert(left.isWide == right.isWide);
+
+    OpValue result = {0};
+    result.isWide = left.isWide;
+    if (result.isWide)
+    {
+        result.value.word = left.value.word - right.value.word;
+    }
+    else
+    {
+        result.value.byte = left.value.byte - right.value.byte;
+    }
+
+    return result;
+}
+
+OpValue opValueAdd(OpValue left, OpValue right)
+{
+    assert(left.isWide == right.isWide);
+
+    OpValue result = {0};
+    result.isWide = left.isWide;
+    if (result.isWide)
+    {
+        result.value.word = left.value.word + right.value.word;
+    }
+    else
+    {
+        result.value.byte = left.value.byte + right.value.byte;
+    }
+
+    return result;
+}
+
+bool isZero(OpValue value)
+{
+
+    if (value.isWide)
+    {
+        return value.value.word == 0;
+    }
+    else
+    {
+        return value.value.byte == 0;
+    }
+}
+
+bool isNegative(OpValue value)
+{
+
+    if (value.isWide)
+    {
+        return value.value.word < 0;
+    }
+    else
+    {
+        return value.value.byte < 0;
+    }
+}
+
+void updateZeroFlag(OpValue result, State *state)
+{
+    if (isZero(result))
+    {
+        state->flags[flag_zero] = true;
+    }
+    else
+    {
+        state->flags[flag_zero] = false;
+    }
+}
+
+void updateSignFlag(OpValue result, State *state)
+{
+    if (isNegative(result))
+    {
+        state->flags[flag_sign] = true;
+    }
+    else
+    {
+        state->flags[flag_sign] = false;
+    }
+}
+
+void updateParityFlag(OpValue result, State *state)
+{
+    size_t setCount = 0;
+    for (uint8_t bitIndex = 0; bitIndex < 8; bitIndex++)
+    {
+        bool isSet = extractBit(result.value.byte, bitIndex);
+        if (isSet)
+        {
+            setCount++;
+        }
+    }
+    if (setCount % 2 == 0)
+    {
+        state->flags[flag_parity] = true;
+    }
+    else
+    {
+        state->flags[flag_parity] = false;
+    }
+}
+
+void executeInstruction(Instruction instruction, State *state)
+{
+
+    if (instruction.type == instruction_mov)
+    {
+        assert(instruction.operandCount == 2);
+
+        OpValue sourceValue = getOperandValue(instruction.secondOperand, instruction.isWide, state);
+
+        setDestination(instruction.firstOperand, sourceValue, state);
+    }
+    else if (instruction.type == instruction_sub)
+    {
+        OpValue sourceValue = getOperandValue(instruction.secondOperand, instruction.isWide, state);
+        OpValue destinationValue = getOperandValue(instruction.firstOperand, instruction.isWide, state);
+
+        OpValue result = opValueSubtract(destinationValue, sourceValue);
+
+        setDestination(instruction.firstOperand, result, state);
+
+        updateZeroFlag(result, state);
+        updateSignFlag(result, state);
+        updateParityFlag(result, state);
+    }
+    else if (instruction.type == instruction_cmp)
+    {
+        OpValue left = getOperandValue(instruction.firstOperand, instruction.isWide, state);
+
+        OpValue right = getOperandValue(instruction.secondOperand, instruction.isWide, state);
+
+        OpValue result = opValueSubtract(left, right);
+
+        updateZeroFlag(result, state);
+        updateSignFlag(result, state);
+        updateParityFlag(result, state);
+    }
+    else if (instruction.type == instruction_add)
+    {
+        OpValue left = getOperandValue(instruction.firstOperand, instruction.isWide, state);
+
+        OpValue right = getOperandValue(instruction.secondOperand, instruction.isWide, state);
+
+        OpValue result = opValueAdd(left, right);
+        setDestination(instruction.firstOperand, result, state);
+
+        updateZeroFlag(result, state);
+        updateSignFlag(result, state);
+        updateParityFlag(result, state);
+    }
+    else if (instruction.type == instruction_jnz)
+    {
+        if (!state->flags[flag_zero])
+        {
+            state->instructions.instructionPointer += instruction.firstOperand.payload.immediate.value;
+        }
+    }
+    else
+    {
+        assert(instruction.type == InstructionNames[instruction.type].type);
+        error(
+            __FILE__,
+            __LINE__,
+            state->isNoWait,
+            "Unimplemented instruction: %s",
+            InstructionNames[instruction.type].name);
+    }
+}
+
+bool cStringsEqual(char *left, char *right)
+{
+    return strcmp(left, right) == 0;
+}
+
+int main(int argc, char *argv[])
+{
+    if (argc < 1)
+    {
+        error(__FILE__, __LINE__, "Usage: %s <filename>", argv[0]);
+    }
+
+    State state = {0};
+
+    const char *fileName = NULL;
+
+    for (size_t argumentIndex = 1; argumentIndex < argc; argumentIndex++)
+    {
+        char *argument = argv[argumentIndex];
+
+        if (cStringsEqual(argument, "--nowait"))
+        {
+            state.isNoWait = true;
+        }
+        else if (cStringsEqual(argument, "--execute"))
+        {
+            state.execute = true;
+        }
+        else if (fileName == NULL)
+        {
+            fileName = argument;
+        }
+        else
+        {
+            error(__FILE__, __LINE__, state.isNoWait, "Invalid argument %s", argument);
+        }
+    }
+
+    size_t fileSize;
+
+    char *bytes = readFile(fileName, &fileSize, &state);
+    state.instructions.bytes = bytes;
+    state.instructions.size = fileSize;
+
+    while (state.instructions.instructionPointer < state.instructions.size)
+    {
+
+        State before = state;
+
+        Instruction instruction = decodeInstruction(&state);
+
+        if (state.execute)
+        {
+            executeInstruction(instruction, &state);
+        }
+        State after = state;
+
+        printInstruction(instruction, before, after);
+
+        printf("\n");
+    }
+
+    if (state.execute)
+    {
+        for (size_t regIndex = 0; regIndex < REGISTER_COUNT; regIndex++)
+        {
+            printf("; %s = \t%#x\n", RegisterInfos[regIndex].name, state.registers[regIndex].x);
+        }
+
+        printf("; ip = \t %#x\n", state.instructions.instructionPointer);
+
+        printf("Flags:");
+        printFlags(&state);
+    }
+
+    printPressEnterToContinue(state.isNoWait);
+    if (bytes != NULL)
+    {
+        free(bytes);
+    }
 
     return 0;
 }

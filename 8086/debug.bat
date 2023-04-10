@@ -1,1 +1,0 @@
-start remedybg 8086.exe data\listing%1.out
