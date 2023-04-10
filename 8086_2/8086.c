@@ -1518,6 +1518,15 @@ Instruction decodeInstruction(State *state)
         assert(instruction.type == instruction_none);
         instruction.type = instruction_das;
     }
+    if (firstByte == 0xd4)
+    {
+        assert(instruction.type == instruction_none);
+        uint8_t secondByte = consumeByteAsUnsigned(state);
+        if (secondByte == 0x0a)
+        {
+            instruction.type = instruction_aam;
+        }
+    }
     if (firstByte == 0x3c || firstByte == 0x3d)
     {
         assert(instruction.type == instruction_none);
