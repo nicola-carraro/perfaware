@@ -1369,6 +1369,11 @@ Instruction decodeInstruction(State *state)
             instruction.type = instruction_adc;
         }
         break;
+        case 0x03:
+        {
+            instruction.type = instruction_sbb;
+        }
+        break;
         case 0x05:
         {
             instruction.type = instruction_sub;
@@ -1444,6 +1449,25 @@ Instruction decodeInstruction(State *state)
 
         instruction.type = instruction_sub;
     }
+
+    if (firstByte >= 0x18 && firstByte <= 0x1b)
+    {
+        assert(instruction.type == instruction_none);
+
+        bool wBit = extractBit(firstByte, 0);
+        bool dBit = extractBit(firstByte, 1);
+        instruction = decodeRegMemToFromRegMem(dBit, wBit, state);
+        instruction.type = instruction_sbb;
+    }
+    if (firstByte == 0x1c || firstByte == 0x1d)
+    {
+        assert(instruction.type == instruction_none);
+        bool wBit = extractBit(firstByte, 0);
+        instruction = decodeImmediateFromAccumulator(wBit, state);
+
+        instruction.type = instruction_sbb;
+    }
+
     if (firstByte == 0x3c || firstByte == 0x3d)
     {
         assert(instruction.type == instruction_none);
