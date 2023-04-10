@@ -1082,7 +1082,7 @@ Instruction decodeFixedPort(uint8_t firstByte, State *state)
     result.firstOperand.payload.reg.portion = wBit ? reg_portion_x : reg_portion_l;
 
     result.secondOperand.type = operand_type_immediate;
-    result.secondOperand.payload.immediate.value = consumeByteAsSigned(state);
+    result.secondOperand.payload.immediate.value = consumeByteAsUnsigned(state);
 
     return result;
 }
