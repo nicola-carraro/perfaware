@@ -1291,6 +1291,11 @@ Instruction decodeInstruction(State *state)
         instruction = decodeVariablePort(true, firstByte);
         instruction.type = instruction_out;
     }
+    if (firstByte == 0xd7)
+    {
+        assert(instruction.type == instruction_none);
+        instruction.type = instruction_xlat;
+    }
     if (firstByte >= 0x00 && firstByte <= 0x03)
     {
         assert(instruction.type == instruction_none);
