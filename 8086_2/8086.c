@@ -1144,6 +1144,38 @@ Instruction decodeInstruction(State *state)
         instruction = decodeSegmentRegister(firstByte);
         instruction.type = instruction_push;
     }
+    if (firstByte >= 0x58 && firstByte <= 0x5f)
+    {
+        assert(instruction.type == instruction_none);
+        instruction = decodeRegister(firstByte, state);
+        instruction.type = instruction_pop;
+    }
+    if (extractBits(firstByte, 5, 8) == 0x0 && extractLowBits(firstByte, 3) == 0x7)
+    {
+        assert(instruction.type == instruction_none);
+        instruction = decodeSegmentRegister(firstByte);
+        instruction.type = instruction_pop;
+    }
+    if (firstByte == 0x8f)
+    {
+        assert(instruction.type == instruction_none);
+        uint8_t secondByte = consumeByteAsUnsigned(state);
+        instruction = decodeRegisterMemory(secondByte, state);
+        uint8_t reg = extractBits(secondByte, 3, 6);
+
+        switch (reg)
+        {
+        case 0x00:
+        {
+            instruction.type = instruction_pop;
+        }
+        break;
+        default:
+        {
+            error(__FILE__, __LINE__, state->isNoWait, "Unknown instruction, first byte=%#X, reg=%#X", firstByte, reg);
+        }
+        }
+    }
     if (firstByte >= 0x00 && firstByte <= 0x03)
     {
         assert(instruction.type == instruction_none);
