@@ -74,6 +74,7 @@ int main(void)
     testDecoding("../computer_enhance/perfaware/part1/listing_0037_single_register_mov");
     testDecoding("../computer_enhance/perfaware/part1/listing_0038_many_register_mov");
     testDecoding("../computer_enhance/perfaware/part1/listing_0039_more_movs");
+    testDecoding("../computer_enhance/perfaware/part1/listing_0040_challenge_movs");
     testDecoding("../computer_enhance/perfaware/part1/listing_0041_add_sub_cmp_jnz");
     testDecoding("../computer_enhance/perfaware/part1/listing_0043_immediate_movs");
     testDecoding("../computer_enhance/perfaware/part1/listing_0044_register_movs");
