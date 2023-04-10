@@ -1070,37 +1070,64 @@ decodeJump(State *state)
     return result;
 }
 
-Instruction decodeFixedPort(uint8_t firstByte, State *state)
+Instruction decodeFixedPort(bool isDest, uint8_t firstByte, State *state)
 {
     Instruction result = {0};
     result.operandCount = 2;
     bool wBit = extractBit(firstByte, 0);
     result.isWide = wBit;
 
-    result.firstOperand.type = operand_type_register;
-    result.firstOperand.payload.reg.reg = reg_a;
-    result.firstOperand.payload.reg.portion = wBit ? reg_portion_x : reg_portion_l;
+    Operand port = {0};
+    port.type = operand_type_immediate;
+    port.payload.immediate.value = consumeByteAsUnsigned(state);
 
-    result.secondOperand.type = operand_type_immediate;
-    result.secondOperand.payload.immediate.value = consumeByteAsUnsigned(state);
+    Operand other = {0};
+
+    other.type = operand_type_register;
+    other.payload.reg.reg = reg_a;
+    other.payload.reg.portion = wBit ? reg_portion_x : reg_portion_l;
+
+    if (isDest)
+    {
+        result.firstOperand = port;
+        result.secondOperand = other;
+    }
+    else
+    {
+        result.firstOperand = other;
+        result.secondOperand = port;
+    }
 
     return result;
 }
 
-Instruction decodeVariablePort(uint8_t firstByte)
+Instruction decodeVariablePort(bool isDest, uint8_t firstByte)
 {
     Instruction result = {0};
     bool wBit = extractBit(firstByte, 0);
     result.isWide = wBit;
     result.operandCount = 2;
 
-    result.firstOperand.type = operand_type_register;
-    result.firstOperand.payload.reg.reg = reg_a;
-    result.firstOperand.payload.reg.portion = wBit ? reg_portion_x : reg_portion_l;
+    Operand port = {0};
+    port.type = operand_type_register;
+    port.payload.reg.reg = reg_d;
+    port.payload.reg.portion = reg_portion_x;
 
-    result.secondOperand.type = operand_type_register;
-    result.secondOperand.payload.reg.reg = reg_d;
-    result.secondOperand.payload.reg.portion = reg_portion_x;
+    Operand other = {0};
+    other.type = operand_type_register;
+    other.payload.reg.reg = reg_a;
+    other.payload.reg.portion = wBit ? reg_portion_x : reg_portion_l;
+
+    if (isDest)
+    {
+        result.firstOperand = port;
+        result.secondOperand = other;
+    }
+    else
+    {
+        result.firstOperand = other;
+        result.secondOperand = port;
+    }
 
     return result;
 }
@@ -1243,14 +1270,26 @@ Instruction decodeInstruction(State *state)
     if (firstByte == 0xe4 || firstByte == 0xe5)
     {
         assert(instruction.type == instruction_none);
-        instruction = decodeFixedPort(firstByte, state);
+        instruction = decodeFixedPort(false, firstByte, state);
         instruction.type = instruction_in;
     }
     if (firstByte == 0xec || firstByte == 0xed)
     {
         assert(instruction.type == instruction_none);
-        instruction = decodeVariablePort(firstByte);
+        instruction = decodeVariablePort(false, firstByte);
         instruction.type = instruction_in;
+    }
+    if (firstByte == 0xe6 || firstByte == 0xe7)
+    {
+        assert(instruction.type == instruction_none);
+        instruction = decodeFixedPort(true, firstByte, state);
+        instruction.type = instruction_out;
+    }
+    if (firstByte == 0xee || firstByte == 0xef)
+    {
+        assert(instruction.type == instruction_none);
+        instruction = decodeVariablePort(true, firstByte);
+        instruction.type = instruction_out;
     }
     if (firstByte >= 0x00 && firstByte <= 0x03)
     {
