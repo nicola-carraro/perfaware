@@ -1070,6 +1070,32 @@ decodeJump(State *state)
     return result;
 }
 
+Instruction decodeFixedPort(uint8_t firstByte, State *state)
+{
+    Instruction result = {0};
+    result.operandCount = 2;
+    bool wBit = extractBit(firstByte, 0);
+    result.isWide = wBit;
+
+    result.firstOperand.type = operand_type_register;
+    result.firstOperand.payload.reg.reg = reg_a;
+    result.firstOperand.payload.reg.portion = wBit ? reg_portion_x : reg_portion_l;
+
+    result.secondOperand.type = operand_type_immediate;
+    result.secondOperand.payload.immediate.value = consumeByteAsSigned(state);
+
+    return result;
+}
+
+Instruction decodeVariablePort(uint8_t firstByte, State *state)
+{
+    Instruction result = {0};
+    (int)firstByte;
+    (void *)state;
+
+    return result;
+}
+
 Instruction decodeInstruction(State *state)
 {
 
@@ -1204,6 +1230,18 @@ Instruction decodeInstruction(State *state)
         assert(instruction.type == instruction_none);
         instruction = decodeRegisterWithAccumulator(firstByte, state);
         instruction.type = instruction_xchg;
+    }
+    if (firstByte == 0xe4 || firstByte == 0xe5)
+    {
+        assert(instruction.type == instruction_none);
+        instruction = decodeFixedPort(firstByte, state);
+        instruction.type = instruction_in;
+    }
+    if (firstByte == 0xee || firstByte == 0xef)
+    {
+        assert(instruction.type == instruction_none);
+        instruction = decodeVariablePort(firstByte, state);
+        instruction.type = instruction_in;
     }
     if (firstByte >= 0x00 && firstByte <= 0x03)
     {
