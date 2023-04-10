@@ -1546,6 +1546,16 @@ Instruction decodeInstruction(State *state)
             instruction.type = instruction_aad;
         }
     }
+    if (firstByte == 0x98)
+    {
+        assert(instruction.type == instruction_none);
+        instruction.type = instruction_cbw;
+    }
+    if (firstByte == 0x99)
+    {
+        assert(instruction.type == instruction_none);
+        instruction.type = instruction_cwd;
+    }
     if (firstByte == 0x3c || firstByte == 0x3d)
     {
         assert(instruction.type == instruction_none);

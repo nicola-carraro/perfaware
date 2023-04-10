@@ -79,7 +79,6 @@ int main(void)
     testDecoding("../computer_enhance/perfaware/part1/listing_0043_immediate_movs");
     testDecoding("../computer_enhance/perfaware/part1/listing_0044_register_movs");
     testDecoding("../computer_enhance/perfaware/part1/listing_0046_add_sub_cmp");
-    testDecoding("../computer_enhance/perfaware/part1/listing_0046_add_sub_cmp");
     testDecoding("../computer_enhance/perfaware/part1/listing_0048_ip_register");
     testDecoding("../computer_enhance/perfaware/part1/listing_0049_conditional_jumps");
     testCurrent();
