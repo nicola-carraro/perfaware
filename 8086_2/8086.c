@@ -1087,11 +1087,20 @@ Instruction decodeFixedPort(uint8_t firstByte, State *state)
     return result;
 }
 
-Instruction decodeVariablePort(uint8_t firstByte, State *state)
+Instruction decodeVariablePort(uint8_t firstByte)
 {
     Instruction result = {0};
-    (int)firstByte;
-    (void *)state;
+    bool wBit = extractBit(firstByte, 0);
+    result.isWide = wBit;
+    result.operandCount = 2;
+
+    result.firstOperand.type = operand_type_register;
+    result.firstOperand.payload.reg.reg = reg_a;
+    result.firstOperand.payload.reg.portion = wBit ? reg_portion_x : reg_portion_l;
+
+    result.secondOperand.type = operand_type_register;
+    result.secondOperand.payload.reg.reg = reg_d;
+    result.secondOperand.payload.reg.portion = reg_portion_x;
 
     return result;
 }
@@ -1237,10 +1246,10 @@ Instruction decodeInstruction(State *state)
         instruction = decodeFixedPort(firstByte, state);
         instruction.type = instruction_in;
     }
-    if (firstByte == 0xee || firstByte == 0xef)
+    if (firstByte == 0xec || firstByte == 0xed)
     {
         assert(instruction.type == instruction_none);
-        instruction = decodeVariablePort(firstByte, state);
+        instruction = decodeVariablePort(firstByte);
         instruction.type = instruction_in;
     }
     if (firstByte >= 0x00 && firstByte <= 0x03)
