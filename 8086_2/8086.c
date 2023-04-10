@@ -360,6 +360,7 @@ typedef struct
     Operand secondOperand;
     uint8_t operandCount;
     bool isWide;
+    bool needsDecorator;
     uint16_t byteCount;
 } Instruction;
 
@@ -772,19 +773,7 @@ void printInstruction(Instruction instruction, State before, State after)
     const char *mnemonic = InstructionNames[instruction.type].name;
     printf(mnemonic);
 
-    bool decoratorNeeded = false;
-
-    if (
-        instruction.operandCount == 1 && instruction.firstOperand.type != operand_type_register && !(instruction.firstOperand.type == operand_type_immediate && instruction.firstOperand.payload.immediate.isRelativeOffset))
-    {
-        decoratorNeeded = true;
-    }
-    if (instruction.operandCount == 2 && instruction.firstOperand.type != operand_type_register && instruction.secondOperand.type != operand_type_register)
-    {
-        decoratorNeeded = true;
-    }
-
-    if (decoratorNeeded)
+    if (instruction.needsDecorator)
     {
         if (instruction.isWide)
         {
@@ -1590,6 +1579,11 @@ Instruction decodeInstruction(State *state)
 
         instruction.firstOperand = decodeRmOperand(wBit, mod, rm, state);
 
+        if (instruction.firstOperand.type == operand_type_memory)
+        {
+            instruction.needsDecorator = true;
+        }
+
         switch (reg)
         {
         case 0x0:
@@ -1790,6 +1784,16 @@ Instruction decodeInstruction(State *state)
     if (instruction.type == instruction_none)
     {
         error(__FILE__, __LINE__, state->isNoWait, "Unknown instruction, first byte=%#X", firstByte);
+    }
+
+    if (
+        instruction.operandCount == 1 && instruction.firstOperand.type != operand_type_register && !(instruction.firstOperand.type == operand_type_immediate && instruction.firstOperand.payload.immediate.isRelativeOffset))
+    {
+        instruction.needsDecorator = true;
+    }
+    if (instruction.operandCount == 2 && instruction.firstOperand.type != operand_type_register && instruction.secondOperand.type != operand_type_register)
+    {
+        instruction.needsDecorator = true;
     }
 
     instruction.byteCount = state->instructions.instructionPointer - initialStackPointer;
