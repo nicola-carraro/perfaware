@@ -1491,6 +1491,11 @@ Instruction decodeInstruction(State *state)
         instruction = decodeRegisterMemory(secondByte, wBit, state);
         switch (reg)
         {
+        case 0x2:
+        {
+            instruction.type = instruction_not;
+        }
+        break;
         case 0x3:
         {
             instruction.type = instruction_neg;
