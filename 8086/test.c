@@ -79,6 +79,18 @@ void testFinalState(const char *filePath, State expected)
 
         assert(expected.registers[regIndex].x == found->registers[regIndex].x);
     }
+
+    for (size_t flagIndex = 0; flagIndex < FLAG_COUNT; flagIndex++)
+    {
+
+        printf(
+            "%s : expected %d, found %d\n",
+            FlagNames[flagIndex].name,
+            expected.flags[flagIndex],
+            found->flags[flagIndex]);
+
+        assert(expected.flags[flagIndex] == found->flags[flagIndex]);
+    }
 }
 
 void testFinalState49()
@@ -87,6 +99,8 @@ void testFinalState49()
 
     expected.registers[reg_b].x = 1030;
     expected.instructions.instructionPointer = 14;
+    expected.flags[flag_parity] = true;
+    expected.flags[flag_zero] = true;
 
     testFinalState("../computer_enhance/perfaware/part1/listing_0049_conditional_jumps", expected);
 }
@@ -114,6 +128,8 @@ void testFinalState52()
     expected.registers[reg_bp].x = 1000;
     expected.registers[reg_si].x = 6;
     expected.instructions.instructionPointer = 35;
+    expected.flags[flag_zero] = true;
+    expected.flags[flag_parity] = true;
 
     testFinalState("../computer_enhance/perfaware/part1/listing_0052_memory_add_loop", expected);
 }
