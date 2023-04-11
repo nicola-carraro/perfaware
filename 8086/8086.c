@@ -1418,6 +1418,19 @@ Instruction decodeInstruction(State *state)
 
         instruction.type = instruction_call;
     }
+    if (firstByte == 0xc3)
+    {
+        assert(instruction.type == instruction_none);
+        instruction.type = instruction_ret;
+    }
+    if (firstByte == 0xc2)
+    {
+        assert(instruction.type == instruction_none);
+        instruction.operandCount = 1;
+        instruction.firstOperand = decodeImmediateOperand(true, false, state);
+        instruction.isWide = true;
+        instruction.type = instruction_ret;
+    }
     if (firstByte == 0x74)
     {
         assert(instruction.type == instruction_none);
