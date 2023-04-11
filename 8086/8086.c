@@ -1890,6 +1890,21 @@ int main(int argc, char *argv[])
         printFlags(&state);
     }
 
+    if (state.dump)
+    {
+        FILE *outputFile = fopen(DUMP_PATH, "wb");
+
+        if (outputFile != NULL)
+        {
+            if (fwrite(&state, sizeof(State), 1, outputFile) != 1)
+            {
+                fprintf(stderr, "Could not dump final state");
+            }
+
+            fclose(outputFile);
+        }
+    }
+
     printPressEnterToContinue(state.isNoWait);
     if (bytes != NULL)
     {

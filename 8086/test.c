@@ -56,6 +56,45 @@ void testDecoding(const char *inputFile)
     assert(memcmp(inputData, outputData, inputFileSize) == 0);
 }
 
+void testFinalState(const char *filePath, State expected)
+{
+
+    printf("Executing %s...", filePath);
+    char buffer[1024];
+    sprintf(buffer, "8086.exe --nowait --dump --execute %s > data/output.asm ", filePath);
+    system(buffer);
+
+    size_t fileSize;
+    char *inputData = readFile(DUMP_PATH, &fileSize);
+    State *found = (State *)inputData;
+
+    for (size_t regIndex = 0; regIndex < REG_COUNT; regIndex++)
+    {
+
+        printf(
+            "%s : expected %u, found %u\n",
+            RegisterInfos[regIndex].name,
+            expected.registers[regIndex].x,
+            found->registers[regIndex].x);
+
+        assert(expected.registers[regIndex].x == found->registers[regIndex].x);
+    }
+}
+
+void testFinalState52()
+{
+    State expected = {0};
+
+    expected.registers[reg_b].x = 6;
+    expected.registers[reg_c].x = 4;
+    expected.registers[reg_d].x = 6;
+    expected.registers[reg_bp].x = 1000;
+    expected.registers[reg_si].x = 6;
+    expected.instructions.instructionPointer = 35;
+
+    testFinalState("../computer_enhance/perfaware/part1/listing_0052_memory_add_loop", expected);
+}
+
 void testDecoding42()
 {
     system("nasm data/listing42.asm -o data/listing42");
@@ -78,4 +117,5 @@ int main(void)
     testDecoding("../computer_enhance/perfaware/part1/listing_0051_memory_mov");
     testDecoding("../computer_enhance/perfaware/part1/listing_0052_memory_add_loop");
     testDecoding42();
+    testFinalState52();
 }

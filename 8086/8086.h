@@ -8,6 +8,8 @@
 #include "assert.h"
 #include "string.h"
 
+#define DUMP_PATH "data/dump"
+
 #define REG_COUNT 8
 
 typedef enum
