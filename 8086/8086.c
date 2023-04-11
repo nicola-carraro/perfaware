@@ -1374,6 +1374,27 @@ Instruction decodeInstruction(State *state)
         instruction.isWide = wBit;
         instruction.type = instruction_cmps;
     }
+    if (firstByte == 0xae || firstByte == 0xaf)
+    {
+        assert(instruction.type == instruction_none);
+        bool wBit = extractLowBits(firstByte, 1);
+        instruction.isWide = wBit;
+        instruction.type = instruction_scas;
+    }
+    if (firstByte == 0xac || firstByte == 0xad)
+    {
+        assert(instruction.type == instruction_none);
+        bool wBit = extractLowBits(firstByte, 1);
+        instruction.isWide = wBit;
+        instruction.type = instruction_lods;
+    }
+    if (firstByte == 0xaa || firstByte == 0xab)
+    {
+        assert(instruction.type == instruction_none);
+        bool wBit = extractLowBits(firstByte, 1);
+        instruction.isWide = wBit;
+        instruction.type = instruction_stds;
+    }
     if (firstByte == 0x74)
     {
         assert(instruction.type == instruction_none);
