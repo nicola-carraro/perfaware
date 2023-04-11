@@ -370,6 +370,12 @@ void printInstruction(Instruction instruction, State *before, State *after)
     const char *mnemonic = InstructionInfos[instruction.type].name;
     printf(mnemonic);
 
+    if (instruction.isInt3)
+    {
+        assert(instruction.type == instruction_int);
+        printf("3");
+    }
+
     if (InstructionInfos[instruction.type].needsWithSuffix)
     {
         printf("%s", instruction.isWide ? "w" : "b");
@@ -1569,6 +1575,20 @@ Instruction decodeInstruction(State *state)
 
         instruction = decodeJump(state);
         instruction.type = instruction_jcxz;
+    }
+    if (firstByte == 0xcd)
+    {
+        assert(instruction.type == instruction_none);
+        instruction.operandCount = 1;
+        instruction.firstOperand.type = operand_type_immediate;
+        instruction.firstOperand.payload.immediate.value = consumeByteAsUnsigned(state);
+        instruction.type = instruction_int;
+    }
+    if (firstByte == 0xcc)
+    {
+        assert(instruction.type == instruction_none);
+        instruction.isInt3 = true;
+        instruction.type = instruction_int;
     }
     if (instruction.type == instruction_none)
     {

@@ -365,6 +365,7 @@ typedef struct
     bool isWide;
     bool needsDecorator;
     uint16_t byteCount;
+    bool isInt3;
 } Instruction;
 
 typedef struct
