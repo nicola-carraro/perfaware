@@ -81,6 +81,16 @@ void testFinalState(const char *filePath, State expected)
     }
 }
 
+void testFinalState49()
+{
+    State expected = {0};
+
+    expected.registers[reg_b].x = 1030;
+    expected.instructions.instructionPointer = 14;
+
+    testFinalState("../computer_enhance/perfaware/part1/listing_0049_conditional_jumps", expected);
+}
+
 void testFinalState51()
 {
     State expected = {0};
@@ -131,6 +141,7 @@ int main(void)
     testDecoding("../computer_enhance/perfaware/part1/listing_0052_memory_add_loop");
     testDecoding42();
 
+    testFinalState49();
     testFinalState51();
     testFinalState52();
 }
