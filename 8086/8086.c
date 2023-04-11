@@ -821,6 +821,13 @@ Instruction decodeInstruction(State *state)
 
             instruction.type = instruction_inc;
         }
+        if (reg == 0x2)
+        {
+            bool wBit = extractBit(firstByte, 0);
+            instruction = decodeRegisterMemory(secondByte, wBit, state);
+
+            instruction.type = instruction_call;
+        }
         else if (reg == 0x1)
         {
             bool wBit = extractBit(firstByte, 0);
@@ -1394,6 +1401,15 @@ Instruction decodeInstruction(State *state)
         bool wBit = extractLowBits(firstByte, 1);
         instruction.isWide = wBit;
         instruction.type = instruction_stos;
+    }
+    if (firstByte == 0xe8)
+    {
+        assert(instruction.type == instruction_none);
+        instruction.operandCount = 1;
+        instruction.firstOperand.type = operand_type_memory;
+        instruction.firstOperand.payload.memory.displacement = consumeTwoBytesAsSigned(state);
+
+        instruction.type = instruction_call;
     }
     if (firstByte == 0x74)
     {
