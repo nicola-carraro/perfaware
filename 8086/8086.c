@@ -1922,6 +1922,24 @@ OpValue getRegisterValue(RegisterLocation registerLocation, State *state)
     return result;
 }
 
+size_t getAddress(Operand source, State *state)
+{
+    assert(source.type == operand_type_memory);
+    size_t address = source.payload.memory.displacement;
+    if (source.payload.memory.regCount == 1)
+    {
+        OpValue regValue = getRegisterValue(source.payload.reg, state);
+
+        address += regValue.isWide ? regValue.value.word : regValue.value.byte;
+    }
+    else if (source.payload.memory.regCount == 2)
+    {
+        assert(false && "Not implemented");
+    }
+
+    return address;
+}
+
 OpValue getOperandValue(Operand source, bool isWide, State *state)
 {
     OpValue result = {0};
@@ -1945,9 +1963,15 @@ OpValue getOperandValue(Operand source, bool isWide, State *state)
     }
     else
     {
-        // size_t address;
-        if (source.payload.memory.regCount == 1)
+        size_t address = getAddress(source, state);
+
+        if (isWide)
         {
+            result.value.word = *((int16_t *)(state->memory + address));
+        }
+        else
+        {
+            result.value.byte = state->memory[address];
         }
     }
 
@@ -1977,10 +2001,28 @@ void setDestination(Operand destination, OpValue sourceValue, State *state)
             state->registers[destination.payload.reg.reg].lh.h = sourceValue.value.byte;
         }
     }
-
     else
     {
-        assert(false && "Unimplemented");
+        size_t address = getAddress(destination, state);
+        if (address >= MEMORY_SIZE)
+        {
+            error(
+                __FILE__,
+                __LINE__,
+                state->isNoWait,
+                "The requested address %zu exceeds the memory limit of %u bytes",
+                address,
+                MEMORY_SIZE);
+        }
+
+        if (sourceValue.isWide)
+        {
+            *((int16_t *)(state->memory + address)) = sourceValue.value.word;
+        }
+        else
+        {
+            state->memory[address] = sourceValue.value.byte;
+        }
     }
 }
 
