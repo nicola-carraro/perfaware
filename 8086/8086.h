@@ -262,7 +262,8 @@ const struct
 {
     InstructionType type;
     char name[10];
-} InstructionNames[] = {
+    bool needsWithSuffix;
+} InstructionInfos[] = {
     {instruction_none, ""},
     {instruction_mov, "mov"},
     {instruction_push, "push"},
@@ -311,11 +312,11 @@ const struct
     {instruction_or, "or"},
     {instruction_xor, "xor"},
     {instruction_rep, "rep"},
-    {instruction_movs, "movs"},
-    {instruction_cmps, "cmps"},
-    {instruction_scas, "scas"},
-    {instruction_lods, "lods"},
-    {instruction_stds, "stds"},
+    {instruction_movs, "movs", true},
+    {instruction_cmps, "cmps", true},
+    {instruction_scas, "scas", true},
+    {instruction_lods, "lods", true},
+    {instruction_stds, "stds", true},
     {instruction_call, "call"},
     {instruction_jmp, "jmp"},
     {instruction_ret, "ret"},

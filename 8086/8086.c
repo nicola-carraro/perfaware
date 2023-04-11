@@ -365,20 +365,28 @@ void printFlags(State *state)
 void printInstruction(Instruction instruction, State *before, State *after)
 {
     assert(instruction.type != instruction_none);
-    assert(InstructionNames[instruction.type].type == instruction.type);
+    assert(InstructionInfos[instruction.type].type == instruction.type);
 
-    const char *mnemonic = InstructionNames[instruction.type].name;
+    const char *mnemonic = InstructionInfos[instruction.type].name;
     printf(mnemonic);
 
-    if (instruction.needsDecorator)
+    if (InstructionInfos[instruction.type].needsWithSuffix)
     {
-        if (instruction.isWide)
+        printf("%s", instruction.isWide ? "w" : "b");
+    }
+
+    else
+    {
+        if (instruction.needsDecorator)
         {
-            printf(" word");
-        }
-        else
-        {
-            printf(" byte");
+            if (instruction.isWide)
+            {
+                printf(" word");
+            }
+            else
+            {
+                printf(" byte");
+            }
         }
     }
 
@@ -393,7 +401,7 @@ void printInstruction(Instruction instruction, State *before, State *after)
         printOperand(instruction.secondOperand, instruction.byteCount);
     }
 
-    printf("\t;");
+    printf("\t");
     if (after->execute)
     {
         for (Register reg = 0; reg < REG_COUNT; reg++)
@@ -425,6 +433,15 @@ void printInstruction(Instruction instruction, State *before, State *after)
             printFlags(after);
         }
         printf(" ip:%#x--->%#x", before->instructions.instructionPointer, after->instructions.instructionPointer);
+    }
+
+    if (instruction.type == instruction_rep)
+    {
+        printf(" ");
+    }
+    else
+    {
+        printf("\n");
     }
 }
 
@@ -811,6 +828,23 @@ Instruction decodeInstruction(State *state)
 
             instruction.type = instruction_dec;
         }
+    }
+    if (firstByte == 0x3c || firstByte == 0x3d)
+    {
+        assert(instruction.type == instruction_none);
+        bool wBit = extractBit(firstByte, 0);
+        instruction = decodeImmediateFromAccumulator(wBit, state);
+
+        instruction.type = instruction_cmp;
+    }
+    if (firstByte >= 0x38 && firstByte <= 0x3b)
+    {
+        assert(instruction.type == instruction_none);
+
+        bool wBit = extractBit(firstByte, 0);
+        bool dBit = extractBit(firstByte, 1);
+        instruction = decodeRegMemToFromRegMem(dBit, wBit, state);
+        instruction.type = instruction_cmp;
     }
     if (firstByte >= 0x50 && firstByte <= 0x57)
     {
@@ -1321,23 +1355,24 @@ Instruction decodeInstruction(State *state)
 
         instruction.type = instruction_xor;
     }
-
-    if (firstByte == 0x3c || firstByte == 0x3d)
+    if (firstByte == 0xf2 || firstByte == 0xf3)
     {
         assert(instruction.type == instruction_none);
-        bool wBit = extractBit(firstByte, 0);
-        instruction = decodeImmediateFromAccumulator(wBit, state);
-
-        instruction.type = instruction_cmp;
+        instruction.type = instruction_rep;
     }
-    if (firstByte >= 0x38 && firstByte <= 0x3b)
+    if (firstByte == 0xa4 || firstByte == 0xa5)
     {
         assert(instruction.type == instruction_none);
-
-        bool wBit = extractBit(firstByte, 0);
-        bool dBit = extractBit(firstByte, 1);
-        instruction = decodeRegMemToFromRegMem(dBit, wBit, state);
-        instruction.type = instruction_cmp;
+        bool wBit = extractLowBits(firstByte, 1);
+        instruction.isWide = wBit;
+        instruction.type = instruction_movs;
+    }
+    if (firstByte == 0xa6 || firstByte == 0xa7)
+    {
+        assert(instruction.type == instruction_none);
+        bool wBit = extractLowBits(firstByte, 1);
+        instruction.isWide = wBit;
+        instruction.type = instruction_cmps;
     }
     if (firstByte == 0x74)
     {
@@ -1794,13 +1829,13 @@ void executeInstruction(Instruction instruction, State *state)
     }
     else
     {
-        assert(instruction.type == InstructionNames[instruction.type].type);
+        assert(instruction.type == InstructionInfos[instruction.type].type);
         error(
             __FILE__,
             __LINE__,
             state->isNoWait,
             "Unimplemented instruction: %s",
-            InstructionNames[instruction.type].name);
+            InstructionInfos[instruction.type].name);
     }
 }
 
@@ -1873,8 +1908,6 @@ int main(int argc, char *argv[])
         State after = state;
 
         printInstruction(instruction, &before, &after);
-
-        printf("\n");
     }
 
     if (state.execute)
