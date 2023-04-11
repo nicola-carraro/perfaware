@@ -1,10 +1,4 @@
-#define _CRT_SECURE_NO_WARNINGS
-
-#include "stdio.h"
-#include "assert.h"
-#include "stdbool.h"
-#include "stdlib.h"
-#include "string.h"
+#include "8086.h"
 
 char *readFile(const char *filename, size_t *len)
 {
