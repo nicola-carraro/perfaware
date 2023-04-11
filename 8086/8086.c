@@ -821,19 +821,26 @@ Instruction decodeInstruction(State *state)
 
             instruction.type = instruction_inc;
         }
-        if (reg == 0x2)
-        {
-            bool wBit = extractBit(firstByte, 0);
-            instruction = decodeRegisterMemory(secondByte, wBit, state);
-
-            instruction.type = instruction_call;
-        }
         else if (reg == 0x1)
         {
             bool wBit = extractBit(firstByte, 0);
             instruction = decodeRegisterMemory(secondByte, wBit, state);
 
             instruction.type = instruction_dec;
+        }
+        else if (reg == 0x2)
+        {
+            bool wBit = extractBit(firstByte, 0);
+            instruction = decodeRegisterMemory(secondByte, wBit, state);
+
+            instruction.type = instruction_call;
+        }
+        else if (reg == 0x4)
+        {
+            bool wBit = extractBit(firstByte, 0);
+            instruction = decodeRegisterMemory(secondByte, wBit, state);
+
+            instruction.type = instruction_jmp;
         }
     }
     if (firstByte == 0x3c || firstByte == 0x3d)
