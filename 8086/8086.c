@@ -373,12 +373,13 @@ typedef struct
 
 #define REGISTER_COUNT 8
 #define FLAG_COUNT 9
-
+#define MEMORY_SIZE 1024 * 1024
 typedef struct
 {
     bool isNoWait;
     bool execute;
     Stream instructions;
+    uint8_t *memory;
     union
     {
         int16_t x;
@@ -765,7 +766,7 @@ void printFlags(State *state)
     }
 }
 
-void printInstruction(Instruction instruction, State before, State after)
+void printInstruction(Instruction instruction, State *before, State *after)
 {
     assert(instruction.type != instruction_none);
     assert(InstructionNames[instruction.type].type == instruction.type);
@@ -797,36 +798,38 @@ void printInstruction(Instruction instruction, State before, State after)
     }
 
     printf("\t;");
-
-    for (Register reg = 0; reg < REG_COUNT; reg++)
+    if (after->execute)
     {
-        if (before.registers[reg].x != after.registers[reg].x)
+        for (Register reg = 0; reg < REG_COUNT; reg++)
         {
-            RegisterLocation location;
-            location.reg = reg;
-            location.portion = reg_portion_x;
-            printRegister(location);
-            printf("   %#x--->%#x", before.registers[reg].x, after.registers[reg].x);
+            if (before->registers[reg].x != after->registers[reg].x)
+            {
+                RegisterLocation location;
+                location.reg = reg;
+                location.portion = reg_portion_x;
+                printRegister(location);
+                printf("   %#x--->%#x", before->registers[reg].x, after->registers[reg].x);
+            }
         }
-    }
 
-    bool isFlagChange = false;
-    for (Flag flag = 0; flag < FLAG_COUNT; flag++)
-    {
-        if (before.flags[flag] != after.flags[flag])
+        bool isFlagChange = false;
+        for (Flag flag = 0; flag < FLAG_COUNT; flag++)
         {
-            isFlagChange = true;
-            break;
+            if (before->flags[flag] != after->flags[flag])
+            {
+                isFlagChange = true;
+                break;
+            }
         }
+        if (isFlagChange)
+        {
+            printf(" Flags:");
+            printFlags(before);
+            printf("->");
+            printFlags(after);
+        }
+        printf(" ip:%#x--->%#x", before->instructions.instructionPointer, after->instructions.instructionPointer);
     }
-    if (isFlagChange)
-    {
-        printf(" Flags:");
-        printFlags(&before);
-        printf("->");
-        printFlags(&after);
-    }
-    printf(" ip:%#x--->%#x", before.instructions.instructionPointer, after.instructions.instructionPointer);
 }
 
 Instruction decodeRegMemToFromRegMem(bool dBit, bool wBit, State *state)
@@ -2201,7 +2204,7 @@ int main(int argc, char *argv[])
         }
         State after = state;
 
-        printInstruction(instruction, before, after);
+        printInstruction(instruction, &before, &after);
 
         printf("\n");
     }
