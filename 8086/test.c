@@ -81,6 +81,19 @@ void testFinalState(const char *filePath, State expected)
     }
 }
 
+void testFinalState51()
+{
+    State expected = {0};
+
+    expected.registers[reg_b].x = 1;
+    expected.registers[reg_c].x = 2;
+    expected.registers[reg_d].x = 10;
+    expected.registers[reg_bp].x = 4;
+    expected.instructions.instructionPointer = 48;
+
+    testFinalState("../computer_enhance/perfaware/part1/listing_0051_memory_mov", expected);
+}
+
 void testFinalState52()
 {
     State expected = {0};
@@ -117,5 +130,7 @@ int main(void)
     testDecoding("../computer_enhance/perfaware/part1/listing_0051_memory_mov");
     testDecoding("../computer_enhance/perfaware/part1/listing_0052_memory_add_loop");
     testDecoding42();
+
+    testFinalState51();
     testFinalState52();
 }
