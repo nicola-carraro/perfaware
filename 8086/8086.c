@@ -1901,6 +1901,27 @@ Instruction decodeInstruction(State *state)
     return instruction;
 }
 
+OpValue getRegisterValue(RegisterLocation registerLocation, State *state)
+{
+    OpValue result = {0};
+    assert(registerLocation.reg != reg_none);
+    if (registerLocation.portion == reg_portion_x)
+    {
+        result.isWide = true;
+        result.value.word = state->registers[registerLocation.reg].x;
+    }
+    else if (registerLocation.portion == reg_portion_l)
+    {
+        result.value.byte = state->registers[registerLocation.reg].lh.l;
+    }
+    else
+    {
+        result.value.byte = state->registers[registerLocation.reg].lh.h;
+    }
+
+    return result;
+}
+
 OpValue getOperandValue(Operand source, bool isWide, State *state)
 {
     OpValue result = {0};
@@ -1909,19 +1930,7 @@ OpValue getOperandValue(Operand source, bool isWide, State *state)
 
     if (source.type == operand_type_register)
     {
-        assert(source.payload.reg.reg != reg_none);
-        if (source.payload.reg.portion == reg_portion_x)
-        {
-            result.value.word = state->registers[source.payload.reg.reg].x;
-        }
-        else if (source.payload.reg.portion == reg_portion_l)
-        {
-            result.value.word = state->registers[source.payload.reg.reg].lh.l;
-        }
-        else
-        {
-            result.value.word = state->registers[source.payload.reg.reg].lh.h;
-        }
+        result = getRegisterValue(source.payload.reg, state);
     }
     else if (source.type == operand_type_immediate)
     {
@@ -1936,7 +1945,10 @@ OpValue getOperandValue(Operand source, bool isWide, State *state)
     }
     else
     {
-        assert(false && "Unimplemented");
+        // size_t address;
+        if (source.payload.memory.regCount == 1)
+        {
+        }
     }
 
     return result;
@@ -2161,6 +2173,13 @@ int main(int argc, char *argv[])
 
     State state = {0};
 
+    state.memory = malloc(MEMORY_SIZE);
+
+    if (state.memory == NULL)
+    {
+        error(__FILE__, __LINE__, state.isNoWait, "Failed to allocate");
+    }
+
     const char *fileName = NULL;
 
     for (size_t argumentIndex = 1; argumentIndex < argc; argumentIndex++)
@@ -2226,6 +2245,11 @@ int main(int argc, char *argv[])
     if (bytes != NULL)
     {
         free(bytes);
+    }
+
+    if (state.memory != NULL)
+    {
+        free(state.memory);
     }
 
     return 0;
