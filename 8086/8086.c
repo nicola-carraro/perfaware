@@ -1393,7 +1393,7 @@ Instruction decodeInstruction(State *state)
         assert(instruction.type == instruction_none);
         bool wBit = extractLowBits(firstByte, 1);
         instruction.isWide = wBit;
-        instruction.type = instruction_stds;
+        instruction.type = instruction_stos;
     }
     if (firstByte == 0x74)
     {
