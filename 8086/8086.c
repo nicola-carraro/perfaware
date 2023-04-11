@@ -404,6 +404,8 @@ typedef struct
 
 } OpValue;
 
+OpValue opValueAdd(OpValue left, OpValue right);
+
 void printPressEnterToContinue(bool isNoWait)
 {
     if (isNoWait)
@@ -1925,18 +1927,25 @@ OpValue getRegisterValue(RegisterLocation registerLocation, State *state)
 size_t getAddress(Operand source, State *state)
 {
     assert(source.type == operand_type_memory);
-    size_t address = source.payload.memory.displacement;
+    size_t address = 0;
     if (source.payload.memory.regCount == 1)
     {
-        OpValue regValue = getRegisterValue(source.payload.reg, state);
+        OpValue regValue = getRegisterValue(source.payload.memory.reg0, state);
 
-        address += regValue.isWide ? regValue.value.word : regValue.value.byte;
+        address = regValue.isWide ? regValue.value.word : regValue.value.byte;
     }
     else if (source.payload.memory.regCount == 2)
     {
-        assert(false && "Not implemented");
+        OpValue reg0Value = getRegisterValue(source.payload.memory.reg0, state);
+
+        OpValue reg1Value = getRegisterValue(source.payload.memory.reg1, state);
+
+        OpValue sum = opValueAdd(reg0Value, reg1Value);
+
+        address = sum.isWide ? sum.value.word : sum.value.byte;
     }
 
+    address += source.payload.memory.displacement;
     return address;
 }
 
@@ -2274,10 +2283,10 @@ int main(int argc, char *argv[])
     {
         for (size_t regIndex = 0; regIndex < REGISTER_COUNT; regIndex++)
         {
-            printf("; %s = \t%#x\n", RegisterInfos[regIndex].name, state.registers[regIndex].x);
+            printf("; %s = \t%u\n", RegisterInfos[regIndex].name, state.registers[regIndex].x);
         }
 
-        printf("; ip = \t %#x\n", state.instructions.instructionPointer);
+        printf("; ip = \t %u\n", state.instructions.instructionPointer);
 
         printf("Flags:");
         printFlags(&state);
