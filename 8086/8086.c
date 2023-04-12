@@ -695,6 +695,20 @@ decodeJump(State *state)
     return result;
 }
 
+Instruction decodeIntersegmentImmediate(State *state)
+{
+    Instruction instruction = {0};
+
+    instruction.operandCount = 1;
+    instruction.firstOperand.type = operand_type_immediate;
+    instruction.firstOperand.payload.immediate.isIntersegment = true;
+    instruction.firstOperand.payload.immediate.ip = consumeTwoBytesAsSigned(state);
+    instruction.firstOperand.payload.immediate.cs = consumeTwoBytesAsSigned(state);
+    instruction.isWide = true;
+
+    return instruction;
+}
+
 Instruction decodeFixedPort(bool isDest, uint8_t firstByte, State *state)
 {
     Instruction result = {0};
@@ -1441,13 +1455,14 @@ Instruction decodeInstruction(State *state)
     if (firstByte == 0x9a)
     {
         assert(instruction.type == instruction_none);
-        instruction.operandCount = 1;
-        instruction.firstOperand.type = operand_type_immediate;
-        instruction.firstOperand.payload.immediate.isIntersegment = true;
-        instruction.firstOperand.payload.immediate.ip = consumeTwoBytesAsSigned(state);
-        instruction.firstOperand.payload.immediate.cs = consumeTwoBytesAsSigned(state);
-        instruction.isWide = true;
+        instruction = decodeIntersegmentImmediate(state);
         instruction.type = instruction_call;
+    }
+    if (firstByte == 0xea)
+    {
+        assert(instruction.type == instruction_none);
+        instruction = decodeIntersegmentImmediate(state);
+        instruction.type = instruction_jmp;
     }
     if (firstByte == 0xc3)
     {
