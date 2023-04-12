@@ -1590,6 +1590,16 @@ Instruction decodeInstruction(State *state)
         instruction.isInt3 = true;
         instruction.type = instruction_int;
     }
+    if (firstByte == 0xce)
+    {
+        assert(instruction.type == instruction_none);
+        instruction.type = instruction_into;
+    }
+    if (firstByte == 0xcf)
+    {
+        assert(instruction.type == instruction_none);
+        instruction.type = instruction_iret;
+    }
     if (instruction.type == instruction_none)
     {
         error(__FILE__, __LINE__, state->isNoWait, "Unknown instruction, first byte=%#X", firstByte);
@@ -2063,7 +2073,8 @@ int main(int argc, char *argv[])
         }
     }
 
-    if(state.image){
+    if (state.image)
+    {
         FILE *outputFile = fopen(IMAGE_PATH, "wb");
 
         if (outputFile != NULL)
