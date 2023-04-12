@@ -1630,6 +1630,11 @@ Instruction decodeInstruction(State *state)
         assert(instruction.type == instruction_none);
         instruction.type = instruction_cli;
     }
+    if (firstByte == 0xfb)
+    {
+        assert(instruction.type == instruction_none);
+        instruction.type = instruction_sti;
+    }
     if (instruction.type == instruction_none)
     {
         error(__FILE__, __LINE__, state->isNoWait, "Unknown instruction, first byte=%#X", firstByte);
