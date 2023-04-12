@@ -289,7 +289,7 @@ void printRegister(RegisterLocation registerLocation)
     }
 }
 
-void printOperand(Operand operand, uint16_t instructionByteCount)
+void printOperand(Operand operand, uint16_t instructionByteCount, Register segmentRegister)
 {
 
     printf(" ");
@@ -315,6 +315,10 @@ void printOperand(Operand operand, uint16_t instructionByteCount)
     break;
     case operand_type_memory:
     {
+        if (segmentRegister != reg_none)
+        {
+            printf("%s:", RegisterInfos[segmentRegister].name);
+        }
         printf("[");
         if (operand.payload.memory.regCount > 0)
         {
@@ -398,13 +402,13 @@ void printInstruction(Instruction instruction, State *before, State *after)
 
     if (instruction.operandCount > 0)
     {
-        printOperand(instruction.firstOperand, instruction.byteCount);
+        printOperand(instruction.firstOperand, instruction.byteCount, instruction.segmentRegister);
     }
 
     if (instruction.operandCount > 1)
     {
         printf(",");
-        printOperand(instruction.secondOperand, instruction.byteCount);
+        printOperand(instruction.secondOperand, instruction.byteCount, instruction.segmentRegister);
     }
 
     printf("\t");
@@ -757,6 +761,8 @@ Instruction decodeInstruction(State *state)
     uint8_t firstByte = consumeByteAsUnsigned(state);
 
     Instruction instruction = {0};
+
+    Register segmentRegister = reg_none;
 
     if (firstByte >= 0x88 && firstByte <= 0x8b)
     {
@@ -1654,6 +1660,12 @@ Instruction decodeInstruction(State *state)
         assert(instruction.type == instruction_none);
         instruction.type = instruction_lock;
     }
+    if (firstByte == 0x2e)
+    {
+        assert(instruction.type == instruction_none);
+        instruction = decodeInstruction(state);
+        segmentRegister = reg_cs;
+    }
     if (instruction.type == instruction_none)
     {
         error(__FILE__, __LINE__, state->isNoWait, "Unknown instruction, first byte=%#X", firstByte);
@@ -1668,6 +1680,8 @@ Instruction decodeInstruction(State *state)
     {
         instruction.needsDecorator = true;
     }
+
+    instruction.segmentRegister = segmentRegister;
 
     instruction.byteCount = state->instructions.instructionPointer - initialStackPointer;
     return instruction;

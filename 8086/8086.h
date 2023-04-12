@@ -229,7 +229,11 @@ typedef enum
     instruction_wait,
     instruction_esc,
     instruction_lock,
-    instruction_seg
+    instruction_seg,
+    instruction_cs,
+    instruction_ds,
+    instruction_es,
+    instruction_ss,
 } InstructionType;
 
 typedef enum
@@ -356,7 +360,12 @@ const struct
     {instruction_wait, "wait"},
     {instruction_esc, "esc"},
     {instruction_lock, "lock"},
-    {instruction_seg, "seg"}};
+    {instruction_seg, "seg"},
+    {instruction_cs, "cs:"},
+    {instruction_ds, "ds:"},
+    {instruction_es, "es:"},
+    {instruction_ss, "ss:"},
+};
 
 typedef struct
 {
@@ -368,6 +377,8 @@ typedef struct
     bool needsDecorator;
     uint16_t byteCount;
     bool isInt3;
+    Register segmentRegister;
+
 } Instruction;
 
 typedef struct
@@ -399,6 +410,8 @@ typedef struct
     } registers[REGISTER_COUNT];
 
     bool flags[FLAG_COUNT];
+
+
 } State;
 
 typedef struct
