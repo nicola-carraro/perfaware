@@ -56,6 +56,9 @@ typedef struct
 {
     int16_t value;
     bool isRelativeOffset;
+    bool isIntersegment;
+    int16_t ip;
+    int16_t cs;
 } Immediate;
 
 typedef enum

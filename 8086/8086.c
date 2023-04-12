@@ -307,6 +307,10 @@ void printOperand(Operand operand, uint16_t instructionByteCount, Register segme
         {
             printf("$%+d", operand.payload.immediate.value + instructionByteCount);
         }
+        else if (operand.payload.immediate.isIntersegment)
+        {
+            printf("%u:%u", operand.payload.immediate.cs, operand.payload.immediate.ip);
+        }
         else
         {
             printf("%d", operand.payload.immediate.value);
@@ -1432,6 +1436,17 @@ Instruction decodeInstruction(State *state)
         instruction.firstOperand.type = operand_type_memory;
         instruction.firstOperand.payload.memory.displacement = consumeTwoBytesAsSigned(state);
 
+        instruction.type = instruction_call;
+    }
+    if (firstByte == 0x9a)
+    {
+        assert(instruction.type == instruction_none);
+        instruction.operandCount = 1;
+        instruction.firstOperand.type = operand_type_immediate;
+        instruction.firstOperand.payload.immediate.isIntersegment = true;
+        instruction.firstOperand.payload.immediate.ip = consumeTwoBytesAsSigned(state);
+        instruction.firstOperand.payload.immediate.cs = consumeTwoBytesAsSigned(state);
+        instruction.isWide = true;
         instruction.type = instruction_call;
     }
     if (firstByte == 0xc3)
