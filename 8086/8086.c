@@ -1999,6 +1999,10 @@ int main(int argc, char *argv[])
         {
             state.dump = true;
         }
+        else if (cStringsEqual(argument, "--img"))
+        {
+            state.image = true;
+        }
         else if (fileName == NULL)
         {
             fileName = argument;
@@ -2053,6 +2057,20 @@ int main(int argc, char *argv[])
             if (fwrite(&state, sizeof(State), 1, outputFile) != 1)
             {
                 fprintf(stderr, "Could not dump final state");
+            }
+
+            fclose(outputFile);
+        }
+    }
+
+    if(state.image){
+        FILE *outputFile = fopen(IMAGE_PATH, "wb");
+
+        if (outputFile != NULL)
+        {
+            if (fwrite(state.memory, MEMORY_SIZE, 1, outputFile) != 1)
+            {
+                fprintf(stderr, "Could not write image");
             }
 
             fclose(outputFile);

@@ -10,6 +10,8 @@
 
 #define DUMP_PATH "data/dump"
 
+#define IMAGE_PATH "data/image.data"
+
 #define REG_COUNT 8
 
 typedef enum
@@ -383,6 +385,7 @@ typedef struct
     bool isNoWait;
     bool execute;
     bool dump;
+    bool image;
     Stream instructions;
     uint8_t *memory;
     union
