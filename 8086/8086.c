@@ -1756,6 +1756,21 @@ OpValue opValueSubtract(OpValue left, OpValue right)
         result.value.signedByte = left.value.signedByte - right.value.signedByte;
     }
 
+    if (result.isWide)
+    {
+        if (result.value.unsignedWord > left.value.unsignedWord)
+        {
+            result.isCarry = true;
+        }
+    }
+    else
+    {
+        if (result.value.signedWord > left.value.signedWord)
+        {
+            result.isCarry = true;
+        }
+    }
+
     return result;
 }
 
@@ -1772,6 +1787,21 @@ OpValue opValueAdd(OpValue left, OpValue right)
     else
     {
         result.value.signedByte = left.value.signedByte + right.value.signedByte;
+    }
+
+    if (result.isWide)
+    {
+        if (result.value.unsignedWord < left.value.unsignedWord)
+        {
+            result.isCarry = true;
+        }
+    }
+    else
+    {
+        if (result.value.signedWord < left.value.signedWord)
+        {
+            result.isCarry = true;
+        }
     }
 
     return result;
@@ -1848,6 +1878,18 @@ void updateParityFlag(OpValue result, State *state)
     }
 }
 
+void updateCarryFlag(OpValue result, State *state)
+{
+    if (result.isCarry)
+    {
+        state->flags[flag_carry] = true;
+    }
+    else
+    {
+        state->flags[flag_carry] = false;
+    }
+}
+
 void executeInstruction(Instruction instruction, State *state)
 {
 
@@ -1868,6 +1910,7 @@ void executeInstruction(Instruction instruction, State *state)
 
         setDestination(instruction.firstOperand, result, state);
 
+        updateCarryFlag(result, state);
         updateZeroFlag(result, state);
         updateSignFlag(result, state);
         updateParityFlag(result, state);
@@ -1893,6 +1936,7 @@ void executeInstruction(Instruction instruction, State *state)
         OpValue result = opValueAdd(left, right);
         setDestination(instruction.firstOperand, result, state);
 
+        updateCarryFlag(result, state);
         updateZeroFlag(result, state);
         updateSignFlag(result, state);
         updateParityFlag(result, state);

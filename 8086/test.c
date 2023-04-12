@@ -93,6 +93,19 @@ void testFinalState(const char *filePath, State expected)
     }
 }
 
+void testFinalState48()
+{
+    State expected = {0};
+
+    expected.registers[reg_b].x = 2000;
+    expected.registers[reg_c].x = 64736;
+    expected.instructions.instructionPointer = 14;
+    expected.flags[flag_carry] = true;
+    expected.flags[flag_sign] = true;
+
+    testFinalState("../computer_enhance/perfaware/part1/listing_0048_ip_register", expected);
+}
+
 void testFinalState49()
 {
     State expected = {0};
@@ -157,6 +170,7 @@ int main(void)
     testDecoding("../computer_enhance/perfaware/part1/listing_0052_memory_add_loop");
     testDecoding42();
 
+    testFinalState48();
     testFinalState49();
     testFinalState51();
     testFinalState52();
