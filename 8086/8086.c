@@ -1616,15 +1616,15 @@ OpValue getRegisterValue(RegisterLocation registerLocation, State *state)
     if (registerLocation.portion == reg_portion_x)
     {
         result.isWide = true;
-        result.value.word = state->registers[registerLocation.reg].x;
+        result.value.signedWord = state->registers[registerLocation.reg].x;
     }
     else if (registerLocation.portion == reg_portion_l)
     {
-        result.value.byte = state->registers[registerLocation.reg].lh.l;
+        result.value.signedByte = state->registers[registerLocation.reg].lh.l;
     }
     else
     {
-        result.value.byte = state->registers[registerLocation.reg].lh.h;
+        result.value.signedByte = state->registers[registerLocation.reg].lh.h;
     }
 
     return result;
@@ -1638,7 +1638,7 @@ size_t getAddress(Operand source, State *state)
     {
         OpValue regValue = getRegisterValue(source.payload.memory.reg0, state);
 
-        address = regValue.isWide ? regValue.value.word : regValue.value.byte;
+        address = regValue.isWide ? regValue.value.signedWord : regValue.value.signedByte;
     }
     else if (source.payload.memory.regCount == 2)
     {
@@ -1648,7 +1648,7 @@ size_t getAddress(Operand source, State *state)
 
         OpValue sum = opValueAdd(reg0Value, reg1Value);
 
-        address = sum.isWide ? sum.value.word : sum.value.byte;
+        address = sum.isWide ? sum.value.signedWord : sum.value.signedByte;
     }
 
     address += source.payload.memory.displacement;
@@ -1669,11 +1669,11 @@ OpValue getOperandValue(Operand source, bool isWide, State *state)
     {
         if (isWide)
         {
-            result.value.word = source.payload.immediate.value;
+            result.value.signedWord = source.payload.immediate.value;
         }
         else
         {
-            result.value.byte = (int8_t)source.payload.immediate.value;
+            result.value.signedByte = (int8_t)source.payload.immediate.value;
         }
     }
     else
@@ -1682,11 +1682,11 @@ OpValue getOperandValue(Operand source, bool isWide, State *state)
 
         if (isWide)
         {
-            result.value.word = *((int16_t *)(state->memory + address));
+            result.value.signedWord = *((int16_t *)(state->memory + address));
         }
         else
         {
-            result.value.byte = state->memory[address];
+            result.value.signedByte = state->memory[address];
         }
     }
 
@@ -1703,17 +1703,17 @@ void setDestination(Operand destination, OpValue sourceValue, State *state)
         if (destination.payload.reg.portion == reg_portion_x)
         {
             assert(sourceValue.isWide);
-            state->registers[destination.payload.reg.reg].x = sourceValue.value.word;
+            state->registers[destination.payload.reg.reg].x = sourceValue.value.signedWord;
         }
         else if (destination.payload.reg.portion == reg_portion_l)
         {
             assert(!sourceValue.isWide);
-            state->registers[destination.payload.reg.reg].lh.l = sourceValue.value.byte;
+            state->registers[destination.payload.reg.reg].lh.l = sourceValue.value.signedByte;
         }
         else
         {
             assert(!sourceValue.isWide);
-            state->registers[destination.payload.reg.reg].lh.h = sourceValue.value.byte;
+            state->registers[destination.payload.reg.reg].lh.h = sourceValue.value.signedByte;
         }
     }
     else
@@ -1732,11 +1732,11 @@ void setDestination(Operand destination, OpValue sourceValue, State *state)
 
         if (sourceValue.isWide)
         {
-            *((int16_t *)(state->memory + address)) = sourceValue.value.word;
+            *((int16_t *)(state->memory + address)) = sourceValue.value.signedWord;
         }
         else
         {
-            state->memory[address] = sourceValue.value.byte;
+            state->memory[address] = sourceValue.value.signedByte;
         }
     }
 }
@@ -1749,11 +1749,11 @@ OpValue opValueSubtract(OpValue left, OpValue right)
     result.isWide = left.isWide;
     if (result.isWide)
     {
-        result.value.word = left.value.word - right.value.word;
+        result.value.signedWord = left.value.signedWord - right.value.signedWord;
     }
     else
     {
-        result.value.byte = left.value.byte - right.value.byte;
+        result.value.signedByte = left.value.signedByte - right.value.signedByte;
     }
 
     return result;
@@ -1767,11 +1767,11 @@ OpValue opValueAdd(OpValue left, OpValue right)
     result.isWide = left.isWide;
     if (result.isWide)
     {
-        result.value.word = left.value.word + right.value.word;
+        result.value.signedWord = left.value.signedWord + right.value.signedWord;
     }
     else
     {
-        result.value.byte = left.value.byte + right.value.byte;
+        result.value.signedByte = left.value.signedByte + right.value.signedByte;
     }
 
     return result;
@@ -1782,11 +1782,11 @@ bool isZero(OpValue value)
 
     if (value.isWide)
     {
-        return value.value.word == 0;
+        return value.value.signedWord == 0;
     }
     else
     {
-        return value.value.byte == 0;
+        return value.value.signedByte == 0;
     }
 }
 
@@ -1795,11 +1795,11 @@ bool isNegative(OpValue value)
 
     if (value.isWide)
     {
-        return value.value.word < 0;
+        return value.value.signedWord < 0;
     }
     else
     {
-        return value.value.byte < 0;
+        return value.value.signedByte < 0;
     }
 }
 
@@ -1832,7 +1832,7 @@ void updateParityFlag(OpValue result, State *state)
     size_t setCount = 0;
     for (uint8_t bitIndex = 0; bitIndex < 8; bitIndex++)
     {
-        bool isSet = extractBit(result.value.byte, bitIndex);
+        bool isSet = extractBit(result.value.signedByte, bitIndex);
         if (isSet)
         {
             setCount++;

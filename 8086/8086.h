@@ -403,8 +403,10 @@ typedef struct
     bool isWide;
     union
     {
-        int16_t word;
-        int8_t byte;
+        int16_t signedWord;
+        int8_t signedByte;
+        uint8_t unsignedByte;
+        uint16_t unsignedWord;
     } value;
 
 } OpValue;
