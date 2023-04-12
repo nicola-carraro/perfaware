@@ -1678,6 +1678,12 @@ Instruction decodeInstruction(State *state)
         instruction = decodeInstruction(state);
         segmentRegister = reg_es;
     }
+    if (firstByte == 0x36)
+    {
+        assert(instruction.type == instruction_none);
+        instruction = decodeInstruction(state);
+        segmentRegister = reg_ss;
+    }
     if (instruction.type == instruction_none)
     {
         error(__FILE__, __LINE__, state->isNoWait, "Unknown instruction, first byte=%#X", firstByte);
