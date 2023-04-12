@@ -1610,6 +1610,11 @@ Instruction decodeInstruction(State *state)
         assert(instruction.type == instruction_none);
         instruction.type = instruction_cmc;
     }
+    if (firstByte == 0xf9)
+    {
+        assert(instruction.type == instruction_none);
+        instruction.type = instruction_stc;
+    }
     if (firstByte == 0xfc)
     {
         assert(instruction.type == instruction_none);
@@ -1620,10 +1625,10 @@ Instruction decodeInstruction(State *state)
         assert(instruction.type == instruction_none);
         instruction.type = instruction_std;
     }
-    if (firstByte == 0xf9)
+    if (firstByte == 0xfa)
     {
         assert(instruction.type == instruction_none);
-        instruction.type = instruction_stc;
+        instruction.type = instruction_cli;
     }
     if (instruction.type == instruction_none)
     {
