@@ -1605,6 +1605,11 @@ Instruction decodeInstruction(State *state)
         assert(instruction.type == instruction_none);
         instruction.type = instruction_clc;
     }
+    if (firstByte == 0xf5)
+    {
+        assert(instruction.type == instruction_none);
+        instruction.type = instruction_cmc;
+    }
     if (instruction.type == instruction_none)
     {
         error(__FILE__, __LINE__, state->isNoWait, "Unknown instruction, first byte=%#X", firstByte);
