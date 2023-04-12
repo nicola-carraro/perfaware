@@ -834,6 +834,25 @@ Instruction decodeInstruction(State *state)
 
         instruction.type = instruction_mov;
     }
+    if (firstByte == 0x8c)
+    {
+        assert(instruction.type == instruction_none);
+        uint8_t secondByte = consumeByteAsUnsigned(state);
+        uint8_t mod = extractBits(secondByte, 6, 8);
+        if (extractBit(secondByte, 5) != 0)
+        {
+            error(__FILE__, __LINE__, state->isNoWait, "Expected a 0 bit in the 5th bit of bite 2 for mov from segmente register");
+        }
+        uint8_t sr = extractBits(secondByte, 3, 5);
+        uint8_t rm = extractLowBits(secondByte, 3);
+
+        instruction.operandCount = 2;
+        instruction.firstOperand = decodeRmOperand(true, mod, rm, state);
+        instruction.secondOperand.type = operand_type_register;
+        instruction.secondOperand.payload.reg.reg = decodeSrField(sr);
+        instruction.secondOperand.payload.reg.portion = reg_portion_x;
+        instruction.type = instruction_mov;
+    }
     if (firstByte == 0xfe || firstByte == 0xff)
     {
         assert(instruction.type == instruction_none);
