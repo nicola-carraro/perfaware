@@ -616,42 +616,46 @@ Instruction decodeRegister(uint8_t firstByte, bool wBit, State *state)
     return result;
 }
 
+Register decodeSrField(uint8_t reg)
+{
+    switch (reg)
+    {
+    case 0x0:
+    {
+        return reg_es;
+    }
+    break;
+    case 0x1:
+    {
+        return reg_cs;
+    }
+    break;
+    case 0x2:
+    {
+        return reg_ss;
+    }
+    break;
+    case 0x3:
+    {
+        return reg_ds;
+    }
+    break;
+    default:
+    {
+        assert(false);
+        return reg_none;
+    }
+    }
+}
+
 Instruction decodeSegmentRegister(uint8_t firstByte)
 {
     Instruction result = {0};
     result.operandCount = 1;
     result.firstOperand.type = operand_type_register;
     result.firstOperand.payload.reg.portion = reg_portion_x;
-    uint8_t reg = extractBits(firstByte, 3, 5);
-
-    switch (reg)
-    {
-    case 0x0:
-    {
-        result.firstOperand.payload.reg.reg = reg_es;
-    }
-    break;
-    case 0x1:
-    {
-        result.firstOperand.payload.reg.reg = reg_cs;
-    }
-    break;
-    case 0x2:
-    {
-        result.firstOperand.payload.reg.reg = reg_ss;
-    }
-    break;
-    case 0x3:
-    {
-        result.firstOperand.payload.reg.reg = reg_ds;
-    }
-    break;
-    default:
-    {
-        assert(false);
-    }
-    }
-
+    uint8_t sr = extractBits(firstByte, 3, 5);
+    result.firstOperand.payload.reg.reg = decodeSrField(sr);
     result.isWide = true;
     return result;
 }
