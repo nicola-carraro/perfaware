@@ -441,7 +441,7 @@ void printInstruction(Instruction instruction, State *before, State *after)
         printf(" ip:%#x--->%#x", before->instructions.instructionPointer, after->instructions.instructionPointer);
     }
 
-    if (instruction.type == instruction_rep)
+    if (instruction.type == instruction_rep || instruction.type == instruction_lock)
     {
         printf(" ");
     }
@@ -1644,6 +1644,11 @@ Instruction decodeInstruction(State *state)
     {
         assert(instruction.type == instruction_none);
         instruction.type = instruction_wait;
+    }
+    if (firstByte == 0xf0)
+    {
+        assert(instruction.type == instruction_none);
+        instruction.type = instruction_lock;
     }
     if (instruction.type == instruction_none)
     {
