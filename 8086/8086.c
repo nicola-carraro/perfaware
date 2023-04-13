@@ -887,19 +887,28 @@ Instruction decodeInstruction(State *state)
         else if (firstByte == 0xff && reg == 0x03)
         {
             assert(instruction.type == instruction_none);
-            if (firstByte == 0xff)
-            {
-                assert(instruction.type == instruction_none);
-                instruction.operandCount = 1;
-                uint8_t mod = extractBits(secondByte, 6, 8);
-                uint8_t rm = extractLowBits(secondByte, 3);
-                instruction.isWide = true;
-                instruction.isFar = true;
-                instruction.firstOperand = decodeRmOperand(true, mod, rm, state);
-                instruction.type = instruction_call;
-            }
 
+            assert(instruction.type == instruction_none);
+            instruction.operandCount = 1;
+            uint8_t mod = extractBits(secondByte, 6, 8);
+            uint8_t rm = extractLowBits(secondByte, 3);
+            instruction.isWide = true;
+            instruction.isFar = true;
+            instruction.firstOperand = decodeRmOperand(true, mod, rm, state);
             instruction.type = instruction_call;
+        }
+
+        else if (firstByte == 0xff && reg == 0x05)
+        {
+            assert(instruction.type == instruction_none);
+
+            instruction.operandCount = 1;
+            uint8_t mod = extractBits(secondByte, 6, 8);
+            uint8_t rm = extractLowBits(secondByte, 3);
+            instruction.isWide = true;
+            instruction.isFar = true;
+            instruction.firstOperand = decodeRmOperand(true, mod, rm, state);
+            instruction.type = instruction_jmp;
         }
         else
         {
