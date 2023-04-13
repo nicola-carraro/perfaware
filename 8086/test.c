@@ -1,5 +1,23 @@
 #include "8086.h"
 
+#define LISTING_37 "../computer_enhance/perfaware/part1/listing_0037_single_register_mov"
+#define LISTING_38 "../computer_enhance/perfaware/part1/listing_0038_many_register_mov"
+#define LISTING_39 "../computer_enhance/perfaware/part1/listing_0039_more_movs"
+#define LISTING_40 "../computer_enhance/perfaware/part1/listing_0040_challenge_movs"
+#define LISTING_41 "../computer_enhance/perfaware/part1/listing_0041_add_sub_cmp_jnz"
+#define LISTING_42 "../computer_enhance/perfaware/part1/listing_0042_completionist_decode"
+#define LISTING_43 "../computer_enhance/perfaware/part1/listing_0043_immediate_movs"
+#define LISTING_44 "../computer_enhance/perfaware/part1/listing_0044_register_movs"
+#define LISTING_45 "../computer_enhance/perfaware/part1/listing_0045_challenge_register_movs"
+#define LISTING_46 "../computer_enhance/perfaware/part1/listing_0046_add_sub_cmp"
+#define LISTING_47 "../computer_enhance/perfaware/part1/listing_0047_challenge_flags"
+#define LISTING_48 "../computer_enhance/perfaware/part1/listing_0048_ip_register"
+#define LISTING_49 "../computer_enhance/perfaware/part1/listing_0049_conditional_jumps"
+#define LISTING_50 "../computer_enhance/perfaware/part1/listing_0050_challenge_jumps"
+#define LISTING_51 "../computer_enhance/perfaware/part1/listing_0051_memory_mov"
+#define LISTING_52 "../computer_enhance/perfaware/part1/listing_0052_memory_add_loop"
+#define LISTING_53 "../computer_enhance/perfaware/part1/listing_0053_add_loop_challenge"
+
 char *readFile(const char *filename, size_t *len)
 {
     FILE *file = fopen(filename, "rb");
@@ -103,7 +121,7 @@ void testFinalState48()
     expected.flags[flag_carry] = true;
     expected.flags[flag_sign] = true;
 
-    testFinalState("../computer_enhance/perfaware/part1/listing_0048_ip_register", expected);
+    testFinalState(LISTING_48, expected);
 }
 
 void testFinalState49()
@@ -115,7 +133,7 @@ void testFinalState49()
     expected.flags[flag_parity] = true;
     expected.flags[flag_zero] = true;
 
-    testFinalState("../computer_enhance/perfaware/part1/listing_0049_conditional_jumps", expected);
+    testFinalState(LISTING_49, expected);
 }
 
 void testFinalState51()
@@ -128,7 +146,7 @@ void testFinalState51()
     expected.registers[reg_bp].x = 4;
     expected.instructions.instructionPointer = 48;
 
-    testFinalState("../computer_enhance/perfaware/part1/listing_0051_memory_mov", expected);
+    testFinalState(LISTING_51, expected);
 }
 
 void testFinalState52()
@@ -144,31 +162,28 @@ void testFinalState52()
     expected.flags[flag_zero] = true;
     expected.flags[flag_parity] = true;
 
-    testFinalState("../computer_enhance/perfaware/part1/listing_0052_memory_add_loop", expected);
-}
-
-void testDecoding42()
-{
-    system("nasm data/listing42.asm -o data/listing42");
-    testDecoding("data/listing42");
+    testFinalState(LISTING_52, expected);
 }
 
 int main(void)
 {
 
-    testDecoding("../computer_enhance/perfaware/part1/listing_0037_single_register_mov");
-    testDecoding("../computer_enhance/perfaware/part1/listing_0038_many_register_mov");
-    testDecoding("../computer_enhance/perfaware/part1/listing_0039_more_movs");
-    testDecoding("../computer_enhance/perfaware/part1/listing_0040_challenge_movs");
-    testDecoding("../computer_enhance/perfaware/part1/listing_0041_add_sub_cmp_jnz");
-    testDecoding("../computer_enhance/perfaware/part1/listing_0042_completionist_decode");
-    testDecoding("../computer_enhance/perfaware/part1/listing_0043_immediate_movs");
-    testDecoding("../computer_enhance/perfaware/part1/listing_0044_register_movs");
-    testDecoding("../computer_enhance/perfaware/part1/listing_0046_add_sub_cmp");
-    testDecoding("../computer_enhance/perfaware/part1/listing_0048_ip_register");
-    testDecoding("../computer_enhance/perfaware/part1/listing_0049_conditional_jumps");
-    testDecoding("../computer_enhance/perfaware/part1/listing_0051_memory_mov");
-    testDecoding("../computer_enhance/perfaware/part1/listing_0052_memory_add_loop");
+    testDecoding(LISTING_37);
+    testDecoding(LISTING_38);
+    testDecoding(LISTING_39);
+    testDecoding(LISTING_40);
+    testDecoding(LISTING_41);
+    testDecoding(LISTING_42);
+    testDecoding(LISTING_43);
+    testDecoding(LISTING_44);
+    //testDecoding(LISTING_45);
+    testDecoding(LISTING_46);
+    testDecoding(LISTING_47);
+    testDecoding(LISTING_48);
+    testDecoding(LISTING_49);
+    testDecoding(LISTING_50);
+    testDecoding(LISTING_51);
+    testDecoding(LISTING_52);
 
     testFinalState48();
     testFinalState49();
