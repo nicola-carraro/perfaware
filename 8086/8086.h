@@ -422,6 +422,7 @@ typedef struct
 {
     bool isWide;
     bool isCarry;
+    bool isAuxCarry;
     union
     {
         int16_t signedWord;

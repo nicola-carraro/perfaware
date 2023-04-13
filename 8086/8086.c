@@ -2033,10 +2033,15 @@ OpValue opValueAdd(OpValue left, OpValue right)
     }
     else
     {
-        if (result.value.signedWord < left.value.signedWord)
+        if (result.value.signedByte < left.value.signedByte)
         {
             result.isCarry = true;
         }
+    }
+
+    if (result.value.signedByte < left.value.signedByte)
+    {
+        result.isAuxCarry = true;
     }
 
     return result;
@@ -2125,6 +2130,18 @@ void updateCarryFlag(OpValue result, State *state)
     }
 }
 
+void updateAuxCarryFlag(OpValue result, State *state)
+{
+    if (result.isAuxCarry)
+    {
+        state->flags[flag_aux_carry] = true;
+    }
+    else
+    {
+        state->flags[flag_aux_carry] = false;
+    }
+}
+
 void executeInstruction(Instruction instruction, State *state)
 {
 
@@ -2146,6 +2163,7 @@ void executeInstruction(Instruction instruction, State *state)
         setDestination(instruction.firstOperand, result, state);
 
         updateCarryFlag(result, state);
+        updateAuxCarryFlag(result, state);
         updateZeroFlag(result, state);
         updateSignFlag(result, state);
         updateParityFlag(result, state);
@@ -2172,6 +2190,7 @@ void executeInstruction(Instruction instruction, State *state)
         setDestination(instruction.firstOperand, result, state);
 
         updateCarryFlag(result, state);
+        updateAuxCarryFlag(result, state);
         updateZeroFlag(result, state);
         updateSignFlag(result, state);
         updateParityFlag(result, state);
