@@ -56,19 +56,40 @@ char *readFile(const char *filename, size_t *len)
 
     return bytes;
 }
-void testDecoding(const char *inputFile)
+
+size_t fileNameStart(const char *filePath)
 {
-    printf("Decoding %s...\n", inputFile);
+
+    size_t index = 0;
+    size_t result = 0;
+    while (filePath[index] != '\0')
+    {
+        if (filePath[index] == '/' || filePath[index] == '\\')
+        {
+            result = index + 1;
+        }
+        index++;
+    }
+
+    return result;
+}
+
+void testDecoding(const char *filePath)
+{
+    printf("Decoding %s...\n", filePath);
+    size_t offset = fileNameStart(filePath);
     char buffer[1024];
-    sprintf(buffer, "8086.exe --nowait %s > tmp/output.asm ", inputFile);
+    sprintf(buffer, "8086.exe --nowait %s > tmp/%s.asm ", filePath, filePath + offset);
     system(buffer);
-    system("nasm tmp/output.asm -o tmp/output.out");
+    sprintf(buffer, "nasm tmp/%s.asm -o tmp/%s.out", filePath + offset, filePath + offset);
+    system(buffer);
 
     size_t inputFileSize;
-    char *inputData = readFile(inputFile, &inputFileSize);
+    char *inputData = readFile(filePath, &inputFileSize);
 
     size_t outputFileSize;
-    char *outputData = readFile("tmp/output.out", &outputFileSize);
+    sprintf(buffer, "tmp/%s.out", filePath + offset);
+    char *outputData = readFile(buffer, &outputFileSize);
 
     assert(inputFileSize == outputFileSize);
     assert(memcmp(inputData, outputData, inputFileSize) == 0);
@@ -79,7 +100,7 @@ void testFinalState(const char *filePath, State expected)
 
     printf("Executing %s...", filePath);
     char buffer[1024];
-    sprintf(buffer, "8086.exe --nowait --dump --execute %s > tmp/output.asm ", filePath);
+    sprintf(buffer, "8086.exe --nowait --dump --execute %s > NULL ", filePath);
     system(buffer);
 
     size_t fileSize;
