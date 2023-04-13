@@ -2205,8 +2205,9 @@ void executeInstruction(Instruction instruction, State *state)
 
         OpValue result = opValueSubtract(left, right);
 
-        updateZeroFlag(result, state);
+        updateCarryFlag(result, state);
         updateAuxCarryFlag(result, state);
+        updateZeroFlag(result, state);
         updateSignFlag(result, state);
         updateParityFlag(result, state);
     }
