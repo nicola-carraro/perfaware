@@ -17,6 +17,8 @@
 #define LISTING_51 "../computer_enhance/perfaware/part1/listing_0051_memory_mov"
 #define LISTING_52 "../computer_enhance/perfaware/part1/listing_0052_memory_add_loop"
 #define LISTING_53 "../computer_enhance/perfaware/part1/listing_0053_add_loop_challenge"
+#define LISTING_54 "../computer_enhance/perfaware/part1/listing_0054_draw_rectangle"
+#define LISTING_55 "../computer_enhance/perfaware/part1/listing_0055_challenge_rectangle"
 
 char *readFile(const char *filename, size_t *len)
 {
@@ -205,6 +207,9 @@ int main(void)
     testDecoding(LISTING_50);
     testDecoding(LISTING_51);
     testDecoding(LISTING_52);
+    testDecoding(LISTING_53);
+    testDecoding(LISTING_54);
+    testDecoding(LISTING_55);
 
     testFinalState48();
     testFinalState49();
