@@ -318,6 +318,17 @@ void testFinalState54()
     testFinalState(LISTING_54, expected, true);
 }
 
+void testFinalState55()
+{
+    State expected = {0};
+
+    expected.registers[reg_b].x = 16388;
+    expected.registers[reg_bp].x = 764;
+    expected.instructions.instructionPointer = 68;
+
+    testFinalState(LISTING_55, expected, true);
+}
+
 int main(void)
 {
 
@@ -353,4 +364,5 @@ int main(void)
     testFinalState52();
     testFinalState53();
     testFinalState54();
+    testFinalState55();
 }

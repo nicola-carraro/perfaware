@@ -2253,10 +2253,18 @@ void executeInstruction(Instruction instruction, State *state)
             state->instructions.instructionPointer += instruction.firstOperand.payload.immediate.value;
         }
     }
-    else if (instruction.type == instruction_loopnz)
+    else if (instruction.type == instruction_loop)
     {
         state->registers[reg_c].x--;
         if (!state->flags[flag_zero] && state->registers[reg_c].x != 0)
+        {
+            state->instructions.instructionPointer += instruction.firstOperand.payload.immediate.value;
+        }
+    }
+    else if (instruction.type == instruction_loopnz)
+    {
+        state->registers[reg_c].x--;
+        if (state->registers[reg_c].x != 0)
         {
             state->instructions.instructionPointer += instruction.firstOperand.payload.immediate.value;
         }
