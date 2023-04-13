@@ -289,10 +289,16 @@ void printRegister(RegisterLocation registerLocation)
     }
 }
 
-void printOperand(Operand operand, uint16_t instructionByteCount, Register segmentRegister)
+void printOperand(Operand operand, uint16_t instructionByteCount, bool isFar, Register segmentRegister)
 {
 
     printf(" ");
+
+    if (isFar)
+    {
+        printf("far ");
+    }
+
     switch (operand.type)
     {
     case operand_type_register:
@@ -406,13 +412,13 @@ void printInstruction(Instruction instruction, State *before, State *after)
 
     if (instruction.operandCount > 0)
     {
-        printOperand(instruction.firstOperand, instruction.byteCount, instruction.segmentRegister);
+        printOperand(instruction.firstOperand, instruction.byteCount, instruction.isFar, instruction.segmentRegister);
     }
 
     if (instruction.operandCount > 1)
     {
         printf(",");
-        printOperand(instruction.secondOperand, instruction.byteCount, instruction.segmentRegister);
+        printOperand(instruction.secondOperand, instruction.byteCount, instruction.isFar, instruction.segmentRegister);
     }
 
     printf("\t");
@@ -878,7 +884,7 @@ Instruction decodeInstruction(State *state)
 
             instruction.type = instruction_push;
         }
-        else if (firstByte == 0xff && reg == 0x02)
+        else if (firstByte == 0xff && reg == 0x03)
         {
             assert(instruction.type == instruction_none);
             if (firstByte == 0xff)
@@ -888,6 +894,7 @@ Instruction decodeInstruction(State *state)
                 uint8_t mod = extractBits(secondByte, 6, 8);
                 uint8_t rm = extractLowBits(secondByte, 3);
                 instruction.isWide = true;
+                instruction.isFar = true;
                 instruction.firstOperand = decodeRmOperand(true, mod, rm, state);
                 instruction.type = instruction_call;
             }
