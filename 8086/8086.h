@@ -8,9 +8,9 @@
 #include "assert.h"
 #include "string.h"
 
-#define DUMP_PATH "data/dump"
+#define DUMP_PATH "tmp/dump"
 
-#define IMAGE_PATH "data/image.data"
+#define IMAGE_PATH "tmp/image.data"
 
 #define REG_COUNT 8
 

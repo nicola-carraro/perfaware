@@ -60,15 +60,15 @@ void testDecoding(const char *inputFile)
 {
     printf("Decoding %s...\n", inputFile);
     char buffer[1024];
-    sprintf(buffer, "8086.exe --nowait %s > data/output.asm ", inputFile);
+    sprintf(buffer, "8086.exe --nowait %s > tmp/output.asm ", inputFile);
     system(buffer);
-    system("nasm data/output.asm -o data/output.out");
+    system("nasm tmp/output.asm -o tmp/output.out");
 
     size_t inputFileSize;
     char *inputData = readFile(inputFile, &inputFileSize);
 
     size_t outputFileSize;
-    char *outputData = readFile("data/output.out", &outputFileSize);
+    char *outputData = readFile("tmp/output.out", &outputFileSize);
 
     assert(inputFileSize == outputFileSize);
     assert(memcmp(inputData, outputData, inputFileSize) == 0);
@@ -79,7 +79,7 @@ void testFinalState(const char *filePath, State expected)
 
     printf("Executing %s...", filePath);
     char buffer[1024];
-    sprintf(buffer, "8086.exe --nowait --dump --execute %s > data/output.asm ", filePath);
+    sprintf(buffer, "8086.exe --nowait --dump --execute %s > tmp/output.asm ", filePath);
     system(buffer);
 
     size_t fileSize;
@@ -176,7 +176,7 @@ int main(void)
     testDecoding(LISTING_42);
     testDecoding(LISTING_43);
     testDecoding(LISTING_44);
-    //testDecoding(LISTING_45);
+    // testDecoding(LISTING_45);
     testDecoding(LISTING_46);
     testDecoding(LISTING_47);
     testDecoding(LISTING_48);
@@ -189,4 +189,6 @@ int main(void)
     testFinalState49();
     testFinalState51();
     testFinalState52();
+
+    // testDecoding(LISTING_45);
 }

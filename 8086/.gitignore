@@ -1,4 +1,5 @@
 *.pdb
 data
+tmp
 *.exe
 .vscode
