@@ -1511,6 +1511,14 @@ Instruction decodeInstruction(State *state)
         instruction.isWide = true;
         instruction.type = instruction_ret;
     }
+    if (firstByte == 0xca)
+    {
+        assert(instruction.type == instruction_none);
+        instruction.operandCount = 1;
+        instruction.firstOperand = decodeImmediateOperand(true, false, state);
+        instruction.isWide = true;
+        instruction.type = instruction_retf;
+    }
     if (firstByte == 0x74)
     {
         assert(instruction.type == instruction_none);
