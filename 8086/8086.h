@@ -423,6 +423,7 @@ typedef struct
     bool isWide;
     bool isCarry;
     bool isAuxCarry;
+    bool isOverflow;
     union
     {
         int16_t signedWord;

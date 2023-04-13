@@ -2001,6 +2001,15 @@ OpValue opValueSubtract(OpValue left, OpValue right)
         {
             result.isCarry = false;
         }
+
+        if (result.value.signedWord > left.value.signedWord)
+        {
+            result.isOverflow = true;
+        }
+        else
+        {
+            result.isOverflow = false;
+        }
     }
     else
     {
@@ -2011,6 +2020,15 @@ OpValue opValueSubtract(OpValue left, OpValue right)
         else
         {
             result.isCarry = false;
+        }
+
+        if (result.value.signedByte > left.value.signedByte)
+        {
+            result.isOverflow = true;
+        }
+        else
+        {
+            result.isOverflow = false;
         }
     }
 
@@ -2050,12 +2068,36 @@ OpValue opValueAdd(OpValue left, OpValue right)
         {
             result.isCarry = true;
         }
+        else
+        {
+            result.isCarry = false;
+        }
+        if (result.value.signedWord < left.value.signedWord)
+        {
+            result.isOverflow = true;
+        }
+        else
+        {
+            result.isOverflow = false;
+        }
     }
     else
     {
         if (result.value.unsignedByte < left.value.unsignedByte)
         {
             result.isCarry = true;
+        }
+        else
+        {
+            result.isCarry = false;
+        }
+        if (result.value.signedByte < left.value.signedByte)
+        {
+            result.isOverflow = true;
+        }
+        else
+        {
+            result.isOverflow = false;
         }
     }
 
@@ -2159,6 +2201,18 @@ void updateCarryFlag(OpValue result, State *state)
     }
 }
 
+void updateOverflowFlag(OpValue result, State *state)
+{
+    if (result.isOverflow)
+    {
+        state->flags[flag_overflow] = true;
+    }
+    else
+    {
+        state->flags[flag_overflow] = false;
+    }
+}
+
 void updateAuxCarryFlag(OpValue result, State *state)
 {
     if (result.isAuxCarry)
@@ -2196,6 +2250,7 @@ void executeInstruction(Instruction instruction, State *state)
         updateZeroFlag(result, state);
         updateSignFlag(result, state);
         updateParityFlag(result, state);
+        updateOverflowFlag(result, state);
     }
     else if (instruction.type == instruction_cmp)
     {
@@ -2210,6 +2265,7 @@ void executeInstruction(Instruction instruction, State *state)
         updateZeroFlag(result, state);
         updateSignFlag(result, state);
         updateParityFlag(result, state);
+        updateOverflowFlag(result, state);
     }
     else if (instruction.type == instruction_add)
     {
@@ -2225,6 +2281,7 @@ void executeInstruction(Instruction instruction, State *state)
         updateZeroFlag(result, state);
         updateSignFlag(result, state);
         updateParityFlag(result, state);
+        updateOverflowFlag(result, state);
     }
     else if (instruction.type == instruction_jb)
     {
