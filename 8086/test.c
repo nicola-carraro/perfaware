@@ -161,6 +161,7 @@ int main(void)
     testDecoding("../computer_enhance/perfaware/part1/listing_0039_more_movs");
     testDecoding("../computer_enhance/perfaware/part1/listing_0040_challenge_movs");
     testDecoding("../computer_enhance/perfaware/part1/listing_0041_add_sub_cmp_jnz");
+    testDecoding("../computer_enhance/perfaware/part1/listing_0042_completionist_decode");
     testDecoding("../computer_enhance/perfaware/part1/listing_0043_immediate_movs");
     testDecoding("../computer_enhance/perfaware/part1/listing_0044_register_movs");
     testDecoding("../computer_enhance/perfaware/part1/listing_0046_add_sub_cmp");
@@ -173,6 +174,4 @@ int main(void)
     testFinalState49();
     testFinalState51();
     testFinalState52();
-
-    testDecoding42();
 }
