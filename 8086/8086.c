@@ -715,6 +715,19 @@ Instruction decodeIntersegmentImmediate(State *state)
     return instruction;
 }
 
+Instruction decodeIndirectIntersegment(uint8_t secondByte, State *state)
+{
+    Instruction instruction = {0};
+    instruction.operandCount = 1;
+    uint8_t mod = extractBits(secondByte, 6, 8);
+    uint8_t rm = extractLowBits(secondByte, 3);
+    instruction.isWide = true;
+    instruction.isFar = true;
+    instruction.firstOperand = decodeRmOperand(true, mod, rm, state);
+
+    return instruction;
+}
+
 Instruction decodeFixedPort(bool isDest, uint8_t firstByte, State *state)
 {
     Instruction result = {0};
@@ -888,26 +901,15 @@ Instruction decodeInstruction(State *state)
         {
             assert(instruction.type == instruction_none);
 
-            assert(instruction.type == instruction_none);
-            instruction.operandCount = 1;
-            uint8_t mod = extractBits(secondByte, 6, 8);
-            uint8_t rm = extractLowBits(secondByte, 3);
-            instruction.isWide = true;
-            instruction.isFar = true;
-            instruction.firstOperand = decodeRmOperand(true, mod, rm, state);
+            instruction = decodeIndirectIntersegment(secondByte, state);
             instruction.type = instruction_call;
         }
 
         else if (firstByte == 0xff && reg == 0x05)
         {
             assert(instruction.type == instruction_none);
+            instruction = decodeIndirectIntersegment(secondByte, state);
 
-            instruction.operandCount = 1;
-            uint8_t mod = extractBits(secondByte, 6, 8);
-            uint8_t rm = extractLowBits(secondByte, 3);
-            instruction.isWide = true;
-            instruction.isFar = true;
-            instruction.firstOperand = decodeRmOperand(true, mod, rm, state);
             instruction.type = instruction_jmp;
         }
         else
