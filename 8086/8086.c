@@ -878,34 +878,53 @@ Instruction decodeInstruction(State *state)
 
             instruction.type = instruction_push;
         }
-
-        if (reg == 0x0)
+        else if (firstByte == 0xff && reg == 0x02)
         {
-            bool wBit = extractBit(firstByte, 0);
-            instruction = decodeRegisterMemory(secondByte, wBit, state);
-
-            instruction.type = instruction_inc;
-        }
-        else if (reg == 0x1)
-        {
-            bool wBit = extractBit(firstByte, 0);
-            instruction = decodeRegisterMemory(secondByte, wBit, state);
-
-            instruction.type = instruction_dec;
-        }
-        else if (reg == 0x2)
-        {
-            bool wBit = extractBit(firstByte, 0);
-            instruction = decodeRegisterMemory(secondByte, wBit, state);
+            assert(instruction.type == instruction_none);
+            if (firstByte == 0xff)
+            {
+                assert(instruction.type == instruction_none);
+                instruction.operandCount = 1;
+                uint8_t mod = extractBits(secondByte, 6, 8);
+                uint8_t rm = extractLowBits(secondByte, 3);
+                instruction.isWide = true;
+                instruction.firstOperand = decodeRmOperand(true, mod, rm, state);
+                instruction.type = instruction_call;
+            }
 
             instruction.type = instruction_call;
         }
-        else if (reg == 0x4)
+        else
         {
-            bool wBit = extractBit(firstByte, 0);
-            instruction = decodeRegisterMemory(secondByte, wBit, state);
 
-            instruction.type = instruction_jmp;
+            if (reg == 0x0)
+            {
+                bool wBit = extractBit(firstByte, 0);
+                instruction = decodeRegisterMemory(secondByte, wBit, state);
+
+                instruction.type = instruction_inc;
+            }
+            else if (reg == 0x1)
+            {
+                bool wBit = extractBit(firstByte, 0);
+                instruction = decodeRegisterMemory(secondByte, wBit, state);
+
+                instruction.type = instruction_dec;
+            }
+            else if (reg == 0x2)
+            {
+                bool wBit = extractBit(firstByte, 0);
+                instruction = decodeRegisterMemory(secondByte, wBit, state);
+
+                instruction.type = instruction_call;
+            }
+            else if (reg == 0x4)
+            {
+                bool wBit = extractBit(firstByte, 0);
+                instruction = decodeRegisterMemory(secondByte, wBit, state);
+
+                instruction.type = instruction_jmp;
+            }
         }
     }
     if (firstByte == 0x3c || firstByte == 0x3d)
@@ -1486,6 +1505,7 @@ Instruction decodeInstruction(State *state)
         instruction = decodeIntersegmentImmediate(state);
         instruction.type = instruction_call;
     }
+
     if (firstByte == 0xea)
     {
         assert(instruction.type == instruction_none);
@@ -1517,6 +1537,11 @@ Instruction decodeInstruction(State *state)
         instruction.operandCount = 1;
         instruction.firstOperand = decodeImmediateOperand(true, false, state);
         instruction.isWide = true;
+        instruction.type = instruction_retf;
+    }
+    if (firstByte == 0xcb)
+    {
+        assert(instruction.type == instruction_none);
         instruction.type = instruction_retf;
     }
     if (firstByte == 0x74)

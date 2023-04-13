@@ -382,6 +382,7 @@ typedef struct
     bool needsDecorator;
     uint16_t byteCount;
     bool isInt3;
+    bool isFar;
     Register segmentRegister;
 
 } Instruction;
@@ -415,7 +416,6 @@ typedef struct
     } registers[REGISTER_COUNT];
 
     bool flags[FLAG_COUNT];
-
 
 } State;
 
