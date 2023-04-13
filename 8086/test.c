@@ -150,6 +150,22 @@ void testFinalState43()
     testFinalState(LISTING_43, expected);
 }
 
+void testFinalState44()
+{
+    State expected = {0};
+
+    expected.registers[reg_a].x = 4;
+    expected.registers[reg_b].x = 3;
+    expected.registers[reg_c].x = 2;
+    expected.registers[reg_d].x = 1;
+    expected.registers[reg_sp].x = 1;
+    expected.registers[reg_bp].x = 2;
+    expected.registers[reg_si].x = 3;
+    expected.registers[reg_di].x = 4;
+
+    testFinalState(LISTING_44, expected);
+}
+
 void testFinalState48()
 {
     State expected = {0};
@@ -228,6 +244,7 @@ int main(void)
     testDecoding(LISTING_55);
 
     testFinalState43();
+    testFinalState44();
 
     testFinalState48();
     testFinalState49();
