@@ -102,7 +102,7 @@ void testFinalState(const char *filePath, State expected, bool testIp)
 
     printf("Executing %s...\n", filePath);
     char buffer[1024];
-    sprintf(buffer, "8086.exe --nowait --dump --execute %s > NULL ", filePath);
+    sprintf(buffer, "8086.exe --nowait --dump --execute %s > nul ", filePath);
     system(buffer);
 
     size_t fileSize;
