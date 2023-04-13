@@ -78,7 +78,7 @@ char *readFile(const char *filename, size_t *len, State *state)
 
 int16_t consumeTwoBytesAsSigned(State *state)
 {
-    if (state->instructions.instructionPointer + 1 >= state->instructions.size)
+    if (state->instructions.instructionPointer + 2 > state->instructions.size)
     {
         error(__FILE__, __LINE__, state->isNoWait, "reached end of instuctions stream");
     }
@@ -1481,6 +1481,16 @@ Instruction decodeInstruction(State *state)
     {
         assert(instruction.type == instruction_none);
         instruction = decodeIntersegmentImmediate(state);
+        instruction.type = instruction_jmp;
+    }
+    if (firstByte == 0xe9)
+    {
+        assert(instruction.type == instruction_none);
+        instruction.operandCount = 1;
+        instruction.isWide = true;
+        instruction.firstOperand.type = operand_type_immediate;
+        instruction.firstOperand.payload.immediate.value = consumeTwoBytesAsSigned(state);
+        instruction.firstOperand.payload.immediate.isRelativeOffset = true;
         instruction.type = instruction_jmp;
     }
     if (firstByte == 0xc3)

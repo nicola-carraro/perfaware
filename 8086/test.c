@@ -168,10 +168,11 @@ int main(void)
     testDecoding("../computer_enhance/perfaware/part1/listing_0049_conditional_jumps");
     testDecoding("../computer_enhance/perfaware/part1/listing_0051_memory_mov");
     testDecoding("../computer_enhance/perfaware/part1/listing_0052_memory_add_loop");
-    testDecoding42();
 
     testFinalState48();
     testFinalState49();
     testFinalState51();
     testFinalState52();
+
+    testDecoding42();
 }
