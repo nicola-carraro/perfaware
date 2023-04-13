@@ -100,7 +100,7 @@ void testDecoding(const char *filePath)
 void testFinalState(const char *filePath, State expected, bool testIp)
 {
 
-    printf("Executing %s...", filePath);
+    printf("Executing %s...\n", filePath);
     char buffer[1024];
     sprintf(buffer, "8086.exe --nowait --dump --execute %s > NULL ", filePath);
     system(buffer);
@@ -113,7 +113,7 @@ void testFinalState(const char *filePath, State expected, bool testIp)
     {
 
         printf(
-            "%s : expected %u, found %u\n",
+            "%s : expected %d, found %d\n",
             RegisterInfos[regIndex].name,
             expected.registers[regIndex].x,
             found->registers[regIndex].x);
