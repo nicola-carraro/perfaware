@@ -256,7 +256,7 @@ void testFinalState50()
     expected.instructions.instructionPointer = 28;
     expected.flags[flag_carry] = true;
     expected.flags[flag_aux_carry] = true;
-    expected.flags[flag_parity] = true;
+    expected.flags[flag_sign] = true;
 
     testFinalState(LISTING_50, expected, true);
 }

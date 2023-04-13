@@ -2225,9 +2225,38 @@ void executeInstruction(Instruction instruction, State *state)
         updateSignFlag(result, state);
         updateParityFlag(result, state);
     }
+    else if (instruction.type == instruction_jb)
+    {
+        if (state->flags[flag_carry])
+        {
+            state->instructions.instructionPointer += instruction.firstOperand.payload.immediate.value;
+        }
+    }
+    else if (instruction.type == instruction_je)
+    {
+        if (state->flags[flag_zero])
+        {
+            state->instructions.instructionPointer += instruction.firstOperand.payload.immediate.value;
+        }
+    }
     else if (instruction.type == instruction_jnz)
     {
         if (!state->flags[flag_zero])
+        {
+            state->instructions.instructionPointer += instruction.firstOperand.payload.immediate.value;
+        }
+    }
+    else if (instruction.type == instruction_jp)
+    {
+        if (state->flags[flag_parity])
+        {
+            state->instructions.instructionPointer += instruction.firstOperand.payload.immediate.value;
+        }
+    }
+    else if (instruction.type == instruction_loopnz)
+    {
+        state->registers[reg_c].x--;
+        if (!state->flags[flag_zero] && state->registers[reg_c].x != 0)
         {
             state->instructions.instructionPointer += instruction.firstOperand.payload.immediate.value;
         }
