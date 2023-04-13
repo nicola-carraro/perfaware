@@ -97,7 +97,7 @@ void testDecoding(const char *filePath)
     assert(memcmp(inputData, outputData, inputFileSize) == 0);
 }
 
-void testFinalState(const char *filePath, State expected)
+void testFinalState(const char *filePath, State expected, bool testIp)
 {
 
     printf("Executing %s...", filePath);
@@ -132,6 +132,16 @@ void testFinalState(const char *filePath, State expected)
 
         assert(expected.flags[flagIndex] == found->flags[flagIndex]);
     }
+
+    if (testIp)
+    {
+        printf(
+            "ip : expected %d, found %d\n",
+            expected.instructions.instructionPointer,
+            found->instructions.instructionPointer);
+
+        assert(expected.instructions.instructionPointer == found->instructions.instructionPointer);
+    }
 }
 
 void testFinalState43()
@@ -147,7 +157,7 @@ void testFinalState43()
     expected.registers[reg_si].x = 7;
     expected.registers[reg_di].x = 8;
 
-    testFinalState(LISTING_43, expected);
+    testFinalState(LISTING_43, expected, false);
 }
 
 void testFinalState44()
@@ -163,7 +173,7 @@ void testFinalState44()
     expected.registers[reg_si].x = 3;
     expected.registers[reg_di].x = 4;
 
-    testFinalState(LISTING_44, expected);
+    testFinalState(LISTING_44, expected, false);
 }
 
 void testFinalState45()
@@ -181,7 +191,7 @@ void testFinalState45()
     expected.registers[reg_ss].x = 17425;
     expected.registers[reg_ds].x = 13124;
 
-    testFinalState(LISTING_45, expected);
+    testFinalState(LISTING_45, expected, false);
 }
 
 void testFinalState48()
@@ -194,7 +204,7 @@ void testFinalState48()
     expected.flags[flag_carry] = true;
     expected.flags[flag_sign] = true;
 
-    testFinalState(LISTING_48, expected);
+    testFinalState(LISTING_48, expected, true);
 }
 
 void testFinalState49()
@@ -206,7 +216,7 @@ void testFinalState49()
     expected.flags[flag_parity] = true;
     expected.flags[flag_zero] = true;
 
-    testFinalState(LISTING_49, expected);
+    testFinalState(LISTING_49, expected, true);
 }
 
 void testFinalState51()
@@ -219,7 +229,7 @@ void testFinalState51()
     expected.registers[reg_bp].x = 4;
     expected.instructions.instructionPointer = 48;
 
-    testFinalState(LISTING_51, expected);
+    testFinalState(LISTING_51, expected, true);
 }
 
 void testFinalState52()
@@ -235,7 +245,7 @@ void testFinalState52()
     expected.flags[flag_zero] = true;
     expected.flags[flag_parity] = true;
 
-    testFinalState(LISTING_52, expected);
+    testFinalState(LISTING_52, expected, true);
 }
 
 int main(void)
