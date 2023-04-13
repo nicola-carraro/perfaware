@@ -771,6 +771,18 @@ Instruction decodeVariablePort(bool isDest, uint8_t firstByte)
     return result;
 }
 
+Instruction decodeImmediateWithinSegment(State *state)
+{
+    Instruction instruction = {0};
+    instruction.operandCount = 1;
+    instruction.isWide = true;
+    instruction.firstOperand.type = operand_type_immediate;
+    instruction.firstOperand.payload.immediate.value = consumeTwoBytesAsSigned(state);
+    instruction.firstOperand.payload.immediate.isRelativeOffset = true;
+
+    return instruction;
+}
+
 Instruction decodeInstruction(State *state)
 {
 
@@ -1465,10 +1477,7 @@ Instruction decodeInstruction(State *state)
     if (firstByte == 0xe8)
     {
         assert(instruction.type == instruction_none);
-        instruction.operandCount = 1;
-        instruction.firstOperand.type = operand_type_memory;
-        instruction.firstOperand.payload.memory.displacement = consumeTwoBytesAsSigned(state);
-
+        instruction = decodeImmediateWithinSegment(state);
         instruction.type = instruction_call;
     }
     if (firstByte == 0x9a)
@@ -1486,11 +1495,7 @@ Instruction decodeInstruction(State *state)
     if (firstByte == 0xe9)
     {
         assert(instruction.type == instruction_none);
-        instruction.operandCount = 1;
-        instruction.isWide = true;
-        instruction.firstOperand.type = operand_type_immediate;
-        instruction.firstOperand.payload.immediate.value = consumeTwoBytesAsSigned(state);
-        instruction.firstOperand.payload.immediate.isRelativeOffset = true;
+        instruction = decodeImmediateWithinSegment(state);
         instruction.type = instruction_jmp;
     }
     if (firstByte == 0xc3)
