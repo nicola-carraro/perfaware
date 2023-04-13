@@ -134,6 +134,22 @@ void testFinalState(const char *filePath, State expected)
     }
 }
 
+void testFinalState43()
+{
+    State expected = {0};
+
+    expected.registers[reg_a].x = 1;
+    expected.registers[reg_b].x = 2;
+    expected.registers[reg_c].x = 3;
+    expected.registers[reg_d].x = 4;
+    expected.registers[reg_sp].x = 5;
+    expected.registers[reg_bp].x = 6;
+    expected.registers[reg_si].x = 7;
+    expected.registers[reg_di].x = 8;
+
+    testFinalState(LISTING_43, expected);
+}
+
 void testFinalState48()
 {
     State expected = {0};
@@ -210,6 +226,8 @@ int main(void)
     testDecoding(LISTING_53);
     testDecoding(LISTING_54);
     testDecoding(LISTING_55);
+
+    testFinalState43();
 
     testFinalState48();
     testFinalState49();
