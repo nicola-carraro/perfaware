@@ -1997,13 +1997,33 @@ OpValue opValueSubtract(OpValue left, OpValue right)
         {
             result.isCarry = true;
         }
+        else
+        {
+            result.isCarry = false;
+        }
     }
     else
     {
-        if (result.value.signedWord > left.value.signedWord)
+        if (result.value.unsignedByte > left.value.unsignedByte)
         {
             result.isCarry = true;
         }
+        else
+        {
+            result.isCarry = false;
+        }
+    }
+
+    uint8_t leftLowNibble = extractLowBits(left.value.unsignedByte, 4);
+    uint8_t rightLowNibble = extractLowBits(right.value.unsignedByte, 4);
+
+    if (leftLowNibble < rightLowNibble)
+    {
+        result.isAuxCarry = true;
+    }
+    else
+    {
+        result.isAuxCarry = false;
     }
 
     return result;
@@ -2033,15 +2053,24 @@ OpValue opValueAdd(OpValue left, OpValue right)
     }
     else
     {
-        if (result.value.signedByte < left.value.signedByte)
+        if (result.value.unsignedByte < left.value.unsignedByte)
         {
             result.isCarry = true;
         }
     }
 
-    if (result.value.signedByte < left.value.signedByte)
+    uint8_t leftLowNibble = extractLowBits(left.value.unsignedByte, 4);
+    uint8_t rightLowNibble = extractLowBits(left.value.unsignedByte, 4);
+
+    uint8_t halfByteSum = leftLowNibble + rightLowNibble;
+
+    if (halfByteSum < leftLowNibble)
     {
         result.isAuxCarry = true;
+    }
+    else
+    {
+        result.isAuxCarry = false;
     }
 
     return result;
@@ -2177,6 +2206,7 @@ void executeInstruction(Instruction instruction, State *state)
         OpValue result = opValueSubtract(left, right);
 
         updateZeroFlag(result, state);
+        updateAuxCarryFlag(result, state);
         updateSignFlag(result, state);
         updateParityFlag(result, state);
     }
