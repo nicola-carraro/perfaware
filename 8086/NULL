@@ -38,5 +38,9 @@ jnz $-9	 ip:0x21--->0x23
 ; bp = 	1000
 ; si = 	6
 ; di = 	0
+; cs = 	0
+; ds = 	0
+; ss = 	0
+; es = 	0
 ; ip = 	 35
 Flags:ZP

@@ -424,7 +424,7 @@ void printInstruction(Instruction instruction, State *before, State *after)
     printf("\t");
     if (after->execute)
     {
-        for (Register reg = 0; reg < REG_COUNT; reg++)
+        for (Register reg = 0; reg < REGISTER_COUNT; reg++)
         {
             if (before->registers[reg].x != after->registers[reg].x)
             {

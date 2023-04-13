@@ -12,8 +12,6 @@
 
 #define IMAGE_PATH "tmp/image.data"
 
-#define REG_COUNT 8
-
 typedef enum
 {
     reg_a,
@@ -394,7 +392,7 @@ typedef struct
     uint16_t instructionPointer;
 } Stream;
 
-#define REGISTER_COUNT 8
+#define REGISTER_COUNT 12
 #define FLAG_COUNT 9
 #define MEMORY_SIZE 1024 * 1024
 typedef struct
@@ -413,6 +411,7 @@ typedef struct
             int8_t l;
             int8_t h;
         } lh;
+
     } registers[REGISTER_COUNT];
 
     bool flags[FLAG_COUNT];

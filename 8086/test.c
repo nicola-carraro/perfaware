@@ -109,7 +109,7 @@ void testFinalState(const char *filePath, State expected)
     char *inputData = readFile(DUMP_PATH, &fileSize);
     State *found = (State *)inputData;
 
-    for (size_t regIndex = 0; regIndex < REG_COUNT; regIndex++)
+    for (size_t regIndex = 0; regIndex < REGISTER_COUNT; regIndex++)
     {
 
         printf(
@@ -164,6 +164,24 @@ void testFinalState44()
     expected.registers[reg_di].x = 4;
 
     testFinalState(LISTING_44, expected);
+}
+
+void testFinalState45()
+{
+    State expected = {0};
+    expected.registers[reg_a].x = 17425;
+    expected.registers[reg_b].x = 13124;
+    expected.registers[reg_c].x = 26231;
+    expected.registers[reg_d].x = 30600;
+    expected.registers[reg_sp].x = 17425;
+    expected.registers[reg_bp].x = 13124;
+    expected.registers[reg_si].x = 26231;
+    expected.registers[reg_di].x = 30600;
+    expected.registers[reg_es].x = 26231;
+    expected.registers[reg_ss].x = 17425;
+    expected.registers[reg_ds].x = 13124;
+
+    testFinalState(LISTING_45, expected);
 }
 
 void testFinalState48()
@@ -245,6 +263,7 @@ int main(void)
 
     testFinalState43();
     testFinalState44();
+    testFinalState45();
 
     testFinalState48();
     testFinalState49();
