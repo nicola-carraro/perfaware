@@ -194,6 +194,18 @@ void testFinalState45()
     testFinalState(LISTING_45, expected, false);
 }
 
+void testFinalState46()
+{
+    State expected = {0};
+    expected.registers[reg_b].x = -7934;
+    expected.registers[reg_c].x = 3841;
+    expected.registers[reg_sp].x = 998;
+    expected.flags[flag_parity] = true;
+    expected.flags[flag_zero] = true;
+
+    testFinalState(LISTING_46, expected, false);
+}
+
 void testFinalState48()
 {
     State expected = {0};
@@ -274,6 +286,7 @@ int main(void)
     testFinalState43();
     testFinalState44();
     testFinalState45();
+    testFinalState46();
 
     testFinalState48();
     testFinalState49();
