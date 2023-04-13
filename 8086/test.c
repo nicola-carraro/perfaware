@@ -197,7 +197,7 @@ int main(void)
     testDecoding(LISTING_42);
     testDecoding(LISTING_43);
     testDecoding(LISTING_44);
-    // testDecoding(LISTING_45);
+    testDecoding(LISTING_45);
     testDecoding(LISTING_46);
     testDecoding(LISTING_47);
     testDecoding(LISTING_48);
@@ -210,6 +210,4 @@ int main(void)
     testFinalState49();
     testFinalState51();
     testFinalState52();
-
-    // testDecoding(LISTING_45);
 }

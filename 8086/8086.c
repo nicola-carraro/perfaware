@@ -662,14 +662,22 @@ Register decodeSrField(uint8_t reg)
     }
 }
 
+Operand decodeSrOperand(uint8_t sr)
+{
+    Operand operand = {0};
+    operand.type = operand_type_register;
+    operand.payload.reg.reg = decodeSrField(sr);
+    operand.payload.reg.portion = reg_portion_x;
+    return operand;
+}
+
 Instruction decodeSegmentRegister(uint8_t firstByte)
 {
     Instruction result = {0};
     result.operandCount = 1;
-    result.firstOperand.type = operand_type_register;
-    result.firstOperand.payload.reg.portion = reg_portion_x;
     uint8_t sr = extractBits(firstByte, 3, 5);
-    result.firstOperand.payload.reg.reg = decodeSrField(sr);
+
+    result.firstOperand = decodeSrOperand(sr);
     result.isWide = true;
     return result;
 }
@@ -879,13 +887,29 @@ Instruction decodeInstruction(State *state)
 
         instruction.operandCount = 2;
         instruction.firstOperand = decodeRmOperand(true, mod, rm, state);
-        instruction.secondOperand.type = operand_type_register;
-        instruction.secondOperand.payload.reg.reg = decodeSrField(sr);
-        instruction.secondOperand.payload.reg.portion = reg_portion_x;
+        instruction.secondOperand = decodeSrOperand(sr);
+        instruction.type = instruction_mov;
+    }
+    if (firstByte == 0x8e)
+    {
+        assert(instruction.type == instruction_none);
+        uint8_t secondByte = consumeByteAsUnsigned(state);
+        uint8_t mod = extractBits(secondByte, 6, 8);
+        if (extractBit(secondByte, 5) != 0)
+        {
+            error(__FILE__, __LINE__, state->isNoWait, "Expected a 0 bit in the 5th bit of bite 2 for mov from segmente register");
+        }
+        uint8_t sr = extractBits(secondByte, 3, 5);
+        uint8_t rm = extractLowBits(secondByte, 3);
+
+        instruction.operandCount = 2;
+        instruction.firstOperand = decodeSrOperand(sr);
+        instruction.secondOperand = decodeRmOperand(true, mod, rm, state);
         instruction.type = instruction_mov;
     }
     if (firstByte == 0xfe || firstByte == 0xff)
     {
+
         assert(instruction.type == instruction_none);
         uint8_t secondByte = consumeByteAsUnsigned(state);
         uint8_t reg = extractBits(secondByte, 3, 6);
