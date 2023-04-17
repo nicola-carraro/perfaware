@@ -2027,7 +2027,7 @@ OpValue opValueSubtract(OpValue left, OpValue right)
     uint8_t leftLowNibble = extractLowBits(left.value.unsignedByte, 4);
     uint8_t rightLowNibble = extractLowBits(right.value.unsignedByte, 4);
 
-    uint8_t halfByteResult = leftLowNibble - rightLowNibble;
+    uint8_t halfByteResult = 0U + leftLowNibble - rightLowNibble;
 
     if (halfByteResult > 0xf)
     {
