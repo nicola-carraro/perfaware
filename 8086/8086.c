@@ -1984,11 +1984,11 @@ OpValue opValueSubtract(OpValue left, OpValue right)
     result.isWide = left.isWide;
     if (result.isWide)
     {
-        result.value.signedWord = left.value.signedWord - right.value.signedWord;
+        result.value.unsignedWord = left.value.unsignedWord - right.value.unsignedWord;
     }
     else
     {
-        result.value.signedByte = left.value.signedByte - right.value.signedByte;
+        result.value.unsignedByte = left.value.unsignedByte - right.value.unsignedByte;
     }
 
     if (result.isWide)
@@ -1997,18 +1997,10 @@ OpValue opValueSubtract(OpValue left, OpValue right)
         {
             result.isCarry = true;
         }
-        else
-        {
-            result.isCarry = false;
-        }
 
         if (result.value.signedWord > left.value.signedWord)
         {
             result.isOverflow = true;
-        }
-        else
-        {
-            result.isOverflow = false;
         }
     }
     else
@@ -2017,18 +2009,10 @@ OpValue opValueSubtract(OpValue left, OpValue right)
         {
             result.isCarry = true;
         }
-        else
-        {
-            result.isCarry = false;
-        }
 
         if (result.value.signedByte > left.value.signedByte)
         {
             result.isOverflow = true;
-        }
-        else
-        {
-            result.isOverflow = false;
         }
     }
 
@@ -2055,11 +2039,11 @@ OpValue opValueAdd(OpValue left, OpValue right)
     result.isWide = left.isWide;
     if (result.isWide)
     {
-        result.value.signedWord = left.value.signedWord + right.value.signedWord;
+        result.value.unsignedWord = 0U + left.value.unsignedWord + right.value.unsignedWord;
     }
     else
     {
-        result.value.signedByte = left.value.signedByte + right.value.signedByte;
+        result.value.unsignedByte = 0U + left.value.unsignedByte + right.value.unsignedByte;
     }
 
     if (result.isWide)
@@ -2068,17 +2052,15 @@ OpValue opValueAdd(OpValue left, OpValue right)
         {
             result.isCarry = true;
         }
-        else
-        {
-            result.isCarry = false;
-        }
-        if (result.value.signedWord < left.value.signedWord)
+
+        if (left.value.signedWord >= 0 && right.value.signedWord >= 0 && result.value.signedWord < 0)
         {
             result.isOverflow = true;
         }
-        else
+
+        if (left.value.signedWord < 0 && right.value.signedWord < 0 && result.value.signedWord >= 0)
         {
-            result.isOverflow = false;
+            result.isOverflow = true;
         }
     }
     else
@@ -2087,26 +2069,24 @@ OpValue opValueAdd(OpValue left, OpValue right)
         {
             result.isCarry = true;
         }
-        else
-        {
-            result.isCarry = false;
-        }
-        if (result.value.signedByte < left.value.signedByte)
+
+        if (left.value.signedByte >= 0 && right.value.signedByte >= 0 && result.value.signedByte < 0)
         {
             result.isOverflow = true;
         }
-        else
+
+        if (left.value.signedByte < 0 && right.value.signedByte < 0 && result.value.signedByte >= 0)
         {
-            result.isOverflow = false;
+            result.isOverflow = true;
         }
     }
 
     uint8_t leftLowNibble = extractLowBits(left.value.unsignedByte, 4);
     uint8_t rightLowNibble = extractLowBits(left.value.unsignedByte, 4);
 
-    uint8_t halfByteSum = leftLowNibble + rightLowNibble;
+    uint8_t halfByteSum = 0U + leftLowNibble + rightLowNibble;
 
-    if (halfByteSum < leftLowNibble)
+    if (halfByteSum > 0xf)
     {
         result.isAuxCarry = true;
     }
