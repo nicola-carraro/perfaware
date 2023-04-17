@@ -1984,11 +1984,11 @@ OpValue opValueSubtract(OpValue left, OpValue right)
     result.isWide = left.isWide;
     if (result.isWide)
     {
-        result.value.unsignedWord = left.value.unsignedWord - right.value.unsignedWord;
+        result.value.unsignedWord = 0U + left.value.unsignedWord - right.value.unsignedWord;
     }
     else
     {
-        result.value.unsignedByte = left.value.unsignedByte - right.value.unsignedByte;
+        result.value.unsignedByte = 0U + left.value.unsignedByte - right.value.unsignedByte;
     }
 
     if (result.isWide)
@@ -1998,7 +1998,11 @@ OpValue opValueSubtract(OpValue left, OpValue right)
             result.isCarry = true;
         }
 
-        if (result.value.signedWord > left.value.signedWord)
+        if (left.value.signedWord >= 0 && right.value.signedWord < 0 && result.value.signedWord < 0)
+        {
+            result.isOverflow = true;
+        }
+        if (left.value.signedWord < 0 && right.value.signedWord >= 0 && result.value.signedWord >= 0)
         {
             result.isOverflow = true;
         }
@@ -2010,7 +2014,11 @@ OpValue opValueSubtract(OpValue left, OpValue right)
             result.isCarry = true;
         }
 
-        if (result.value.signedByte > left.value.signedByte)
+        if (result.value.signedByte >= 0 && left.value.signedByte < 0 && result.value.signedByte < 0)
+        {
+            result.isOverflow = true;
+        }
+        if (result.value.signedByte < 0 && left.value.signedByte >= 0 && result.value.signedByte >= 0)
         {
             result.isOverflow = true;
         }
@@ -2019,13 +2027,11 @@ OpValue opValueSubtract(OpValue left, OpValue right)
     uint8_t leftLowNibble = extractLowBits(left.value.unsignedByte, 4);
     uint8_t rightLowNibble = extractLowBits(right.value.unsignedByte, 4);
 
-    if (leftLowNibble < rightLowNibble)
+    uint8_t halfByteResult = leftLowNibble - rightLowNibble;
+
+    if (halfByteResult > 0xf)
     {
         result.isAuxCarry = true;
-    }
-    else
-    {
-        result.isAuxCarry = false;
     }
 
     return result;
@@ -2089,10 +2095,6 @@ OpValue opValueAdd(OpValue left, OpValue right)
     if (halfByteSum > 0xf)
     {
         result.isAuxCarry = true;
-    }
-    else
-    {
-        result.isAuxCarry = false;
     }
 
     return result;
