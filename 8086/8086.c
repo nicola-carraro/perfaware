@@ -2088,7 +2088,7 @@ OpValue opValueAdd(OpValue left, OpValue right)
     }
 
     uint8_t leftLowNibble = extractLowBits(left.value.unsignedByte, 4);
-    uint8_t rightLowNibble = extractLowBits(left.value.unsignedByte, 4);
+    uint8_t rightLowNibble = extractLowBits(right.value.unsignedByte, 4);
 
     uint8_t halfByteSum = 0U + leftLowNibble + rightLowNibble;
 
