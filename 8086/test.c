@@ -81,7 +81,7 @@ void testDecoding(const char *filePath)
     printf("Decoding %s...\n", filePath);
     size_t offset = fileNameStart(filePath);
     char buffer[1024];
-    sprintf(buffer, "8086.exe --nowait %s > tmp/%s.asm ", filePath, filePath + offset);
+    sprintf(buffer, "8086.exe %s > tmp/%s.asm ", filePath, filePath + offset);
     system(buffer);
     sprintf(buffer, "nasm tmp/%s.asm -o tmp/%s.out", filePath + offset, filePath + offset);
     system(buffer);
@@ -102,7 +102,7 @@ void testFinalState(const char *filePath, State expected, bool testIp)
 
     printf("Executing %s...\n", filePath);
     char buffer[1024];
-    sprintf(buffer, "8086.exe --nowait --dump --execute %s > nul ", filePath);
+    sprintf(buffer, "8086.exe --dump --execute %s > nul ", filePath);
     system(buffer);
 
     size_t fileSize;

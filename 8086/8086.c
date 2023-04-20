@@ -1,21 +1,6 @@
 #include "8086.h"
 
-void printPressEnterToContinue(bool isNoWait)
-{
-    if (isNoWait)
-    {
-        return;
-    }
-    printf("; Press enter to continue...");
-
-    char byte;
-    if (fread(&byte, 1, 1, stdin) != 1)
-    {
-        perror("Could not read from standard input");
-    }
-}
-
-void printError(const char *file, const size_t line, const char *format, va_list args, bool isNoWait)
+void printError(const char *file, const size_t line, const char *format, va_list args)
 {
     char errorMessage[256];
     vsprintf(errorMessage, format, args);
@@ -23,49 +8,48 @@ void printError(const char *file, const size_t line, const char *format, va_list
 
     printf("ERROR(%s:%zu): \n", file, line);
     perror(errorMessage);
-    printPressEnterToContinue(isNoWait);
 }
 
-void error(const char *file, const size_t line, bool isNoWait, const char *format, ...)
+void error(const char *file, const size_t line, const char *format, ...)
 {
     va_list args;
     va_start(args, format);
-    printError(file, line, format, args, isNoWait);
+    printError(file, line, format, args);
 
     exit(EXIT_FAILURE);
 }
 
-char *readFile(const char *filename, size_t *len, State *state)
+char *readFile(const char *filename, size_t *len)
 {
     FILE *file = fopen(filename, "rb");
     if (file == NULL)
     {
-        error(__FILE__, __LINE__, state->isNoWait, " Could not open % s ", filename);
+        error(__FILE__, __LINE__, " Could not open % s ", filename);
     }
 
     char errorMessage[] = "Could not determine size of %s";
     if (fseek(file, 0, SEEK_END) < 0)
     {
-        error(__FILE__, __LINE__, state->isNoWait, errorMessage, filename);
+        error(__FILE__, __LINE__, errorMessage, filename);
     }
 
     *len = ftell(file);
 
     if (fseek(file, 0, SEEK_SET) < 0)
     {
-        error(__FILE__, __LINE__, state->isNoWait, errorMessage, filename);
+        error(__FILE__, __LINE__, errorMessage, filename);
     }
 
     char *bytes = malloc(*len);
 
     if (!bytes)
     {
-        error(__FILE__, __LINE__, state->isNoWait, "Allocation failed", state->isNoWait);
+        error(__FILE__, __LINE__, "Allocation failed");
     }
 
     if (fread(bytes, *len, 1, file) != 1)
     {
-        error(__FILE__, __LINE__, state->isNoWait, " Could not read from % s ", filename);
+        error(__FILE__, __LINE__, " Could not read from % s ", filename);
     }
 
     if (file != NULL)
@@ -80,7 +64,7 @@ int16_t consumeTwoBytesAsSigned(State *state)
 {
     if (state->instructions.instructionPointer + 2 > state->instructions.size)
     {
-        error(__FILE__, __LINE__, state->isNoWait, "reached end of instuctions stream");
+        error(__FILE__, __LINE__, "reached end of instuctions stream");
     }
 
     int16_t result = *((int16_t *)(state->instructions.bytes + state->instructions.instructionPointer));
@@ -94,7 +78,7 @@ uint8_t consumeByteAsUnsigned(State *state)
 {
     if (state->instructions.instructionPointer >= state->instructions.size)
     {
-        error(__FILE__, __LINE__, state->isNoWait, "reached end of instuctions stream");
+        error(__FILE__, __LINE__, "reached end of instuctions stream");
     }
 
     uint8_t result = state->instructions.bytes[state->instructions.instructionPointer];
@@ -108,7 +92,7 @@ int8_t consumeByteAsSigned(State *state)
 {
     if (state->instructions.instructionPointer >= state->instructions.size)
     {
-        error(__FILE__, __LINE__, state->isNoWait, "reached end of instuctions stream");
+        error(__FILE__, __LINE__, "reached end of instuctions stream");
     }
 
     int8_t result = state->instructions.bytes[state->instructions.instructionPointer];
@@ -201,33 +185,33 @@ bool extractBit(uint8_t byte, uint8_t index)
     return extracted == 1;
 }
 
-void checkMod(const char *file, size_t line, uint8_t mod, State *state)
+void checkMod(const char *file, size_t line, uint8_t mod)
 {
     if (mod > 3)
     {
-        error(file, line, state->isNoWait, "Invalid mod %#X", mod);
+        error(file, line, "Invalid mod %#X", mod);
     }
 }
 
-void checkRm(const char *file, size_t line, uint8_t rm, State *state)
+void checkRm(const char *file, size_t line, uint8_t rm)
 {
     if (rm > 7)
     {
-        error(file, line, state->isNoWait, "Invalid rm  %#X", rm);
+        error(file, line, "Invalid rm  %#X", rm);
     }
 }
 
-void checkReg(const char *file, size_t line, uint8_t reg, State *state)
+void checkReg(const char *file, size_t line, uint8_t reg)
 {
     if (reg > 7)
     {
-        error(file, line, state->isNoWait, "Invalid reg %#X", reg);
+        error(file, line, "Invalid reg %#X", reg);
     }
 }
 
-Operand decodeRegOperand(bool wBit, uint8_t reg, State *state)
+Operand decodeRegOperand(bool wBit, uint8_t reg)
 {
-    checkReg(__FILE__, __LINE__, reg, state);
+    checkReg(__FILE__, __LINE__, reg);
 
     Operand result = {0};
     result.type = operand_type_register;
@@ -238,8 +222,8 @@ Operand decodeRegOperand(bool wBit, uint8_t reg, State *state)
 
 Operand decodeRmOperand(bool wBit, uint8_t mod, uint8_t rm, State *state)
 {
-    checkMod(__FILE__, __LINE__, mod, state);
-    checkRm(__FILE__, __LINE__, rm, state);
+    checkMod(__FILE__, __LINE__, mod);
+    checkRm(__FILE__, __LINE__, rm);
     assert(rm <= 7);
 
     Operand result = {0};
@@ -464,7 +448,7 @@ Instruction decodeRegMemToFromRegMem(bool dBit, bool wBit, State *state)
 
     result.operandCount = 2;
     Operand rmOperand = decodeRmOperand(wBit, mod, rm, state);
-    Operand regOperand = decodeRegOperand(wBit, reg, state);
+    Operand regOperand = decodeRegOperand(wBit, reg);
     result.isWide = wBit;
 
     if (dBit)
@@ -504,7 +488,7 @@ Instruction decodeImmediateToRegister(bool wBit, uint8_t reg, State *state)
 {
     Instruction result = {0};
 
-    result.firstOperand = decodeRegOperand(wBit, reg, state);
+    result.firstOperand = decodeRegOperand(wBit, reg);
     result.secondOperand = decodeImmediateOperand(wBit, false, state);
     result.operandCount = 2;
     result.isWide = wBit;
@@ -608,12 +592,12 @@ Instruction decodeRegisterMemory(uint8_t secondByte, bool isWide, State *state)
     return result;
 }
 
-Instruction decodeRegister(uint8_t firstByte, bool wBit, State *state)
+Instruction decodeRegister(uint8_t firstByte, bool wBit)
 {
     Instruction result = {0};
     result.operandCount = 1;
     uint8_t reg = extractLowBits(firstByte, 3);
-    result.firstOperand = decodeRegOperand(wBit, reg, state);
+    result.firstOperand = decodeRegOperand(wBit, reg);
     result.isWide = true;
     return result;
 }
@@ -670,14 +654,14 @@ Instruction decodeSegmentRegister(uint8_t firstByte)
     return result;
 }
 
-Instruction decodeRegisterWithAccumulator(uint8_t firstByte, State *state)
+Instruction decodeRegisterWithAccumulator(uint8_t firstByte)
 {
     Instruction result = {0};
     result.operandCount = 2;
     result.isWide = true;
 
     uint8_t reg = extractLowBits(firstByte, 3);
-    result.firstOperand = decodeRegOperand(true, reg, state);
+    result.firstOperand = decodeRegOperand(true, reg);
 
     result.secondOperand.type = operand_type_register;
     result.secondOperand.payload.reg.reg = reg_a;
@@ -832,7 +816,7 @@ Instruction decodeInstruction(State *state)
         break;
         default:
         {
-            error(__FILE__, __LINE__, state->isNoWait, "Unknown instruction, first byte=%#X, reg=%#X", firstByte, reg);
+            error(__FILE__, __LINE__, "Unknown instruction, first byte=%#X, reg=%#X", firstByte, reg);
         }
         }
     }
@@ -861,7 +845,7 @@ Instruction decodeInstruction(State *state)
         uint8_t mod = extractBits(secondByte, 6, 8);
         if (extractBit(secondByte, 5) != 0)
         {
-            error(__FILE__, __LINE__, state->isNoWait, "Expected a 0 bit in the 5th bit of bite 2 for mov from segmente register");
+            error(__FILE__, __LINE__, "Expected a 0 bit in the 5th bit of bite 2 for mov from segmente register");
         }
         uint8_t sr = extractBits(secondByte, 3, 5);
         uint8_t rm = extractLowBits(secondByte, 3);
@@ -877,7 +861,7 @@ Instruction decodeInstruction(State *state)
         uint8_t mod = extractBits(secondByte, 6, 8);
         if (extractBit(secondByte, 5) != 0)
         {
-            error(__FILE__, __LINE__, state->isNoWait, "Expected a 0 bit in the 5th bit of bite 2 for mov from segmente register");
+            error(__FILE__, __LINE__, "Expected a 0 bit in the 5th bit of bite 2 for mov from segmente register");
         }
         uint8_t sr = extractBits(secondByte, 3, 5);
         uint8_t rm = extractLowBits(secondByte, 3);
@@ -957,7 +941,7 @@ Instruction decodeInstruction(State *state)
     }
     else if (firstByte >= 0x50 && firstByte <= 0x57)
     {
-        instruction = decodeRegister(firstByte, true, state);
+        instruction = decodeRegister(firstByte, true);
         instruction.type = instruction_push;
     }
     else if (extractBits(firstByte, 5, 8) == 0x0 && extractLowBits(firstByte, 3) == 0x06)
@@ -967,7 +951,7 @@ Instruction decodeInstruction(State *state)
     }
     else if (firstByte >= 0x58 && firstByte <= 0x5f)
     {
-        instruction = decodeRegister(firstByte, true, state);
+        instruction = decodeRegister(firstByte, true);
         instruction.type = instruction_pop;
     }
     else if (extractBits(firstByte, 5, 8) == 0x0 && extractLowBits(firstByte, 3) == 0x7)
@@ -990,7 +974,7 @@ Instruction decodeInstruction(State *state)
         break;
         default:
         {
-            error(__FILE__, __LINE__, state->isNoWait, "Unknown instruction, first byte=%#X, reg=%#X", firstByte, reg);
+            error(__FILE__, __LINE__, "Unknown instruction, first byte=%#X, reg=%#X", firstByte, reg);
         }
         }
     }
@@ -1003,7 +987,7 @@ Instruction decodeInstruction(State *state)
     }
     else if (firstByte >= 0x90 && firstByte <= 0x97)
     {
-        instruction = decodeRegisterWithAccumulator(firstByte, state);
+        instruction = decodeRegisterWithAccumulator(firstByte);
         instruction.type = instruction_xchg;
     }
     else if (firstByte == 0xe4 || firstByte == 0xe5)
@@ -1121,7 +1105,7 @@ Instruction decodeInstruction(State *state)
         break;
         default:
         {
-            error(__FILE__, __LINE__, state->isNoWait, "Unknown instruction, first byte=%#X, reg=%#X", firstByte, reg);
+            error(__FILE__, __LINE__, "Unknown instruction, first byte=%#X, reg=%#X", firstByte, reg);
         }
         }
     }
@@ -1149,7 +1133,7 @@ Instruction decodeInstruction(State *state)
     }
     else if (firstByte >= 0x40 && firstByte <= 0x47)
     {
-        instruction = decodeRegister(firstByte, true, state);
+        instruction = decodeRegister(firstByte, true);
         instruction.type = instruction_inc;
     }
     else if (firstByte == 0x37)
@@ -1190,7 +1174,7 @@ Instruction decodeInstruction(State *state)
     }
     else if (firstByte >= 0x48 && firstByte <= 0x4f)
     {
-        instruction = decodeRegister(firstByte, true, state);
+        instruction = decodeRegister(firstByte, true);
         instruction.type = instruction_dec;
     }
     else if (firstByte == 0xf6 || firstByte == 0xf7)
@@ -1666,7 +1650,7 @@ Instruction decodeInstruction(State *state)
     }
     else
     {
-        error(__FILE__, __LINE__, state->isNoWait, "Unknown instruction, first byte=%#X", firstByte);
+        error(__FILE__, __LINE__, "Unknown instruction, first byte=%#X", firstByte);
     }
 
     if (
@@ -1800,7 +1784,6 @@ void setDestination(Operand destination, OpValue sourceValue, State *state)
             error(
                 __FILE__,
                 __LINE__,
-                state->isNoWait,
                 "The requested address %zu exceeds the memory limit of %u bytes",
                 address,
                 MEMORY_SIZE);
@@ -2167,7 +2150,6 @@ void executeInstruction(Instruction instruction, State *state)
         error(
             __FILE__,
             __LINE__,
-            state->isNoWait,
             "Unimplemented instruction: %s",
             InstructionInfos[instruction.type].name);
     }
@@ -2192,7 +2174,7 @@ int main(int argc, char *argv[])
 
     if (state.memory == NULL)
     {
-        error(__FILE__, __LINE__, state.isNoWait, "Failed to allocate");
+        error(__FILE__, __LINE__, "Failed to allocate");
     }
 
     const char *fileName = NULL;
@@ -2201,11 +2183,7 @@ int main(int argc, char *argv[])
     {
         char *argument = argv[argumentIndex];
 
-        if (cStringsEqual(argument, "--nowait"))
-        {
-            state.isNoWait = true;
-        }
-        else if (cStringsEqual(argument, "--execute"))
+        if (cStringsEqual(argument, "--execute"))
         {
             state.execute = true;
         }
@@ -2223,13 +2201,13 @@ int main(int argc, char *argv[])
         }
         else
         {
-            error(__FILE__, __LINE__, state.isNoWait, "Invalid argument %s", argument);
+            error(__FILE__, __LINE__, "Invalid argument %s", argument);
         }
     }
 
     size_t fileSize;
 
-    char *bytes = readFile(fileName, &fileSize, &state);
+    char *bytes = readFile(fileName, &fileSize);
     state.instructions.bytes = bytes;
     state.instructions.size = fileSize;
 
@@ -2292,7 +2270,6 @@ int main(int argc, char *argv[])
         }
     }
 
-    printPressEnterToContinue(state.isNoWait);
     if (bytes != NULL)
     {
         free(bytes);
