@@ -1,4 +1,5 @@
 #include "8086.h"
+#include "common.c"
 
 #define LISTING_37 "../computer_enhance/perfaware/part1/listing_0037_single_register_mov"
 #define LISTING_38 "../computer_enhance/perfaware/part1/listing_0038_many_register_mov"
@@ -59,38 +60,22 @@ char *readFile(const char *filename, size_t *len)
     return bytes;
 }
 
-size_t fileNameStart(const char *filePath)
-{
-
-    size_t index = 0;
-    size_t result = 0;
-    while (filePath[index] != '\0')
-    {
-        if (filePath[index] == '/' || filePath[index] == '\\')
-        {
-            result = index + 1;
-        }
-        index++;
-    }
-
-    return result;
-}
-
 void testDecoding(const char *filePath)
 {
     printf("Decoding %s...\n", filePath);
     size_t offset = fileNameStart(filePath);
+    const char *filePrefix = filePath + offset;
     char buffer[1024];
-    sprintf(buffer, "8086.exe %s > tmp/%s.asm ", filePath, filePath + offset);
+    sprintf(buffer, "8086.exe %s > tmp/%s.asm ", filePath, filePrefix);
     system(buffer);
-    sprintf(buffer, "nasm tmp/%s.asm -o tmp/%s.out", filePath + offset, filePath + offset);
+    sprintf(buffer, "nasm tmp/%s.asm -o tmp/%s.out", filePrefix, filePrefix);
     system(buffer);
 
     size_t inputFileSize;
     char *inputData = readFile(filePath, &inputFileSize);
 
     size_t outputFileSize;
-    sprintf(buffer, "tmp/%s.out", filePath + offset);
+    sprintf(buffer, "tmp/%s.out", filePrefix);
     char *outputData = readFile(buffer, &outputFileSize);
 
     assert(inputFileSize == outputFileSize);
@@ -105,42 +90,53 @@ void testFinalState(const char *filePath, State expected, bool testIp)
     sprintf(buffer, "8086.exe --dump --execute %s > nul ", filePath);
     system(buffer);
 
+    size_t offset = fileNameStart(filePath);
+    const char *filePrefix = filePath + offset;
     size_t fileSize;
-    char *inputData = readFile(DUMP_PATH, &fileSize);
-    State *found = (State *)inputData;
-
-    for (size_t regIndex = 0; regIndex < REGISTER_COUNT; regIndex++)
+    char *inputPath = malloc(strlen(filePrefix) + 10);
+    if (inputPath != NULL)
     {
+        sprintf(inputPath, DUMP_PATH, filePrefix);
+        char *inputData = readFile(inputPath, &fileSize);
+        State *found = (State *)inputData;
 
-        printf(
-            "%s : expected %d, found %d\n",
-            RegisterInfos[regIndex].name,
-            expected.registers[regIndex].x,
-            found->registers[regIndex].x);
+        for (size_t regIndex = 0; regIndex < REGISTER_COUNT; regIndex++)
+        {
 
-        assert(expected.registers[regIndex].x == found->registers[regIndex].x);
+            printf(
+                "%s : expected %d, found %d\n",
+                RegisterInfos[regIndex].name,
+                expected.registers[regIndex].x,
+                found->registers[regIndex].x);
+
+            assert(expected.registers[regIndex].x == found->registers[regIndex].x);
+        }
+
+        for (size_t flagIndex = 0; flagIndex < FLAG_COUNT; flagIndex++)
+        {
+
+            printf(
+                "%s : expected %d, found %d\n",
+                FlagNames[flagIndex].name,
+                expected.flags[flagIndex],
+                found->flags[flagIndex]);
+
+            assert(expected.flags[flagIndex] == found->flags[flagIndex]);
+        }
+
+        if (testIp)
+        {
+            printf(
+                "ip : expected %d, found %d\n",
+                expected.instructions.instructionPointer,
+                found->instructions.instructionPointer);
+
+            assert(expected.instructions.instructionPointer == found->instructions.instructionPointer);
+        }
     }
-
-    for (size_t flagIndex = 0; flagIndex < FLAG_COUNT; flagIndex++)
+    else
     {
-
-        printf(
-            "%s : expected %d, found %d\n",
-            FlagNames[flagIndex].name,
-            expected.flags[flagIndex],
-            found->flags[flagIndex]);
-
-        assert(expected.flags[flagIndex] == found->flags[flagIndex]);
-    }
-
-    if (testIp)
-    {
-        printf(
-            "ip : expected %d, found %d\n",
-            expected.instructions.instructionPointer,
-            found->instructions.instructionPointer);
-
-        assert(expected.instructions.instructionPointer == found->instructions.instructionPointer);
+        assert(false);
     }
 }
 

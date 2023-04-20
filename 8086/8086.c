@@ -1,4 +1,5 @@
 #include "8086.h"
+#include "common.c"
 
 void printError(const char *file, const size_t line, const char *format, va_list args)
 {
@@ -2177,7 +2178,7 @@ int main(int argc, char *argv[])
         error(__FILE__, __LINE__, "Failed to allocate");
     }
 
-    const char *fileName = NULL;
+    const char *inputPath = NULL;
 
     for (size_t argumentIndex = 1; argumentIndex < argc; argumentIndex++)
     {
@@ -2195,9 +2196,9 @@ int main(int argc, char *argv[])
         {
             state.image = true;
         }
-        else if (fileName == NULL)
+        else if (inputPath == NULL)
         {
-            fileName = argument;
+            inputPath = argument;
         }
         else
         {
@@ -2207,9 +2208,12 @@ int main(int argc, char *argv[])
 
     size_t fileSize;
 
-    char *bytes = readFile(fileName, &fileSize);
+    char *bytes = readFile(inputPath, &fileSize);
     state.instructions.bytes = bytes;
     state.instructions.size = fileSize;
+
+    size_t offset = fileNameStart(inputPath);
+    const char *filePrefix = inputPath + offset;
 
     while (state.instructions.instructionPointer < state.instructions.size)
     {
@@ -2242,31 +2246,43 @@ int main(int argc, char *argv[])
 
     if (state.dump)
     {
-        FILE *outputFile = fopen(DUMP_PATH, "wb");
-
-        if (outputFile != NULL)
+        char *outputPath = malloc(strlen(filePrefix) + 10);
+        if (outputPath)
         {
-            if (fwrite(&state, sizeof(State), 1, outputFile) != 1)
-            {
-                fprintf(stderr, "Could not dump final state");
-            }
+            sprintf(outputPath, DUMP_PATH, filePrefix);
 
-            fclose(outputFile);
+            FILE *outputFile = fopen(outputPath, "wb");
+
+            if (outputFile != NULL)
+            {
+                if (fwrite(&state, sizeof(State), 1, outputFile) != 1)
+                {
+                    fprintf(stderr, "Could not dump final state");
+                }
+
+                fclose(outputFile);
+            }
+            free(outputPath);
         }
-    }
 
-    if (state.image)
-    {
-        FILE *outputFile = fopen(IMAGE_PATH, "wb");
-
-        if (outputFile != NULL)
+        if (state.image)
         {
-            if (fwrite(state.memory, MEMORY_SIZE, 1, outputFile) != 1)
-            {
-                fprintf(stderr, "Could not write image");
-            }
 
-            fclose(outputFile);
+            FILE *outputFile = fopen(IMAGE_PATH, "wb");
+
+            if (outputFile != NULL)
+            {
+                if (fwrite(state.memory, MEMORY_SIZE, 1, outputFile) != 1)
+                {
+                    fprintf(stderr, "Could not write image");
+                }
+
+                fclose(outputFile);
+            }
+        }
+        else
+        {
+            error(__FILE__, __LINE__, "Allocation failed");
         }
     }
 

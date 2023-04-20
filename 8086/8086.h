@@ -8,7 +8,7 @@
 #include "assert.h"
 #include "string.h"
 
-#define DUMP_PATH "tmp/dump"
+#define DUMP_PATH "tmp/%s.dump"
 
 #define IMAGE_PATH "tmp/image.data"
 
