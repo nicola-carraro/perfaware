@@ -823,16 +823,14 @@ Instruction decodeInstruction(State *state)
 
     if (firstByte >= 0x88 && firstByte <= 0x8b)
     {
-        assert(instruction.type == instruction_none);
         bool wBit = extractBit(firstByte, 0);
         bool dBit = extractBit(firstByte, 1);
 
         instruction = decodeRegMemToFromRegMem(dBit, wBit, state);
         instruction.type = instruction_mov;
     }
-    if (firstByte == 0xc6 || firstByte == 0xc7)
+    else if (firstByte == 0xc6 || firstByte == 0xc7)
     {
-        assert(instruction.type == instruction_none);
         uint8_t secondByte = consumeByteAsUnsigned(state);
 
         instruction = decodeImmediateToRegisterMemory(firstByte, false, secondByte, state);
@@ -851,31 +849,27 @@ Instruction decodeInstruction(State *state)
         }
         }
     }
-    if (firstByte >= 0xb0 && firstByte <= 0xbf)
+    else if (firstByte >= 0xb0 && firstByte <= 0xbf)
     {
-        assert(instruction.type == instruction_none);
         bool wBit = extractBit(firstByte, 3);
         uint8_t reg = extractLowBits(firstByte, 3);
 
         instruction = decodeImmediateToRegister(wBit, reg, state);
         instruction.type = instruction_mov;
     }
-    if (firstByte == 0xa0 || firstByte == 0xa1)
+    else if (firstByte == 0xa0 || firstByte == 0xa1)
     {
-        assert(instruction.type == instruction_none);
         instruction = decodeMemoryToAccumulator(firstByte, state);
         instruction.type = instruction_mov;
     }
-    if (firstByte == 0xa2 || firstByte == 0xa3)
+    else if (firstByte == 0xa2 || firstByte == 0xa3)
     {
-        assert(instruction.type == instruction_none);
         instruction = decodeAccumulatorToMemory(firstByte, state);
 
         instruction.type = instruction_mov;
     }
-    if (firstByte == 0x8c)
+    else if (firstByte == 0x8c)
     {
-        assert(instruction.type == instruction_none);
         uint8_t secondByte = consumeByteAsUnsigned(state);
         uint8_t mod = extractBits(secondByte, 6, 8);
         if (extractBit(secondByte, 5) != 0)
@@ -890,9 +884,8 @@ Instruction decodeInstruction(State *state)
         instruction.secondOperand = decodeSrOperand(sr);
         instruction.type = instruction_mov;
     }
-    if (firstByte == 0x8e)
+    else if (firstByte == 0x8e)
     {
-        assert(instruction.type == instruction_none);
         uint8_t secondByte = consumeByteAsUnsigned(state);
         uint8_t mod = extractBits(secondByte, 6, 8);
         if (extractBit(secondByte, 5) != 0)
@@ -907,33 +900,25 @@ Instruction decodeInstruction(State *state)
         instruction.secondOperand = decodeRmOperand(true, mod, rm, state);
         instruction.type = instruction_mov;
     }
-    if (firstByte == 0xfe || firstByte == 0xff)
+    else if (firstByte == 0xfe || firstByte == 0xff)
     {
-
-        assert(instruction.type == instruction_none);
         uint8_t secondByte = consumeByteAsUnsigned(state);
         uint8_t reg = extractBits(secondByte, 3, 6);
 
         if (firstByte == 0xff && reg == 0x6)
         {
-
             instruction = decodeRegisterMemory(secondByte, true, state);
-
             instruction.type = instruction_push;
         }
         else if (firstByte == 0xff && reg == 0x03)
         {
-            assert(instruction.type == instruction_none);
-
             instruction = decodeIndirectIntersegment(secondByte, state);
             instruction.type = instruction_call;
         }
 
         else if (firstByte == 0xff && reg == 0x05)
         {
-            assert(instruction.type == instruction_none);
             instruction = decodeIndirectIntersegment(secondByte, state);
-
             instruction.type = instruction_jmp;
         }
         else
@@ -969,50 +954,42 @@ Instruction decodeInstruction(State *state)
             }
         }
     }
-    if (firstByte == 0x3c || firstByte == 0x3d)
+    else if (firstByte == 0x3c || firstByte == 0x3d)
     {
-        assert(instruction.type == instruction_none);
         bool wBit = extractBit(firstByte, 0);
         instruction = decodeImmediateFromAccumulator(wBit, state);
 
         instruction.type = instruction_cmp;
     }
-    if (firstByte >= 0x38 && firstByte <= 0x3b)
+    else if (firstByte >= 0x38 && firstByte <= 0x3b)
     {
-        assert(instruction.type == instruction_none);
-
         bool wBit = extractBit(firstByte, 0);
         bool dBit = extractBit(firstByte, 1);
         instruction = decodeRegMemToFromRegMem(dBit, wBit, state);
         instruction.type = instruction_cmp;
     }
-    if (firstByte >= 0x50 && firstByte <= 0x57)
+    else if (firstByte >= 0x50 && firstByte <= 0x57)
     {
-        assert(instruction.type == instruction_none);
         instruction = decodeRegister(firstByte, true, state);
         instruction.type = instruction_push;
     }
-    if (extractBits(firstByte, 5, 8) == 0x0 && extractLowBits(firstByte, 3) == 0x06)
+    else if (extractBits(firstByte, 5, 8) == 0x0 && extractLowBits(firstByte, 3) == 0x06)
     {
-        assert(instruction.type == instruction_none);
         instruction = decodeSegmentRegister(firstByte);
         instruction.type = instruction_push;
     }
-    if (firstByte >= 0x58 && firstByte <= 0x5f)
+    else if (firstByte >= 0x58 && firstByte <= 0x5f)
     {
-        assert(instruction.type == instruction_none);
         instruction = decodeRegister(firstByte, true, state);
         instruction.type = instruction_pop;
     }
-    if (extractBits(firstByte, 5, 8) == 0x0 && extractLowBits(firstByte, 3) == 0x7)
+    else if (extractBits(firstByte, 5, 8) == 0x0 && extractLowBits(firstByte, 3) == 0x7)
     {
-        assert(instruction.type == instruction_none);
         instruction = decodeSegmentRegister(firstByte);
         instruction.type = instruction_pop;
     }
-    if (firstByte == 0x8f)
+    else if (firstByte == 0x8f)
     {
-        assert(instruction.type == instruction_none);
         uint8_t secondByte = consumeByteAsUnsigned(state);
         instruction = decodeRegisterMemory(secondByte, true, state);
         uint8_t reg = extractBits(secondByte, 3, 6);
@@ -1030,100 +1007,83 @@ Instruction decodeInstruction(State *state)
         }
         }
     }
-    if (firstByte == 0x86 || firstByte == 0x87)
+    else if (firstByte == 0x86 || firstByte == 0x87)
     {
-        assert(instruction.type == instruction_none);
         bool wBit = extractBit(firstByte, 0);
         bool dBit = extractBit(firstByte, 1);
         instruction = decodeRegMemToFromRegMem(dBit, wBit, state);
         instruction.type = instruction_xchg;
     }
-    if (firstByte >= 0x90 && firstByte <= 0x97)
+    else if (firstByte >= 0x90 && firstByte <= 0x97)
     {
-        assert(instruction.type == instruction_none);
         instruction = decodeRegisterWithAccumulator(firstByte, state);
         instruction.type = instruction_xchg;
     }
-    if (firstByte == 0xe4 || firstByte == 0xe5)
+    else if (firstByte == 0xe4 || firstByte == 0xe5)
     {
-        assert(instruction.type == instruction_none);
         instruction = decodeFixedPort(false, firstByte, state);
         instruction.type = instruction_in;
     }
-    if (firstByte == 0xec || firstByte == 0xed)
+    else if (firstByte == 0xec || firstByte == 0xed)
     {
-        assert(instruction.type == instruction_none);
         instruction = decodeVariablePort(false, firstByte);
         instruction.type = instruction_in;
     }
-    if (firstByte == 0xe6 || firstByte == 0xe7)
+    else if (firstByte == 0xe6 || firstByte == 0xe7)
     {
-        assert(instruction.type == instruction_none);
         instruction = decodeFixedPort(true, firstByte, state);
         instruction.type = instruction_out;
     }
-    if (firstByte == 0xee || firstByte == 0xef)
+    else if (firstByte == 0xee || firstByte == 0xef)
     {
-        assert(instruction.type == instruction_none);
         instruction = decodeVariablePort(true, firstByte);
         instruction.type = instruction_out;
     }
-    if (firstByte == 0xd7)
+    else if (firstByte == 0xd7)
     {
-        assert(instruction.type == instruction_none);
         instruction.type = instruction_xlat;
     }
-    if (firstByte == 0x8d)
+    else if (firstByte == 0x8d)
     {
-        assert(instruction.type == instruction_none);
         instruction = decodeRegMemToFromRegMem(true, true, state);
         instruction.type = instruction_lea;
     }
-    if (firstByte == 0xc5)
+    else if (firstByte == 0xc5)
     {
-        assert(instruction.type == instruction_none);
-
         instruction = decodeRegMemToFromRegMem(true, true, state);
         instruction.type = instruction_lds;
     }
-    if (firstByte == 0xc4)
+    else if (firstByte == 0xc4)
     {
-        assert(instruction.type == instruction_none);
         instruction = decodeRegMemToFromRegMem(true, true, state);
         instruction.type = instruction_les;
     }
-    if (firstByte == 0x9f)
+    else if (firstByte == 0x9f)
     {
-        assert(instruction.type == instruction_none);
         instruction.type = instruction_lahf;
     }
-    if (firstByte == 0x9e)
+    else if (firstByte == 0x9e)
     {
-        assert(instruction.type == instruction_none);
         instruction.type = instruction_sahf;
     }
-    if (firstByte == 0x9c)
+    else if (firstByte == 0x9c)
     {
-        assert(instruction.type == instruction_none);
         instruction.type = instruction_pushf;
     }
-    if (firstByte == 0x9d)
+    else if (firstByte == 0x9d)
     {
-        assert(instruction.type == instruction_none);
         instruction.type = instruction_popf;
     }
-    if (firstByte >= 0x00 && firstByte <= 0x03)
+    else if (firstByte >= 0x00 && firstByte <= 0x03)
     {
-        assert(instruction.type == instruction_none);
         bool wBit = extractBit(firstByte, 0);
         bool dBit = extractBit(firstByte, 1);
         instruction = decodeRegMemToFromRegMem(dBit, wBit, state);
 
         instruction.type = instruction_add;
     }
-    if (firstByte >= 0x80 && firstByte <= 0x83)
+    else if (firstByte >= 0x80 && firstByte <= 0x83)
     {
-        assert(instruction.type == instruction_none);
         uint8_t secondByte = consumeByteAsUnsigned(state);
         bool sBit = extractBit(firstByte, 1);
 
@@ -1178,91 +1138,76 @@ Instruction decodeInstruction(State *state)
         }
         }
     }
-    if (firstByte == 0x04 || firstByte == 0x05)
+    else if (firstByte == 0x04 || firstByte == 0x05)
     {
-        assert(instruction.type == instruction_none);
         bool wBit = extractLowBits(firstByte, 1);
         instruction = decodeImmediateFromAccumulator(wBit, state);
 
         instruction.type = instruction_add;
     }
-    if (firstByte >= 0x10 && firstByte <= 0x13)
+    else if (firstByte >= 0x10 && firstByte <= 0x13)
     {
-        assert(instruction.type == instruction_none);
         bool wBit = extractBit(firstByte, 0);
         bool dBit = extractBit(firstByte, 1);
         instruction = decodeRegMemToFromRegMem(dBit, wBit, state);
 
         instruction.type = instruction_adc;
     }
-    if (firstByte == 0x14 || firstByte == 0x15)
+    else if (firstByte == 0x14 || firstByte == 0x15)
     {
-        assert(instruction.type == instruction_none);
         bool wBit = extractLowBits(firstByte, 1);
         instruction = decodeImmediateFromAccumulator(wBit, state);
 
         instruction.type = instruction_adc;
     }
-    if (firstByte >= 0x40 && firstByte <= 0x47)
+    else if (firstByte >= 0x40 && firstByte <= 0x47)
     {
-        assert(instruction.type == instruction_none);
         instruction = decodeRegister(firstByte, true, state);
         instruction.type = instruction_inc;
     }
-    if (firstByte == 0x37)
+    else if (firstByte == 0x37)
     {
-        assert(instruction.type == instruction_none);
         instruction.type = instruction_aaa;
     }
-    if (firstByte == 0x27)
+    else if (firstByte == 0x27)
     {
-        assert(instruction.type == instruction_none);
         instruction.type = instruction_daa;
     }
-    if (firstByte >= 0x28 && firstByte <= 0x2b)
+    else if (firstByte >= 0x28 && firstByte <= 0x2b)
     {
-        assert(instruction.type == instruction_none);
-
         bool wBit = extractBit(firstByte, 0);
         bool dBit = extractBit(firstByte, 1);
         instruction = decodeRegMemToFromRegMem(dBit, wBit, state);
         instruction.type = instruction_sub;
     }
-    if (firstByte == 0x2c || firstByte == 0x2d)
+    else if (firstByte == 0x2c || firstByte == 0x2d)
     {
-        assert(instruction.type == instruction_none);
         bool wBit = extractBit(firstByte, 0);
         instruction = decodeImmediateFromAccumulator(wBit, state);
 
         instruction.type = instruction_sub;
     }
-
-    if (firstByte >= 0x18 && firstByte <= 0x1b)
+    else if (firstByte >= 0x18 && firstByte <= 0x1b)
     {
-        assert(instruction.type == instruction_none);
-
         bool wBit = extractBit(firstByte, 0);
         bool dBit = extractBit(firstByte, 1);
         instruction = decodeRegMemToFromRegMem(dBit, wBit, state);
         instruction.type = instruction_sbb;
     }
-    if (firstByte == 0x1c || firstByte == 0x1d)
+    else if (firstByte == 0x1c || firstByte == 0x1d)
     {
-        assert(instruction.type == instruction_none);
         bool wBit = extractBit(firstByte, 0);
         instruction = decodeImmediateFromAccumulator(wBit, state);
 
         instruction.type = instruction_sbb;
     }
-    if (firstByte >= 0x48 && firstByte <= 0x4f)
+    else if (firstByte >= 0x48 && firstByte <= 0x4f)
     {
-        assert(instruction.type == instruction_none);
         instruction = decodeRegister(firstByte, true, state);
         instruction.type = instruction_dec;
     }
-    if (firstByte == 0xf6 || firstByte == 0xf7)
+    else if (firstByte == 0xf6 || firstByte == 0xf7)
     {
-        assert(instruction.type == instruction_none);
         uint8_t secondByte = consumeByteAsUnsigned(state);
         uint8_t reg = extractBits(secondByte, 3, 6);
         bool wBit = extractBit(firstByte, 0);
@@ -1316,48 +1261,40 @@ Instruction decodeInstruction(State *state)
         break;
         }
     }
-    if (firstByte == 0x3f)
+    else if (firstByte == 0x3f)
     {
-        assert(instruction.type == instruction_none);
         instruction.type = instruction_aas;
     }
-    if (firstByte == 0x2f)
+    else if (firstByte == 0x2f)
     {
-        assert(instruction.type == instruction_none);
         instruction.type = instruction_das;
     }
-    if (firstByte == 0xd4)
+    else if (firstByte == 0xd4)
     {
-        assert(instruction.type == instruction_none);
         uint8_t secondByte = consumeByteAsUnsigned(state);
         if (secondByte == 0x0a)
         {
             instruction.type = instruction_aam;
         }
     }
-    if (firstByte == 0xd5)
+    else if (firstByte == 0xd5)
     {
-        assert(instruction.type == instruction_none);
         uint8_t secondByte = consumeByteAsUnsigned(state);
         if (secondByte == 0x0a)
         {
             instruction.type = instruction_aad;
         }
     }
-    if (firstByte == 0x98)
+    else if (firstByte == 0x98)
     {
-        assert(instruction.type == instruction_none);
         instruction.type = instruction_cbw;
     }
-    if (firstByte == 0x99)
+    else if (firstByte == 0x99)
     {
-        assert(instruction.type == instruction_none);
         instruction.type = instruction_cwd;
     }
-
-    if (firstByte >= 0xd0 && firstByte <= 0xd3)
+    else if (firstByte >= 0xd0 && firstByte <= 0xd3)
     {
-        assert(instruction.type == instruction_none);
         uint8_t secondByte = consumeByteAsUnsigned(state);
         uint8_t mod = extractBits(secondByte, 6, 8);
         uint8_t reg = extractBits(secondByte, 3, 6);
@@ -1425,405 +1362,323 @@ Instruction decodeInstruction(State *state)
         break;
         }
     }
-    if (firstByte >= 0x20 && firstByte <= 0x23)
+    else if (firstByte >= 0x20 && firstByte <= 0x23)
     {
-        assert(instruction.type == instruction_none);
         bool wBit = extractBit(firstByte, 0);
         bool dBit = extractBit(firstByte, 1);
         instruction = decodeRegMemToFromRegMem(dBit, wBit, state);
 
         instruction.type = instruction_and;
     }
-    if (firstByte == 0x24 || firstByte == 0x25)
+    else if (firstByte == 0x24 || firstByte == 0x25)
     {
-        assert(instruction.type == instruction_none);
         bool wBit = extractLowBits(firstByte, 1);
         instruction = decodeImmediateFromAccumulator(wBit, state);
 
         instruction.type = instruction_and;
     }
-    if (firstByte == 0x84 || firstByte == 0x85)
+    else if (firstByte == 0x84 || firstByte == 0x85)
     {
-        assert(instruction.type == instruction_none);
         bool wBit = extractBit(firstByte, 0);
         bool dBit = extractBit(firstByte, 1);
         instruction = decodeRegMemToFromRegMem(dBit, wBit, state);
 
         instruction.type = instruction_test;
     }
-    if (firstByte == 0xa8 || firstByte == 0xa9)
+    else if (firstByte == 0xa8 || firstByte == 0xa9)
     {
-        assert(instruction.type == instruction_none);
         bool wBit = extractLowBits(firstByte, 1);
         instruction = decodeImmediateFromAccumulator(wBit, state);
 
         instruction.type = instruction_test;
     }
-
-    if (firstByte >= 0x08 && firstByte <= 0x0b)
+    else if (firstByte >= 0x08 && firstByte <= 0x0b)
     {
-        assert(instruction.type == instruction_none);
         bool wBit = extractBit(firstByte, 0);
         bool dBit = extractBit(firstByte, 1);
         instruction = decodeRegMemToFromRegMem(dBit, wBit, state);
 
         instruction.type = instruction_or;
     }
-    if (firstByte == 0x0c || firstByte == 0x0d)
+    else if (firstByte == 0x0c || firstByte == 0x0d)
     {
-        assert(instruction.type == instruction_none);
         bool wBit = extractLowBits(firstByte, 1);
         instruction = decodeImmediateFromAccumulator(wBit, state);
 
         instruction.type = instruction_or;
     }
-
-    if (firstByte >= 0x30 && firstByte <= 0x33)
+    else if (firstByte >= 0x30 && firstByte <= 0x33)
     {
-        assert(instruction.type == instruction_none);
         bool wBit = extractBit(firstByte, 0);
         bool dBit = extractBit(firstByte, 1);
         instruction = decodeRegMemToFromRegMem(dBit, wBit, state);
 
         instruction.type = instruction_xor;
     }
-    if (firstByte == 0x34 || firstByte == 0x35)
+    else if (firstByte == 0x34 || firstByte == 0x35)
     {
-        assert(instruction.type == instruction_none);
         bool wBit = extractLowBits(firstByte, 1);
         instruction = decodeImmediateFromAccumulator(wBit, state);
 
         instruction.type = instruction_xor;
     }
-    if (firstByte == 0xf2 || firstByte == 0xf3)
+    else if (firstByte == 0xf2 || firstByte == 0xf3)
     {
-        assert(instruction.type == instruction_none);
         instruction.type = instruction_rep;
     }
-    if (firstByte == 0xa4 || firstByte == 0xa5)
+    else if (firstByte == 0xa4 || firstByte == 0xa5)
     {
-        assert(instruction.type == instruction_none);
         bool wBit = extractLowBits(firstByte, 1);
         instruction.isWide = wBit;
         instruction.type = instruction_movs;
     }
-    if (firstByte == 0xa6 || firstByte == 0xa7)
+    else if (firstByte == 0xa6 || firstByte == 0xa7)
     {
-        assert(instruction.type == instruction_none);
         bool wBit = extractLowBits(firstByte, 1);
         instruction.isWide = wBit;
         instruction.type = instruction_cmps;
     }
-    if (firstByte == 0xae || firstByte == 0xaf)
+    else if (firstByte == 0xae || firstByte == 0xaf)
     {
-        assert(instruction.type == instruction_none);
         bool wBit = extractLowBits(firstByte, 1);
         instruction.isWide = wBit;
         instruction.type = instruction_scas;
     }
-    if (firstByte == 0xac || firstByte == 0xad)
+    else if (firstByte == 0xac || firstByte == 0xad)
     {
-        assert(instruction.type == instruction_none);
         bool wBit = extractLowBits(firstByte, 1);
         instruction.isWide = wBit;
         instruction.type = instruction_lods;
     }
-    if (firstByte == 0xaa || firstByte == 0xab)
+    else if (firstByte == 0xaa || firstByte == 0xab)
     {
-        assert(instruction.type == instruction_none);
         bool wBit = extractLowBits(firstByte, 1);
         instruction.isWide = wBit;
         instruction.type = instruction_stos;
     }
-    if (firstByte == 0xe8)
+    else if (firstByte == 0xe8)
     {
-        assert(instruction.type == instruction_none);
         instruction = decodeImmediateWithinSegment(state);
         instruction.type = instruction_call;
     }
-    if (firstByte == 0x9a)
+    else if (firstByte == 0x9a)
     {
-        assert(instruction.type == instruction_none);
         instruction = decodeIntersegmentImmediate(state);
         instruction.type = instruction_call;
     }
-
-    if (firstByte == 0xea)
+    else if (firstByte == 0xea)
     {
-        assert(instruction.type == instruction_none);
         instruction = decodeIntersegmentImmediate(state);
         instruction.type = instruction_jmp;
     }
-    if (firstByte == 0xe9)
+    else if (firstByte == 0xe9)
     {
-        assert(instruction.type == instruction_none);
         instruction = decodeImmediateWithinSegment(state);
         instruction.type = instruction_jmp;
     }
-    if (firstByte == 0xc3)
+    else if (firstByte == 0xc3)
     {
-        assert(instruction.type == instruction_none);
         instruction.type = instruction_ret;
     }
-    if (firstByte == 0xc2)
+    else if (firstByte == 0xc2)
     {
-        assert(instruction.type == instruction_none);
         instruction.operandCount = 1;
         instruction.firstOperand = decodeImmediateOperand(true, false, state);
         instruction.isWide = true;
         instruction.type = instruction_ret;
     }
-    if (firstByte == 0xca)
+    else if (firstByte == 0xca)
     {
-        assert(instruction.type == instruction_none);
         instruction.operandCount = 1;
         instruction.firstOperand = decodeImmediateOperand(true, false, state);
         instruction.isWide = true;
         instruction.type = instruction_retf;
     }
-    if (firstByte == 0xcb)
+    else if (firstByte == 0xcb)
     {
-        assert(instruction.type == instruction_none);
         instruction.type = instruction_retf;
     }
-    if (firstByte == 0x74)
+    else if (firstByte == 0x74)
     {
-        assert(instruction.type == instruction_none);
-
         instruction = decodeJump(state);
         instruction.type = instruction_je;
     }
-    if (firstByte == 0x7c)
+    else if (firstByte == 0x7c)
     {
-        assert(instruction.type == instruction_none);
-
         instruction = decodeJump(state);
         instruction.type = instruction_jl;
     }
-    if (firstByte == 0x7e)
+    else if (firstByte == 0x7e)
     {
-        assert(instruction.type == instruction_none);
-
         instruction = decodeJump(state);
         instruction.type = instruction_jle;
     }
-    if (firstByte == 0x72)
+    else if (firstByte == 0x72)
     {
-        assert(instruction.type == instruction_none);
-
         instruction = decodeJump(state);
         instruction.type = instruction_jb;
     }
-    if (firstByte == 0x76)
+    else if (firstByte == 0x76)
     {
-        assert(instruction.type == instruction_none);
-
         instruction = decodeJump(state);
         instruction.type = instruction_jbe;
     }
-    if (firstByte == 0x7a)
+    else if (firstByte == 0x7a)
     {
-        assert(instruction.type == instruction_none);
-
         instruction = decodeJump(state);
         instruction.type = instruction_jp;
     }
-    if (firstByte == 0x70)
+    else if (firstByte == 0x70)
     {
-        assert(instruction.type == instruction_none);
         instruction = decodeJump(state);
         instruction.type = instruction_jo;
     }
-    if (firstByte == 0x78)
+    else if (firstByte == 0x78)
     {
-        assert(instruction.type == instruction_none);
-
         instruction = decodeJump(state);
         instruction.type = instruction_js;
     }
-    if (firstByte == 0x75)
+    else if (firstByte == 0x75)
     {
-        assert(instruction.type == instruction_none);
-
         instruction = decodeJump(state);
         instruction.type = instruction_jnz;
     }
-    if (firstByte == 0x7d)
+    else if (firstByte == 0x7d)
     {
-        assert(instruction.type == instruction_none);
-
         instruction = decodeJump(state);
         instruction.type = instruction_jnl;
     }
-    if (firstByte == 0x7f)
+    else if (firstByte == 0x7f)
     {
-        assert(instruction.type == instruction_none);
-
         instruction = decodeJump(state);
         instruction.type = instruction_jnle;
     }
-    if (firstByte == 0x73)
+    else if (firstByte == 0x73)
     {
-        assert(instruction.type == instruction_none);
-
         instruction = decodeJump(state);
         instruction.type = instruction_jnb;
     }
-    if (firstByte == 0x77)
+    else if (firstByte == 0x77)
     {
-        assert(instruction.type == instruction_none);
-
         instruction = decodeJump(state);
         instruction.type = instruction_ja;
     }
-    if (firstByte == 0x7b)
+    else if (firstByte == 0x7b)
     {
-        assert(instruction.type == instruction_none);
-
         instruction = decodeJump(state);
         instruction.type = instruction_jnp;
     }
-    if (firstByte == 0x71)
+    else if (firstByte == 0x71)
     {
-        assert(instruction.type == instruction_none);
-
         instruction = decodeJump(state);
         instruction.type = instruction_jno;
     }
-    if (firstByte == 0x79)
+    else if (firstByte == 0x79)
     {
-        assert(instruction.type == instruction_none);
-
         instruction = decodeJump(state);
         instruction.type = instruction_jns;
     }
-    if (firstByte == 0xe2)
+    else if (firstByte == 0xe2)
     {
-        assert(instruction.type == instruction_none);
-
         instruction = decodeJump(state);
         instruction.type = instruction_loop;
     }
-    if (firstByte == 0xe1)
+    else if (firstByte == 0xe1)
     {
-        assert(instruction.type == instruction_none);
-
         instruction = decodeJump(state);
         instruction.type = instruction_loopz;
     }
-    if (firstByte == 0xe0)
+    else if (firstByte == 0xe0)
     {
-        assert(instruction.type == instruction_none);
-
         instruction = decodeJump(state);
         instruction.type = instruction_loopnz;
     }
-    if (firstByte == 0xe3)
+    else if (firstByte == 0xe3)
     {
-        assert(instruction.type == instruction_none);
-
         instruction = decodeJump(state);
         instruction.type = instruction_jcxz;
     }
-    if (firstByte == 0xcd)
+    else if (firstByte == 0xcd)
     {
-        assert(instruction.type == instruction_none);
         instruction.operandCount = 1;
         instruction.firstOperand.type = operand_type_immediate;
         instruction.firstOperand.payload.immediate.value = consumeByteAsUnsigned(state);
         instruction.type = instruction_int;
     }
-    if (firstByte == 0xcc)
+    else if (firstByte == 0xcc)
     {
-        assert(instruction.type == instruction_none);
         instruction.isInt3 = true;
         instruction.type = instruction_int;
     }
-    if (firstByte == 0xce)
+    else if (firstByte == 0xce)
     {
-        assert(instruction.type == instruction_none);
         instruction.type = instruction_into;
     }
-    if (firstByte == 0xcf)
+    else if (firstByte == 0xcf)
     {
-        assert(instruction.type == instruction_none);
         instruction.type = instruction_iret;
     }
-    if (firstByte == 0xf8)
+    else if (firstByte == 0xf8)
     {
-        assert(instruction.type == instruction_none);
         instruction.type = instruction_clc;
     }
-    if (firstByte == 0xf5)
+    else if (firstByte == 0xf5)
     {
-        assert(instruction.type == instruction_none);
         instruction.type = instruction_cmc;
     }
-    if (firstByte == 0xf9)
+    else if (firstByte == 0xf9)
     {
-        assert(instruction.type == instruction_none);
         instruction.type = instruction_stc;
     }
-    if (firstByte == 0xfc)
+    else if (firstByte == 0xfc)
     {
-        assert(instruction.type == instruction_none);
         instruction.type = instruction_cld;
     }
-    if (firstByte == 0xfd)
+    else if (firstByte == 0xfd)
     {
-        assert(instruction.type == instruction_none);
         instruction.type = instruction_std;
     }
-    if (firstByte == 0xfa)
+    else if (firstByte == 0xfa)
     {
-        assert(instruction.type == instruction_none);
         instruction.type = instruction_cli;
     }
-    if (firstByte == 0xfb)
+    else if (firstByte == 0xfb)
     {
-        assert(instruction.type == instruction_none);
         instruction.type = instruction_sti;
     }
-    if (firstByte == 0xf4)
+    else if (firstByte == 0xf4)
     {
-        assert(instruction.type == instruction_none);
         instruction.type = instruction_hlt;
     }
-    if (firstByte == 0x9b)
+    else if (firstByte == 0x9b)
     {
-        assert(instruction.type == instruction_none);
         instruction.type = instruction_wait;
     }
-    if (firstByte == 0xf0)
+    else if (firstByte == 0xf0)
     {
-        assert(instruction.type == instruction_none);
         instruction.type = instruction_lock;
     }
-    if (firstByte == 0x2e)
+    else if (firstByte == 0x2e)
     {
-        assert(instruction.type == instruction_none);
         instruction = decodeInstruction(state);
         segmentRegister = reg_cs;
     }
-    if (firstByte == 0x3e)
+    else if (firstByte == 0x3e)
     {
-        assert(instruction.type == instruction_none);
         instruction = decodeInstruction(state);
         segmentRegister = reg_ds;
     }
-    if (firstByte == 0x26)
+    else if (firstByte == 0x26)
     {
-        assert(instruction.type == instruction_none);
         instruction = decodeInstruction(state);
         segmentRegister = reg_es;
     }
-    if (firstByte == 0x36)
+    else if (firstByte == 0x36)
     {
-        assert(instruction.type == instruction_none);
         instruction = decodeInstruction(state);
         segmentRegister = reg_ss;
     }
-    if (instruction.type == instruction_none)
+    else
     {
         error(__FILE__, __LINE__, state->isNoWait, "Unknown instruction, first byte=%#X", firstByte);
     }
