@@ -2064,8 +2064,9 @@ void updateAuxCarryFlag(OpValue result, State *state)
 
 void executeInstruction(Instruction instruction, State *state)
 {
-
-    if (instruction.type == instruction_mov)
+    switch (instruction.type)
+    {
+    case instruction_mov:
     {
         assert(instruction.operandCount == 2);
 
@@ -2073,7 +2074,8 @@ void executeInstruction(Instruction instruction, State *state)
 
         setDestination(instruction.firstOperand, sourceValue, state);
     }
-    else if (instruction.type == instruction_sub)
+    break;
+    case instruction_sub:
     {
         OpValue sourceValue = getOperandValue(instruction.secondOperand, instruction.isWide, state);
         OpValue destinationValue = getOperandValue(instruction.firstOperand, instruction.isWide, state);
@@ -2089,7 +2091,8 @@ void executeInstruction(Instruction instruction, State *state)
         updateParityFlag(result, state);
         updateOverflowFlag(result, state);
     }
-    else if (instruction.type == instruction_cmp)
+    break;
+    case instruction_cmp:
     {
         OpValue left = getOperandValue(instruction.firstOperand, instruction.isWide, state);
 
@@ -2104,7 +2107,8 @@ void executeInstruction(Instruction instruction, State *state)
         updateParityFlag(result, state);
         updateOverflowFlag(result, state);
     }
-    else if (instruction.type == instruction_add)
+    break;
+    case instruction_add:
     {
         OpValue left = getOperandValue(instruction.firstOperand, instruction.isWide, state);
 
@@ -2120,35 +2124,40 @@ void executeInstruction(Instruction instruction, State *state)
         updateParityFlag(result, state);
         updateOverflowFlag(result, state);
     }
-    else if (instruction.type == instruction_jb)
+    break;
+    case instruction_jb:
     {
         if (state->flags[flag_carry])
         {
             state->instructions.instructionPointer += instruction.firstOperand.payload.immediate.value;
         }
     }
-    else if (instruction.type == instruction_je)
+    break;
+    case instruction_je:
     {
         if (state->flags[flag_zero])
         {
             state->instructions.instructionPointer += instruction.firstOperand.payload.immediate.value;
         }
     }
-    else if (instruction.type == instruction_jnz)
+    break;
+    case instruction_jnz:
     {
         if (!state->flags[flag_zero])
         {
             state->instructions.instructionPointer += instruction.firstOperand.payload.immediate.value;
         }
     }
-    else if (instruction.type == instruction_jp)
+    break;
+    case instruction_jp:
     {
         if (state->flags[flag_parity])
         {
             state->instructions.instructionPointer += instruction.firstOperand.payload.immediate.value;
         }
     }
-    else if (instruction.type == instruction_loop)
+    break;
+    case instruction_loop:
     {
         state->registers[reg_c].x--;
         if (!state->flags[flag_zero] && state->registers[reg_c].x != 0)
@@ -2156,7 +2165,8 @@ void executeInstruction(Instruction instruction, State *state)
             state->instructions.instructionPointer += instruction.firstOperand.payload.immediate.value;
         }
     }
-    else if (instruction.type == instruction_loopnz)
+    break;
+    case instruction_loopnz:
     {
         state->registers[reg_c].x--;
         if (state->registers[reg_c].x != 0)
@@ -2164,7 +2174,8 @@ void executeInstruction(Instruction instruction, State *state)
             state->instructions.instructionPointer += instruction.firstOperand.payload.immediate.value;
         }
     }
-    else
+    break;
+    default:
     {
         assert(instruction.type == InstructionInfos[instruction.type].type);
         error(
@@ -2173,6 +2184,7 @@ void executeInstruction(Instruction instruction, State *state)
             state->isNoWait,
             "Unimplemented instruction: %s",
             InstructionInfos[instruction.type].name);
+    }
     }
 }
 
