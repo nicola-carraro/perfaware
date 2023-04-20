@@ -289,15 +289,9 @@ void printRegister(RegisterLocation registerLocation)
     }
 }
 
-void printOperand(Operand operand, uint16_t instructionByteCount, bool isFar, Register segmentRegister)
+void printOperand(Operand operand, uint16_t instructionByteCount, Register segmentRegister)
 {
-
     printf(" ");
-
-    if (isFar)
-    {
-        printf("far ");
-    }
 
     switch (operand.type)
     {
@@ -406,13 +400,13 @@ void printInstruction(Instruction instruction, State *before, State *after)
 
     if (instruction.operandCount > 0)
     {
-        printOperand(instruction.firstOperand, instruction.byteCount, instruction.isFar, instruction.segmentRegister);
+        printOperand(instruction.firstOperand, instruction.byteCount, instruction.segmentRegister);
     }
 
     if (instruction.operandCount > 1)
     {
         printf(",");
-        printOperand(instruction.secondOperand, instruction.byteCount, instruction.isFar, instruction.segmentRegister);
+        printOperand(instruction.secondOperand, instruction.byteCount, instruction.segmentRegister);
     }
 
     printf("\t");
@@ -724,7 +718,6 @@ Instruction decodeIndirectIntersegment(uint8_t secondByte, State *state)
     uint8_t mod = extractBits(secondByte, 6, 8);
     uint8_t rm = extractLowBits(secondByte, 3);
     instruction.isWide = true;
-    instruction.isFar = true;
     instruction.firstOperand = decodeRmOperand(true, mod, rm, state);
 
     return instruction;
@@ -907,13 +900,13 @@ Instruction decodeInstruction(State *state)
         else if (firstByte == 0xff && reg == 0x03)
         {
             instruction = decodeIndirectIntersegment(secondByte, state);
-            instruction.type = instruction_call;
+            instruction.type = instruction_call_far;
         }
 
         else if (firstByte == 0xff && reg == 0x05)
         {
             instruction = decodeIndirectIntersegment(secondByte, state);
-            instruction.type = instruction_jmp;
+            instruction.type = instruction_jmp_far;
         }
         else
         {

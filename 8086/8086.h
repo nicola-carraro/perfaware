@@ -194,7 +194,9 @@ typedef enum
     instruction_lods,
     instruction_stos,
     instruction_call,
+    instruction_call_far,
     instruction_jmp,
+    instruction_jmp_far,
     instruction_ret,
     instruction_retf,
     instruction_je,
@@ -327,7 +329,9 @@ const struct
     {instruction_lods, "lods", true},
     {instruction_stos, "stos", true},
     {instruction_call, "call"},
+    {instruction_call_far, "call far"},
     {instruction_jmp, "jmp"},
+    {instruction_jmp_far, "jmp far"},
     {instruction_ret, "ret"},
     {instruction_retf, "retf"},
     {instruction_je, "je"},
@@ -381,7 +385,6 @@ typedef struct
     bool isWide;
     bool needsDecorator;
     uint16_t byteCount;
-    bool isFar;
     Register segmentRegister;
 
 } Instruction;
