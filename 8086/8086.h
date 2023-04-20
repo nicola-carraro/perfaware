@@ -218,6 +218,7 @@ typedef enum
     instruction_loopnz,
     instruction_jcxz,
     instruction_int,
+    instruction_int3,
     instruction_into,
     instruction_iret,
     instruction_clc,
@@ -350,6 +351,7 @@ const struct
     {instruction_loopnz, "loopnz"},
     {instruction_jcxz, "jcxz"},
     {instruction_int, "int"},
+    {instruction_int3, "int3"},
     {instruction_into, "into"},
     {instruction_iret, "iret"},
     {instruction_clc, "clc"},
@@ -379,7 +381,6 @@ typedef struct
     bool isWide;
     bool needsDecorator;
     uint16_t byteCount;
-    bool isInt3;
     bool isFar;
     Register segmentRegister;
 

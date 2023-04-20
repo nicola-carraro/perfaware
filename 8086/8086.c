@@ -384,12 +384,6 @@ void printInstruction(Instruction instruction, State *before, State *after)
     const char *mnemonic = InstructionInfos[instruction.type].name;
     printf(mnemonic);
 
-    if (instruction.isInt3)
-    {
-        assert(instruction.type == instruction_int);
-        printf("3");
-    }
-
     if (InstructionInfos[instruction.type].needsWithSuffix)
     {
         printf("%s", instruction.isWide ? "w" : "b");
@@ -1607,8 +1601,7 @@ Instruction decodeInstruction(State *state)
     }
     else if (firstByte == 0xcc)
     {
-        instruction.isInt3 = true;
-        instruction.type = instruction_int;
+        instruction.type = instruction_int3;
     }
     else if (firstByte == 0xce)
     {
