@@ -406,6 +406,7 @@ typedef struct
     bool image;
     Stream instructions;
     uint8_t *memory;
+    size_t clocks;
     union
     {
         int16_t x;
