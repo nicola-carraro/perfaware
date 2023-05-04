@@ -20,6 +20,9 @@
 #define LISTING_53 "../computer_enhance/perfaware/part1/listing_0053_add_loop_challenge"
 #define LISTING_54 "../computer_enhance/perfaware/part1/listing_0054_draw_rectangle"
 #define LISTING_55 "../computer_enhance/perfaware/part1/listing_0055_challenge_rectangle"
+#define LISTING_56 "../computer_enhance/perfaware/part1/listing_0056_estimating_cycles"
+#define LISTING_57 "../computer_enhance/perfaware/part1/listing_0057_challenge_cycles"
+
 
 char *readFile(const char *filename, size_t *len)
 {
@@ -347,6 +350,9 @@ int main(void)
     testDecoding(LISTING_53);
     testDecoding(LISTING_54);
     testDecoding(LISTING_55);
+    testDecoding(LISTING_56);
+    testDecoding(LISTING_57);
+
 
     testFinalState43();
     testFinalState44();

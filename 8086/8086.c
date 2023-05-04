@@ -2279,11 +2279,12 @@ int main(int argc, char *argv[])
 
                 fclose(outputFile);
             }
+             else
+            { 
+                error(__FILE__, __LINE__, "Allocation failed");
+            }
         }
-        else
-        {
-            error(__FILE__, __LINE__, "Allocation failed");
-        }
+       
     }
 
     if (bytes != NULL)
