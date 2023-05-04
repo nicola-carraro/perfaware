@@ -1,9 +1,5 @@
 *.pdb
-.vscode
-*.exe
-*.ilk
-*.obj
-*.out
-*.rdbg
-8086
 data
+tmp
+*.exe
+.vscode
