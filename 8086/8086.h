@@ -386,6 +386,7 @@ typedef struct
     bool needsDecorator;
     uint16_t byteCount;
     Register segmentRegister;
+    size_t clocks;
 
 } Instruction;
 
