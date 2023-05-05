@@ -63,7 +63,7 @@ char *readFile(const char *filename, size_t *len)
 
 int16_t consumeTwoBytesAsSigned(State *state)
 {
-    if (state->instructions.instructionPointer + 2 > state->instructions.size)
+    if (state->instructions.instructionPointer + 2u > state->instructions.size)
     {
         error(__FILE__, __LINE__, "reached end of instuctions stream");
     }
@@ -2247,7 +2247,7 @@ int main(int argc, char *argv[])
 
     const char *inputPath = NULL;
 
-    for (size_t argumentIndex = 1; argumentIndex < argc; argumentIndex++)
+    for (int32_t argumentIndex = 1; argumentIndex < argc; argumentIndex++)
     {
         char *argument = argv[argumentIndex];
 
