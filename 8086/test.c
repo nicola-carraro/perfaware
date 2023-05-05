@@ -23,7 +23,6 @@
 #define LISTING_56 "../computer_enhance/perfaware/part1/listing_0056_estimating_cycles"
 #define LISTING_57 "../computer_enhance/perfaware/part1/listing_0057_challenge_cycles"
 
-
 char *readFile(const char *filename, size_t *len)
 {
     FILE *file = fopen(filename, "rb");
@@ -141,6 +140,7 @@ void testFinalState(const char *filePath, State expected, bool testIp, bool test
                 "clocks : expected %zu, found %zu\n",
                 expected.clocks,
                 found->clocks);
+            assert(expected.clocks == found->clocks);
         }
     }
     else
@@ -349,7 +349,6 @@ void testFinalState56()
     testFinalState(LISTING_56, expected, true, true);
 }
 
-
 int main(void)
 {
 
@@ -374,7 +373,6 @@ int main(void)
     testDecoding(LISTING_55);
     testDecoding(LISTING_56);
     testDecoding(LISTING_57);
-
 
     testFinalState43();
     testFinalState44();

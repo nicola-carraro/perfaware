@@ -355,7 +355,7 @@ void printFlags(State *state)
     }
 }
 
-void printInstruction(Instruction instruction, State *before, State *after)
+void printInstruction(Instruction instruction, size_t clocks, State *before, State *after)
 {
     assert(instruction.type != instruction_none);
     assert(InstructionInfos[instruction.type].type == instruction.type);
@@ -398,7 +398,7 @@ void printInstruction(Instruction instruction, State *before, State *after)
     if (after->execute)
     {
 
-        printf("Clocks: +%zu = %zu\t", instruction.clocks, after->clocks);
+        printf("Clocks: +%zu = %zu\t", clocks, after->clocks);
 
         for (Register reg = 0; reg < REGISTER_COUNT; reg++)
         {
@@ -2063,8 +2063,9 @@ size_t clocksForEffectiveAddress(Operand operand){
     return result;
 }
 
-Instruction executeInstruction(Instruction instruction, State *state)
+size_t executeInstruction(Instruction instruction, State *state)
 {
+    size_t clocks = 0;
     switch (instruction.type)
     {
     case instruction_mov:
@@ -2077,31 +2078,31 @@ Instruction executeInstruction(Instruction instruction, State *state)
 
         if(instruction.firstOperand.type == operand_type_memory && instruction.secondOperand.type == operand_type_register){
             if(instruction.secondOperand.payload.reg.reg == reg_a){
-                instruction.clocks = 10;
+                clocks = 10;
             }
             else{
                 size_t extraClocks = clocksForEffectiveAddress(instruction.firstOperand);
-                instruction.clocks = 9 + extraClocks;
+                clocks = 9 + extraClocks;
             }
         }
         else if(instruction.firstOperand.type == operand_type_register && instruction.secondOperand.type == operand_type_memory){
             if(instruction.firstOperand.payload.reg.reg == reg_a){
-                instruction.clocks = 10;
+               clocks = 10;
             }
             else{
                 size_t extraClocks = clocksForEffectiveAddress(instruction.secondOperand);
-                instruction.clocks = 8 + extraClocks;
+                clocks = 8 + extraClocks;
             }
         }
         else if(instruction.firstOperand.type == operand_type_register && instruction.secondOperand.type == operand_type_register){
-            instruction.clocks = 2;
+            clocks = 2;
         }
         else if(instruction.firstOperand.type == operand_type_register && instruction.secondOperand.type == operand_type_immediate){
-            instruction.clocks = 4;
+            clocks = 4;
         }
         else if(instruction.firstOperand.type == operand_type_memory && instruction.secondOperand.type == operand_type_immediate){
             size_t extraClocks = clocksForEffectiveAddress(instruction.firstOperand);
-            instruction.clocks = 10 + extraClocks;
+            clocks = 10 + extraClocks;
         }
         else{
             assert(false && "Unimplemented");
@@ -2156,6 +2157,32 @@ Instruction executeInstruction(Instruction instruction, State *state)
         updateSignFlag(result, state);
         updateParityFlag(result, state);
         updateOverflowFlag(result, state);
+
+        if (instruction.firstOperand.type == operand_type_memory && instruction.secondOperand.type == operand_type_register) {
+          
+                size_t extraClocks = clocksForEffectiveAddress(instruction.firstOperand);
+                clocks = 16 + extraClocks;
+            
+        }
+        else if (instruction.firstOperand.type == operand_type_register && instruction.secondOperand.type == operand_type_memory) {
+         
+                size_t extraClocks = clocksForEffectiveAddress(instruction.secondOperand);
+                clocks = 9 + extraClocks;
+        }
+        else if (instruction.firstOperand.type == operand_type_register && instruction.secondOperand.type == operand_type_register) {
+            clocks = 3;
+        }
+        else if (instruction.firstOperand.type == operand_type_register && instruction.secondOperand.type == operand_type_immediate) {
+
+            clocks = 4;
+        }
+        else if (instruction.firstOperand.type == operand_type_memory && instruction.secondOperand.type == operand_type_immediate) {
+            size_t extraClocks = clocksForEffectiveAddress(instruction.firstOperand);
+            clocks = 17 + extraClocks;
+        }
+        else {
+            assert(false && "Unimplemented");
+        }
     }
     break;
     case instruction_jb:
@@ -2219,9 +2246,9 @@ Instruction executeInstruction(Instruction instruction, State *state)
     }
     }
 
-    state->clocks += instruction.clocks;
+    state->clocks += clocks;
 
-    return instruction;
+    return clocks;
 }
 
 bool cStringsEqual(char *left, char *right)
@@ -2288,14 +2315,14 @@ int main(int argc, char *argv[])
         State before = state;
 
         Instruction instruction = decodeInstruction(&state);
-
+        size_t clocks = 0;
         if (state.execute)
         {
-           instruction = executeInstruction(instruction, &state);
+            clocks = executeInstruction(instruction, &state);
         }
         State after = state;
 
-        printInstruction(instruction, &before, &after);
+        printInstruction(instruction, clocks, &before, &after);
     }
 
     if (state.execute)
