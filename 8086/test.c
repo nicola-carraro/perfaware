@@ -339,14 +339,14 @@ void testFinalState56()
     State expected = {0};
 
     expected.registers[reg_b].x = 1000;
-    expected.registers[reg_d].x = 50;
     expected.registers[reg_bp].x = 2000;
     expected.registers[reg_si].x = 3000;
     expected.registers[reg_di].x = 4000;
-    expected.instructions.instructionPointer = 55;
-    expected.clocks = 192;
+    expected.instructions.instructionPointer = 54;
+    expected.clocks = 289;
+    expected.flags[flag_aux_carry] = true;
 
-    testFinalState(LISTING_56, expected, true, true);
+    testFinalState(LISTING_57, expected, true, true);
 }
 
 int main(void)
