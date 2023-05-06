@@ -84,12 +84,15 @@ void testDecoding(const char *filePath)
     assert(memcmp(inputData, outputData, inputFileSize) == 0);
 }
 
-void testFinalState(const char *filePath, State expected, bool testIp, bool testClock)
+void testFinalState(const char *filePath, State expected, bool testIp, bool testClock, bool test8088)
 {
 
     printf("Executing %s...\n", filePath);
     char buffer[1024];
-    sprintf(buffer, "8086.exe --dump --execute %s %s > nul ", testClock ? "--clocks" : "", filePath);
+    sprintf(buffer, "8086.exe --dump --execute %s %s %s > nul ",
+            testClock ? "--clocks" : "",
+            test8088 ? "--8088" : "",
+            filePath);
     system(buffer);
     printf(buffer);
     printf("\n");
@@ -165,7 +168,7 @@ void testFinalState43()
     expected.registers[reg_si].x = 7;
     expected.registers[reg_di].x = 8;
 
-    testFinalState(LISTING_43, expected, false, false);
+    testFinalState(LISTING_43, expected, false, false, false);
 }
 
 void testFinalState44()
@@ -181,7 +184,7 @@ void testFinalState44()
     expected.registers[reg_si].x = 3;
     expected.registers[reg_di].x = 4;
 
-    testFinalState(LISTING_44, expected, false, false);
+    testFinalState(LISTING_44, expected, false, false, false);
 }
 
 void testFinalState45()
@@ -199,7 +202,7 @@ void testFinalState45()
     expected.registers[reg_ss].x = 17425;
     expected.registers[reg_ds].x = 13124;
 
-    testFinalState(LISTING_45, expected, false, false);
+    testFinalState(LISTING_45, expected, false, false, false);
 }
 
 void testFinalState46()
@@ -211,7 +214,7 @@ void testFinalState46()
     expected.flags[flag_parity] = true;
     expected.flags[flag_zero] = true;
 
-    testFinalState(LISTING_46, expected, false, false);
+    testFinalState(LISTING_46, expected, false, false, false);
 }
 
 void testFinalState47()
@@ -227,7 +230,7 @@ void testFinalState47()
     expected.flags[flag_aux_carry] = true;
     expected.flags[flag_sign] = true;
 
-    testFinalState(LISTING_47, expected, false, false);
+    testFinalState(LISTING_47, expected, false, false, false);
 }
 
 void testFinalState48()
@@ -240,7 +243,7 @@ void testFinalState48()
     expected.flags[flag_carry] = true;
     expected.flags[flag_sign] = true;
 
-    testFinalState(LISTING_48, expected, true, false);
+    testFinalState(LISTING_48, expected, true, false, false);
 }
 
 void testFinalState49()
@@ -252,7 +255,7 @@ void testFinalState49()
     expected.flags[flag_parity] = true;
     expected.flags[flag_zero] = true;
 
-    testFinalState(LISTING_49, expected, true, false);
+    testFinalState(LISTING_49, expected, true, false, false);
 }
 
 void testFinalState50()
@@ -266,7 +269,7 @@ void testFinalState50()
     expected.flags[flag_aux_carry] = true;
     expected.flags[flag_sign] = true;
 
-    testFinalState(LISTING_50, expected, true, false);
+    testFinalState(LISTING_50, expected, true, false, false);
 }
 
 void testFinalState51()
@@ -279,7 +282,7 @@ void testFinalState51()
     expected.registers[reg_bp].x = 4;
     expected.instructions.instructionPointer = 48;
 
-    testFinalState(LISTING_51, expected, true, false);
+    testFinalState(LISTING_51, expected, true, false, false);
 }
 
 void testFinalState52()
@@ -295,7 +298,7 @@ void testFinalState52()
     expected.flags[flag_zero] = true;
     expected.flags[flag_parity] = true;
 
-    testFinalState(LISTING_52, expected, true, false);
+    testFinalState(LISTING_52, expected, true, false, false);
 }
 
 void testFinalState53()
@@ -309,7 +312,7 @@ void testFinalState53()
     expected.flags[flag_zero] = true;
     expected.flags[flag_parity] = true;
 
-    testFinalState(LISTING_53, expected, true, false);
+    testFinalState(LISTING_53, expected, true, false, false);
 }
 
 void testFinalState54()
@@ -323,7 +326,7 @@ void testFinalState54()
     expected.flags[flag_zero] = true;
     expected.flags[flag_parity] = true;
 
-    testFinalState(LISTING_54, expected, true, false);
+    testFinalState(LISTING_54, expected, true, false, false);
 }
 
 void testFinalState55()
@@ -334,7 +337,7 @@ void testFinalState55()
     expected.registers[reg_bp].x = 764;
     expected.instructions.instructionPointer = 68;
 
-    testFinalState(LISTING_55, expected, true, false);
+    testFinalState(LISTING_55, expected, true, false, false);
 }
 
 void testFinalState56()
@@ -349,7 +352,10 @@ void testFinalState56()
     expected.instructions.instructionPointer = 55;
     expected.clocks = 192;
 
-    testFinalState(LISTING_56, expected, true, true);
+    testFinalState(LISTING_56, expected, true, true, false);
+
+    expected.clocks = 236;
+    testFinalState(LISTING_56, expected, true, true, true);
 }
 
 void testFinalState57()
@@ -364,7 +370,10 @@ void testFinalState57()
     expected.clocks = 289;
     expected.flags[flag_aux_carry] = true;
 
-    testFinalState(LISTING_57, expected, true, true);
+    testFinalState(LISTING_57, expected, true, true, false);
+
+    expected.clocks = 341;
+    testFinalState(LISTING_57, expected, true, true, true);
 }
 
 int main(void)

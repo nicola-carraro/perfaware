@@ -404,6 +404,7 @@ typedef struct
     bool estimateClocks;
     bool dump;
     bool image;
+    bool test8088;
     Stream instructions;
     uint8_t *memory;
     size_t clocks;

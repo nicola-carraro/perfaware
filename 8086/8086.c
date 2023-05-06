@@ -2397,6 +2397,10 @@ int main(int argc, char *argv[])
         {
             state.image = true;
         }
+        else if (cStringsEqual(argument, "--8088"))
+        {
+            state.test8088 = true;
+        }
         else if (inputPath == NULL)
         {
             inputPath = argument;
