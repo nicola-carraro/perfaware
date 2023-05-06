@@ -2217,6 +2217,12 @@ size_t estimateClocks(Instruction instruction, State *state)
         result += parityClocksForInstruction(instruction, 2, state);
     }
     break;
+
+    default:
+    {
+        assert(instruction.type == InstructionInfos[instruction.type].type);
+        error(__FILE__, __LINE__, "Clocks estimation not implemented for %s", InstructionInfos[instruction.type].name);
+    }
     }
 
     return result;
@@ -2378,6 +2384,11 @@ int main(int argc, char *argv[])
         {
             state.execute = true;
         }
+        else if (cStringsEqual(argument, "--clocks"))
+        {
+            state.execute = true;
+            state.estimateClocks = true;
+        }
         else if (cStringsEqual(argument, "--dump"))
         {
             state.dump = true;
@@ -2415,8 +2426,11 @@ int main(int argc, char *argv[])
         if (state.execute)
         {
             executeInstruction(instruction, &state);
-            clocks = estimateClocks(instruction, &state);
-            state.clocks += clocks;
+            if (state.estimateClocks)
+            {
+                clocks = estimateClocks(instruction, &state);
+                state.clocks += clocks;
+            }
         }
         State after = state;
 

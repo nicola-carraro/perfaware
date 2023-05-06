@@ -401,6 +401,7 @@ typedef struct
 typedef struct
 {
     bool execute;
+    bool estimateClocks;
     bool dump;
     bool image;
     Stream instructions;

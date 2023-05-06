@@ -89,8 +89,10 @@ void testFinalState(const char *filePath, State expected, bool testIp, bool test
 
     printf("Executing %s...\n", filePath);
     char buffer[1024];
-    sprintf(buffer, "8086.exe --dump --execute %s > nul ", filePath);
+    sprintf(buffer, "8086.exe --dump --execute %s %s > nul ", testClock ? "--clocks" : "", filePath);
     system(buffer);
+    printf(buffer);
+    printf("\n");
 
     size_t offset = fileNameStart(filePath);
     const char *filePrefix = filePath + offset;
@@ -135,7 +137,8 @@ void testFinalState(const char *filePath, State expected, bool testIp, bool test
 
             assert(expected.instructions.instructionPointer == found->instructions.instructionPointer);
         }
-        if(testClock){
+        if (testClock)
+        {
             printf(
                 "clocks : expected %zu, found %zu\n",
                 expected.clocks,
@@ -339,6 +342,21 @@ void testFinalState56()
     State expected = {0};
 
     expected.registers[reg_b].x = 1000;
+    expected.registers[reg_d].x = 50;
+    expected.registers[reg_bp].x = 2000;
+    expected.registers[reg_si].x = 3000;
+    expected.registers[reg_di].x = 4000;
+    expected.instructions.instructionPointer = 55;
+    expected.clocks = 192;
+
+    testFinalState(LISTING_56, expected, true, true);
+}
+
+void testFinalState57()
+{
+    State expected = {0};
+
+    expected.registers[reg_b].x = 1000;
     expected.registers[reg_bp].x = 2000;
     expected.registers[reg_si].x = 3000;
     expected.registers[reg_di].x = 4000;
@@ -388,4 +406,5 @@ int main(void)
     testFinalState54();
     testFinalState55();
     testFinalState56();
+    testFinalState57();
 }
