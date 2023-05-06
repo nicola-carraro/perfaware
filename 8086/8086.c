@@ -2041,7 +2041,7 @@ size_t parityClocksForOperand(Operand operand, State *state)
     assert(operand.type == operand_type_memory);
 
     size_t address = getAddress(operand, state);
-    if (address % 2 == 1)
+    if (state->test8088 || address % 2 == 1)
     {
         return 4;
     }
