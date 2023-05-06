@@ -2035,100 +2035,190 @@ void updateAuxCarryFlag(OpValue result, State *state)
     }
 }
 
-size_t clocksForEffectiveAddress(Operand operand){
+size_t parityClocksForOperand(Operand operand, State *state)
+{
+    // NOTE: assumes that the instruction is wide
     assert(operand.type == operand_type_memory);
 
-    size_t result;
+    size_t address = getAddress(operand, state);
+    if (address % 2 == 1)
+    {
+        return 4;
+    }
+    else
+    {
+        return 0;
+    }
+}
 
-    if(operand.payload.memory.regCount == 0){
-        result = 6;
-    }
-    else if(operand.payload.memory.regCount == 1){
-        if(operand.payload.memory.displacement == 0){
-            result = 5;
+size_t parityClocksForInstruction(Instruction instruction, size_t dataReferences, State *state)
+{
+    size_t result = 0;
+
+    if (instruction.isWide)
+    {
+        if (instruction.operandCount > 0 && instruction.firstOperand.type == operand_type_memory)
+        {
+            result += (parityClocksForOperand(instruction.firstOperand, state) * dataReferences);
         }
-        else{
-            result = 9;
-        }
-    }
-    else{
-        if(operand.payload.memory.displacement == 0){
-            result = 11;
-        }
-        else{
-            result = 12;
+        if (instruction.operandCount == 2 && instruction.secondOperand.type == operand_type_memory)
+        {
+            result += parityClocksForOperand(instruction.secondOperand, state);
         }
     }
 
     return result;
 }
 
-size_t countClocks(Instruction instruction) {
+size_t clocksForEffectiveAddress(Operand operand)
+{
+    assert(operand.type == operand_type_memory);
+
+    size_t result = 0;
+
+    if (operand.payload.memory.regCount == 0)
+    {
+        result = 6;
+    }
+    else if (operand.payload.memory.regCount == 1)
+    {
+        if (operand.payload.memory.displacement == 0)
+        {
+            result = 5;
+        }
+        else
+        {
+            result = 9;
+        }
+    }
+    else
+    {
+
+        Register reg0 = operand.payload.memory.reg0.reg;
+        Register reg1 = operand.payload.memory.reg1.reg;
+
+        if (operand.payload.memory.displacement == 0)
+        {
+
+            if ((reg0 == reg_bp && reg1 == reg_di) || (reg0 == reg_b && reg1 == reg_si))
+            {
+                result = 7;
+            }
+            else if ((reg0 == reg_bp && reg1 == reg_si) || (reg0 == reg_b && reg1 == reg_di))
+            {
+                result = 8;
+            }
+            else
+            {
+                assert(false);
+            }
+        }
+        else
+        {
+            if ((reg0 == reg_bp && reg1 == reg_di) || (reg0 == reg_b && reg1 == reg_si))
+            {
+                result = 11;
+            }
+            else if ((reg0 == reg_bp && reg1 == reg_si) || (reg0 == reg_b && reg1 == reg_di))
+            {
+                result = 12;
+            }
+        }
+    }
+
+    return result;
+}
+
+size_t estimateClocks(Instruction instruction, State *state)
+{
     size_t result = 0;
     switch (instruction.type)
     {
     case instruction_mov:
     {
-        if (instruction.firstOperand.type == operand_type_memory && instruction.secondOperand.type == operand_type_register) {
-            if (instruction.secondOperand.payload.reg.reg == reg_a) {
+        if (instruction.firstOperand.type == operand_type_memory && instruction.secondOperand.type == operand_type_register)
+        {
+            if (instruction.secondOperand.payload.reg.reg == reg_a)
+            {
                 result = 10;
             }
-            else {
+            else
+            {
                 size_t extraClocks = clocksForEffectiveAddress(instruction.firstOperand);
                 result = 9 + extraClocks;
             }
         }
-        else if (instruction.firstOperand.type == operand_type_register && instruction.secondOperand.type == operand_type_memory) {
-            if (instruction.firstOperand.payload.reg.reg == reg_a) {
+        else if (instruction.firstOperand.type == operand_type_register && instruction.secondOperand.type == operand_type_memory)
+        {
+            if (instruction.firstOperand.payload.reg.reg == reg_a)
+            {
                 result = 10;
             }
-            else {
+            else
+            {
                 size_t extraClocks = clocksForEffectiveAddress(instruction.secondOperand);
                 result = 8 + extraClocks;
             }
         }
-        else if (instruction.firstOperand.type == operand_type_register && instruction.secondOperand.type == operand_type_register) {
+        else if (instruction.firstOperand.type == operand_type_register && instruction.secondOperand.type == operand_type_register)
+        {
             result = 2;
         }
-        else if (instruction.firstOperand.type == operand_type_register && instruction.secondOperand.type == operand_type_immediate) {
+        else if (instruction.firstOperand.type == operand_type_register && instruction.secondOperand.type == operand_type_immediate)
+        {
             result = 4;
         }
-        else if (instruction.firstOperand.type == operand_type_memory && instruction.secondOperand.type == operand_type_immediate) {
+        else if (instruction.firstOperand.type == operand_type_memory && instruction.secondOperand.type == operand_type_immediate)
+        {
             size_t extraClocks = clocksForEffectiveAddress(instruction.firstOperand);
             result = 10 + extraClocks;
         }
-        else {
+        else
+        {
             assert(false && "Unimplemented");
         }
-    }break;
+
+        result += parityClocksForInstruction(instruction, 1, state);
+    }
+    break;
     case instruction_add:
-    { if (instruction.firstOperand.type == operand_type_memory && instruction.secondOperand.type == operand_type_register) {
+    {
+        if (instruction.firstOperand.type == operand_type_memory && instruction.secondOperand.type == operand_type_register)
+        {
 
-        size_t extraClocks = clocksForEffectiveAddress(instruction.firstOperand);
-        result = 16 + extraClocks;
+            size_t extraClocks = clocksForEffectiveAddress(instruction.firstOperand);
+            result = 16 + extraClocks;
+        }
+        else if (instruction.firstOperand.type == operand_type_register && instruction.secondOperand.type == operand_type_memory)
+        {
 
-    }
-    else if (instruction.firstOperand.type == operand_type_register && instruction.secondOperand.type == operand_type_memory) {
+            size_t extraClocks = clocksForEffectiveAddress(instruction.secondOperand);
+            result = 9 + extraClocks;
+        }
+        else if (instruction.firstOperand.type == operand_type_register && instruction.secondOperand.type == operand_type_register)
+        {
+            result = 3;
+        }
+        else if (instruction.firstOperand.type == operand_type_register && instruction.secondOperand.type == operand_type_immediate)
+        {
 
-        size_t extraClocks = clocksForEffectiveAddress(instruction.secondOperand);
-        result = 9 + extraClocks;
-    }
-    else if (instruction.firstOperand.type == operand_type_register && instruction.secondOperand.type == operand_type_register) {
-        result = 3;
-    }
-    else if (instruction.firstOperand.type == operand_type_register && instruction.secondOperand.type == operand_type_immediate) {
+            result = 4;
+        }
+        else if (instruction.firstOperand.type == operand_type_memory && instruction.secondOperand.type == operand_type_immediate)
+        {
+            size_t extraClocks = clocksForEffectiveAddress(instruction.firstOperand);
+            result = 17 + extraClocks;
+        }
+        else
+        {
+            assert(false && "Unimplemented");
+        }
 
-        result = 4;
+        result += parityClocksForInstruction(instruction, 2, state);
     }
-    else if (instruction.firstOperand.type == operand_type_memory && instruction.secondOperand.type == operand_type_immediate) {
-        size_t extraClocks = clocksForEffectiveAddress(instruction.firstOperand);
-        result = 17 + extraClocks;
+    break;
     }
-    else {
-        assert(false && "Unimplemented");
-    }
-    }break;
-    }
+
     return result;
 }
 
@@ -2143,7 +2233,6 @@ void executeInstruction(Instruction instruction, State *state)
         OpValue sourceValue = getOperandValue(instruction.secondOperand, instruction.isWide, state);
 
         setDestination(instruction.firstOperand, sourceValue, state);
-
     }
     break;
     case instruction_sub:
@@ -2326,7 +2415,7 @@ int main(int argc, char *argv[])
         if (state.execute)
         {
             executeInstruction(instruction, &state);
-            clocks = countClocks(instruction);
+            clocks = estimateClocks(instruction, &state);
             state.clocks += clocks;
         }
         State after = state;
@@ -2382,12 +2471,11 @@ int main(int argc, char *argv[])
 
                 fclose(outputFile);
             }
-             else
-            { 
+            else
+            {
                 error(__FILE__, __LINE__, "Allocation failed");
             }
         }
-       
     }
 
     if (bytes != NULL)
