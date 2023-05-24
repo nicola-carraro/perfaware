@@ -7,9 +7,11 @@
 #include "assert.h"
 #include "stdarg.h"
 #include "string.h"
+#include "math.h"
 
 #define OUTPUT_PATH "data/input.json"
 #define CLUSTER_COUNT 16
+#define EARTH_RADIUS 6372.8
 
 typedef struct
 {
@@ -116,11 +118,20 @@ double degreesToRadians(double degrees)
     return degrees * 0.01745329251994329577;
 }
 
-// double haversine(double x1, double y1, double x2, double y2){
+double haversine(double x1, double y1, double x2, double y2, double radius)
+{
 
-//     double deltaLatitude = degreesToRadians(x2 - x1);
-//     double deltaLongitude = degreesToRadians(y2 - y1);
-// }
+    double deltaX = degreesToRadians(x2 - x1);
+    double deltaY = degreesToRadians(y2 - y1);
+    y1 = degreesToRadians(y1);
+    y2 = degreesToRadians(y2);
+
+    double rootTerm = square(sin(deltaY / 2.0)) + cos(y1) * cos(y2) * square(sin(deltaX / 2.0));
+
+    double result = 2 * radius * asin(sqrt(rootTerm));
+
+    return result;
+}
 
 int main(int argc, char *argv[])
 {
@@ -183,6 +194,8 @@ int main(int argc, char *argv[])
         }
     }
 
+    double sum = 0.0;
+
     for (size_t pair = 0; pair < pairs; pair++)
     {
 
@@ -207,6 +220,8 @@ int main(int argc, char *argv[])
             y2 = randomLatitude();
         }
 
+        sum += haversine(x1, y1, x2, y2, EARTH_RADIUS);
+
         writeToFile(
             file,
             OUTPUT_PATH,
@@ -221,6 +236,10 @@ int main(int argc, char *argv[])
             writeToFile(file, OUTPUT_PATH, ",\n");
         }
     }
+
+    double average = sum / pairs;
+
+    printf("Average: %f", average);
 
     writeToFile(file, OUTPUT_PATH, "\n\t]\n}");
 }
