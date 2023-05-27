@@ -147,9 +147,9 @@ int main(int argc, char *argv[])
     {
         clustered = true;
     }
-    else if (!cStringsEqual(argv[1], "random"))
+    else if (!cStringsEqual(argv[1], "uniform"))
     {
-        printf("Invalid method (allowed : cluster, random): %s", argv[0]);
+        printf("Invalid method (allowed : uniform, random): %s", argv[0]);
         return;
     }
 
