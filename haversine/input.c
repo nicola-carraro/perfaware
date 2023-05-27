@@ -212,9 +212,9 @@ int main(int argc, char *argv[])
             Cluster cluster2 = clusters[cluster2Index];
 
             x1 = randomDouble(cluster1.minX, cluster1.maxX);
-            y1 = randomLatitude(cluster1.minY, cluster1.maxY);
-            x2 = randomLongitude(cluster2.minX, cluster2.maxX);
-            y2 = randomLatitude(cluster2.minY, cluster2.maxY);
+            y1 = randomDouble(cluster1.minY, cluster1.maxY);
+            x2 = randomDouble(cluster2.minX, cluster2.maxX);
+            y2 = randomDouble(cluster2.minY, cluster2.maxY);
         }
         else
         {
