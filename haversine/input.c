@@ -63,12 +63,16 @@ void die(const char *file, const size_t line, char *message, ...)
 
 void writeToFile(FILE *file, const char *fileName, const char *format, ...)
 {
+    va_list varargsList;
 
-    if (fprintf(file, format) < 0)
+    va_start(varargsList, format);
+
+    if (vfprintf(file, format, varargsList) < 0)
     {
         die(__FILE__, __LINE__, "Error while writing to %s", fileName);
         return;
     }
+    va_end(varargsList);
 }
 
 double randomLatitude()
@@ -194,6 +198,14 @@ int main(int argc, char *argv[])
         }
     }
 
+    double tx1 = 86.9250;
+    double ty1 = 27.9881;
+    double tx2 = -73.9857;
+    double ty2 = 40.7484;
+
+    double testDistance = haversine(tx1, ty1, tx2, ty2, EARTH_RADIUS);
+    printf("test distance : %f\n", testDistance);
+
     double sum = 0.0;
 
     for (size_t pair = 0; pair < pairs; pair++)
@@ -224,7 +236,13 @@ int main(int argc, char *argv[])
             y2 = randomLatitude();
         }
 
-        sum += haversine(x1, y1, x2, y2, EARTH_RADIUS);
+        double distance = haversine(x1, y1, x2, y2, EARTH_RADIUS);
+
+        sum += distance;
+
+        printf("x1 : %f, y1 : %f, x2 : %f, y2 : %f\n", x1, y1, x2, y2);
+
+        printf("distance : %f,\n", distance);
 
         writeToFile(
             file,
@@ -241,9 +259,9 @@ int main(int argc, char *argv[])
         }
     }
 
-    double average = sum / pairs;
-
-    printf("Average: %f", average);
+    double average = sum / (double)pairs;
+    printf("Sum: %f\n", sum);
+    printf("Average: %f\n", average);
 
     writeToFile(file, OUTPUT_PATH, "\n\t]\n}");
 }
