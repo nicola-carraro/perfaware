@@ -196,16 +196,6 @@ int main(int argc, char *argv[])
 
     double sum = 0.0;
 
-    // double xt1 = 2.3522;
-    // double yt1 = 48.8566;
-
-    // double xt2 = 19.9450;
-    // double yt2 = 50.0647;
-
-    // double haversineDistance = haversine(xt1, yt1, xt2, yt2, EARTH_RADIUS);
-
-    // printf("Test haversine %f\n", haversineDistance);
-
     for (size_t pair = 0; pair < pairs; pair++)
     {
 
@@ -216,11 +206,15 @@ int main(int argc, char *argv[])
 
         if (clustered)
         {
-            Cluster cluster = clusters[pair % CLUSTER_COUNT];
-            x1 = randomDouble(cluster.minX, cluster.maxX);
-            y1 = randomLatitude(cluster.minY, cluster.maxY);
-            x2 = randomLongitude(cluster.minX, cluster.maxX);
-            y2 = randomLatitude(cluster.minY, cluster.maxY);
+            int cluster1Index = rand() % CLUSTER_COUNT;
+            int cluster2Index = rand() % CLUSTER_COUNT;
+            Cluster cluster1 = clusters[cluster1Index];
+            Cluster cluster2 = clusters[cluster2Index];
+
+            x1 = randomDouble(cluster1.minX, cluster1.maxX);
+            y1 = randomLatitude(cluster1.minY, cluster1.maxY);
+            x2 = randomLongitude(cluster2.minX, cluster2.maxX);
+            y2 = randomLatitude(cluster2.minY, cluster2.maxY);
         }
         else
         {
