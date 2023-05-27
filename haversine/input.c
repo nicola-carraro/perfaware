@@ -11,7 +11,7 @@
 
 #define OUTPUT_PATH "data/input.json"
 #define CLUSTER_COUNT 16
-#define EARTH_RADIUS 6372.8
+#define EARTH_RADIUS 6371
 
 typedef struct
 {
@@ -118,17 +118,17 @@ double degreesToRadians(double degrees)
     return degrees * 0.01745329251994329577;
 }
 
-double haversine(double x1, double y1, double x2, double y2, double radius)
+double haversine(double x1Degrees, double y1Degrees, double x2Degrees, double y2Degrees, double radius)
 {
 
-    double deltaX = degreesToRadians(x2 - x1);
-    double deltaY = degreesToRadians(y2 - y1);
-    y1 = degreesToRadians(y1);
-    y2 = degreesToRadians(y2);
+    double x1Radians = degreesToRadians(x1Degrees);
+    double y1Radians = degreesToRadians(y1Degrees);
+    double x2Radians = degreesToRadians(x2Degrees);
+    double y2Radians = degreesToRadians(y2Degrees);
 
-    double rootTerm = square(sin(deltaY / 2.0)) + cos(y1) * cos(y2) * square(sin(deltaX / 2.0));
+    double rootTerm = square(sin((y2Radians - y1Radians) / 2.0)) + cos(y1Radians) * cos(y2Radians) * square(sin((x2Radians - x1Radians) / 2.0));
 
-    double result = 2 * radius * asin(sqrt(rootTerm));
+    double result = 2.0 * radius * asin(sqrt(rootTerm));
 
     return result;
 }
@@ -195,6 +195,16 @@ int main(int argc, char *argv[])
     }
 
     double sum = 0.0;
+
+    // double xt1 = 2.3522;
+    // double yt1 = 48.8566;
+
+    // double xt2 = 19.9450;
+    // double yt2 = 50.0647;
+
+    // double haversineDistance = haversine(xt1, yt1, xt2, yt2, EARTH_RADIUS);
+
+    // printf("Test haversine %f\n", haversineDistance);
 
     for (size_t pair = 0; pair < pairs; pair++)
     {
