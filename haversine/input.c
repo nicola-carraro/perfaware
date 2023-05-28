@@ -60,9 +60,10 @@ double randomDouble(double min, double max)
 
 void die(char *file, const size_t line, int errorNumber, char *message, ...)
 {
+    printf("ERROR (%s:%zu): ", file, line);
+
     va_list args;
     va_start(args, message);
-    printf("ERROR (%s:%zu): ", file, line);
     vprintf(message, args);
     va_end(args);
 
