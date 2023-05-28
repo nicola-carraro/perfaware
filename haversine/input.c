@@ -9,7 +9,7 @@
 #include "string.h"
 #include "math.h"
 
-#define JSON_PATH "datar/pairs.json"
+#define JSON_PATH "data/pairs.json"
 #define DOUBLES_PATH "data/pairs.double"
 
 #define UNIFORM_METHOD "uniform"
@@ -58,12 +58,18 @@ double randomDouble(double min, double max)
     return result;
 }
 
-void die(char *file, const size_t line, char *message, ...)
+void die(char *file, const size_t line, int errorNumber, char *message, ...)
 {
     va_list args;
     va_start(args, message);
-    printf("ERROR(%s:%zu): ", file, line);
+    printf("ERROR (%s:%zu): ", file, line);
     vprintf(message, args);
+
+    if (errorNumber != 0)
+    {
+        char *cError = strerror(errorNumber);
+        printf(" (%s)", cError);
+    }
     va_end(args);
 
     exit(EXIT_FAILURE);
@@ -77,8 +83,9 @@ void writeTextToFile(FILE *file, const char *path, const char *format, ...)
 
     if (vfprintf(file, format, varargsList) < 0)
     {
+        int error = errno;
         fclose(file);
-        die(__FILE__, __LINE__, "Error while writing to %s", path);
+        die(__FILE__, __LINE__, error, "could not write to %s", path);
         return;
     }
     va_end(varargsList);
@@ -88,8 +95,9 @@ void writeBinaryToFile(FILE *file, const char *path, void *data, size_t size, si
 {
     if (fwrite(data, size, count, file) != count)
     {
+        int error = errno;
         fclose(file);
-        die(__FILE__, __LINE__, "Error while writing to %s", path);
+        die(__FILE__, __LINE__, error, "could not write to %s", path);
         return;
     }
 }
@@ -220,12 +228,12 @@ int main(int argc, char *argv[])
 
     if (!jsonFile)
     {
-        die(__FILE__, __LINE__, "Error while opening %s", JSON_PATH);
+        die(__FILE__, __LINE__, errno, "could not open %s", JSON_PATH);
     }
 
     if (!doublesFile)
     {
-        die(__FILE__, __LINE__, "Error while opening %s", DOUBLES_PATH);
+        die(__FILE__, __LINE__, errno, "could not open %s", DOUBLES_PATH);
     }
 
     writeTextToFile(jsonFile, JSON_PATH, "{\n\t\"pairs\":[\n");
