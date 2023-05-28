@@ -9,7 +9,7 @@
 #include "string.h"
 #include "math.h"
 
-#define JSON_PATH "data/pairs.json"
+#define JSON_PATH "datar/pairs.json"
 #define DOUBLES_PATH "data/pairs.double"
 
 #define UNIFORM_METHOD "uniform"
@@ -58,16 +58,13 @@ double randomDouble(double min, double max)
     return result;
 }
 
-void die(const char *file, const size_t line, char *message, ...)
+void die(char *file, const size_t line, char *message, ...)
 {
     va_list args;
     va_start(args, message);
-
-    char errorMessage[256];
-    printf(errorMessage, args);
+    printf("ERROR(%s:%zu): ", file, line);
+    vprintf(message, args);
     va_end(args);
-
-    printf("ERROR(%s:%zu): %s\n", file, line, message);
 
     exit(EXIT_FAILURE);
 }
@@ -223,14 +220,12 @@ int main(int argc, char *argv[])
 
     if (!jsonFile)
     {
-        printf("Error while opening %s", JSON_PATH);
-        return;
+        die(__FILE__, __LINE__, "Error while opening %s", JSON_PATH);
     }
 
     if (!doublesFile)
     {
-        printf("Error while opening %s", DOUBLES_PATH);
-        return;
+        die(__FILE__, __LINE__, "Error while opening %s", DOUBLES_PATH);
     }
 
     writeTextToFile(jsonFile, JSON_PATH, "{\n\t\"pairs\":[\n");
