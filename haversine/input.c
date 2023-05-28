@@ -263,6 +263,9 @@ int main(int argc, char *argv[])
             double x2Offset = randomDouble(0, cluster2.width);
             double y2Offset = randomDouble(0, cluster2.height);
 
+            // printf("Cluster1 index=%d, minX=%f, minY=%f, Xoffset=%f, yOffset=%f\n", cluster1Index, cluster1.minX, cluster1.minY, x1Offset, y1Offset);
+            // printf("Cluster2 index=%d, minX=%f, minY=%f, Xoffset=%f, yOffset=%f\n", cluster2Index, cluster2.minX, cluster2.minY, x2Offset, y2Offset);
+
             x1 = cluster1.minX + x1Offset;
             y1 = cluster1.minY + y1Offset;
             x2 = cluster2.minX + x2Offset;
@@ -294,8 +297,8 @@ int main(int argc, char *argv[])
 
         sum += distance;
 
-        // printf("x1 : %f, y1 : %f, x2 : %f, y2 : %f\n", x1, y1, x2, y2);
-
+        printf("x1 : %f, y1 : %f, x2 : %f, y2 : %f\n", x1, y1, x2, y2);
+        printf("\n");
         // printf("distance : %f,\n", distance);
 
         writeTextToFile(
