@@ -15,10 +15,10 @@
 #define UNIFORM_METHOD "uniform"
 #define CLUSTER_METHOD "cluster"
 
-#define CLUSTER_COUNT 16
+#define CLUSTER_COUNT 8
 #define EARTH_RADIUS 6371
-#define CLUSTER_WIDTH 5
-#define CLUSTER_HEIGHT 5
+#define CLUSTER_WIDTH 40.0
+#define CLUSTER_HEIGHT 40.0
 #define MIN_X -180.0
 #define MAX_X 180.0
 #define MIN_Y -90.0
@@ -27,9 +27,9 @@
 typedef struct
 {
     double minX;
-    double maxX;
-    double maxY;
     double minY;
+    double width;
+    double height;
 } Cluster;
 
 bool isDigits(char *cString)
@@ -116,38 +116,31 @@ double randomY()
     return result;
 }
 
-Cluster initializeCluster()
+double wrap(double value, double min, double max)
 {
-    Cluster cluster = {0};
+    double result = value;
 
-    double x1 = randomX();
-    double x2 = x1 + CLUSTER_WIDTH;
-
-    if (x2 > MAX_X)
+    if (result > max)
     {
-        x2 = MIN_X + (x2 - MAX_X);
+        result = min + (result - max);
     }
-    else if (x2 < MIN_X)
+    else if (result < min)
     {
-        x2 = MAX_X - (MIN_X - x2);
+        result = max - (min - result);
     }
 
-    double y1 = randomY();
-    double y2 = y1 + CLUSTER_HEIGHT;
+    return result;
+}
 
-    if (y2 > MAX_Y)
-    {
-        y2 = MIN_Y + (y2 - MAX_Y);
-    }
-    else if (y2 < MIN_Y)
-    {
-        y2 = MAX_Y - (MIN_Y - y2);
-    }
+Cluster initializeCluster(double width, double height)
+{
+    Cluster cluster;
 
-    cluster.minX = min(x1, x2);
-    cluster.maxX = max(x1, x2);
-    cluster.minY = min(y1, y2);
-    cluster.maxY = max(y1, y2);
+    cluster.minX = randomX();
+    cluster.minY = randomY();
+
+    cluster.width = width;
+    cluster.height = height;
 
     return cluster;
 }
@@ -244,7 +237,7 @@ int main(int argc, char *argv[])
     {
         for (size_t clusterIndex = 0; clusterIndex < CLUSTER_COUNT; clusterIndex++)
         {
-            clusters[clusterIndex] = initializeCluster();
+            clusters[clusterIndex] = initializeCluster(CLUSTER_WIDTH, CLUSTER_HEIGHT);
         }
     }
 
@@ -265,10 +258,29 @@ int main(int argc, char *argv[])
             Cluster cluster1 = clusters[cluster1Index];
             Cluster cluster2 = clusters[cluster2Index];
 
-            x1 = randomDouble(cluster1.minX, cluster1.maxX);
-            y1 = randomDouble(cluster1.minY, cluster1.maxY);
-            x2 = randomDouble(cluster2.minX, cluster2.maxX);
-            y2 = randomDouble(cluster2.minY, cluster2.maxY);
+            double x1Offset = randomDouble(0, cluster1.width);
+            double y1Offset = randomDouble(0, cluster1.height);
+            double x2Offset = randomDouble(0, cluster2.width);
+            double y2Offset = randomDouble(0, cluster2.height);
+
+            x1 = cluster1.minX + x1Offset;
+            y1 = cluster1.minY + y1Offset;
+            x2 = cluster2.minX + x2Offset;
+            y2 = cluster2.minY + y2Offset;
+
+            x1 = wrap(x1, MIN_X, MAX_X);
+            y1 = wrap(y1, MIN_Y, MAX_Y);
+            x2 = wrap(x2, MIN_X, MAX_X);
+            y2 = wrap(y2, MIN_Y, MAX_Y);
+
+            assert(x1 <= MAX_X);
+            assert(x1 >= MIN_X);
+            assert(y1 <= MAX_Y);
+            assert(y1 >= MIN_Y);
+            assert(x2 <= MAX_X);
+            assert(x2 >= MIN_X);
+            assert(y2 <= MAX_Y);
+            assert(y2 >= MIN_Y);
         }
         else
         {
