@@ -10,7 +10,7 @@
 #include "math.h"
 
 #define JSON_PATH "data/pairs.json"
-#define FLOATS_PATH "data/pairs.float"
+#define DOUBLES_PATH "data/pairs.double"
 
 #define UNIFORM_METHOD "uniform"
 #define CLUSTER_METHOD "cluster"
@@ -72,7 +72,7 @@ void die(const char *file, const size_t line, char *message, ...)
     exit(EXIT_FAILURE);
 }
 
-void writeToFile(FILE *file, const char *path, const char *format, ...)
+void writeTextToFile(FILE *file, const char *path, const char *format, ...)
 {
     va_list varargsList;
 
@@ -80,10 +80,21 @@ void writeToFile(FILE *file, const char *path, const char *format, ...)
 
     if (vfprintf(file, format, varargsList) < 0)
     {
+        fclose(file);
         die(__FILE__, __LINE__, "Error while writing to %s", path);
         return;
     }
     va_end(varargsList);
+}
+
+void writeBinaryToFile(FILE *file, const char *path, void *data, size_t size, size_t count)
+{
+    if (fwrite(data, size, count, file) != count)
+    {
+        fclose(file);
+        die(__FILE__, __LINE__, "Error while writing to %s", path);
+        return;
+    }
 }
 
 double randomX()
@@ -207,15 +218,22 @@ int main(int argc, char *argv[])
 
     srand(seed);
 
-    FILE *file = fopen(JSON_PATH, "w");
+    FILE *jsonFile = fopen(JSON_PATH, "w");
+    FILE *doublesFile = fopen(DOUBLES_PATH, "wb");
 
-    if (!file)
+    if (!jsonFile)
     {
         printf("Error while opening %s", JSON_PATH);
         return;
     }
 
-    writeToFile(file, JSON_PATH, "{\n\t\"pairs\":[\n");
+    if (!doublesFile)
+    {
+        printf("Error while opening %s", DOUBLES_PATH);
+        return;
+    }
+
+    writeTextToFile(jsonFile, JSON_PATH, "{\n\t\"pairs\":[\n");
 
     Cluster clusters[CLUSTER_COUNT];
 
@@ -265,8 +283,8 @@ int main(int argc, char *argv[])
 
         // printf("distance : %f,\n", distance);
 
-        writeToFile(
-            file,
+        writeTextToFile(
+            jsonFile,
             JSON_PATH,
             "\t\t{\"x1\":%f, \"y1\":%f, \"x2\":%f, \"y2\":%f}",
             x1,
@@ -274,9 +292,37 @@ int main(int argc, char *argv[])
             x2,
             y2);
 
+        writeBinaryToFile(
+            doublesFile,
+            DOUBLES_PATH,
+            &x1,
+            sizeof(double),
+            1);
+
+        writeBinaryToFile(
+            doublesFile,
+            DOUBLES_PATH,
+            &y1,
+            sizeof(double),
+            1);
+
+        writeBinaryToFile(
+            doublesFile,
+            DOUBLES_PATH,
+            &x2,
+            sizeof(double),
+            1);
+
+        writeBinaryToFile(
+            doublesFile,
+            DOUBLES_PATH,
+            &y2,
+            sizeof(double),
+            1);
+
         if (pair < pairs - 1)
         {
-            writeToFile(file, JSON_PATH, ",\n");
+            writeTextToFile(jsonFile, JSON_PATH, ",\n");
         }
     }
 
@@ -284,5 +330,8 @@ int main(int argc, char *argv[])
     printf("Sum: %f\n", sum);
     printf("Average: %f\n", average);
 
-    writeToFile(file, JSON_PATH, "\n\t]\n}");
+    writeTextToFile(jsonFile, JSON_PATH, "\n\t]\n}");
+
+    fclose(jsonFile);
+    fclose(doublesFile);
 }
