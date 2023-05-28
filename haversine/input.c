@@ -82,7 +82,7 @@ double randomLatitude()
 
 double randomLongitude()
 {
-    return randomDouble(0.0, 180.0);
+    return randomDouble(-180.0, 180.0);
 }
 
 Cluster initializeCluster()
@@ -240,9 +240,9 @@ int main(int argc, char *argv[])
 
         sum += distance;
 
-        printf("x1 : %f, y1 : %f, x2 : %f, y2 : %f\n", x1, y1, x2, y2);
+        // printf("x1 : %f, y1 : %f, x2 : %f, y2 : %f\n", x1, y1, x2, y2);
 
-        printf("distance : %f,\n", distance);
+        // printf("distance : %f,\n", distance);
 
         writeToFile(
             file,
