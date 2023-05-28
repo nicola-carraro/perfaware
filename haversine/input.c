@@ -17,8 +17,8 @@
 
 #define CLUSTER_COUNT 8
 #define EARTH_RADIUS 6371
-#define CLUSTER_WIDTH 40.0
-#define CLUSTER_HEIGHT 40.0
+#define CLUSTER_WIDTH 5.0
+#define CLUSTER_HEIGHT 5.0
 #define MIN_X -180.0
 #define MAX_X 180.0
 #define MIN_Y -90.0
@@ -297,9 +297,9 @@ int main(int argc, char *argv[])
 
         sum += distance;
 
-        printf("x1 : %f, y1 : %f, x2 : %f, y2 : %f\n", x1, y1, x2, y2);
-        printf("\n");
-        // printf("distance : %f,\n", distance);
+        // printf("x1 : %f, y1 : %f, x2 : %f, y2 : %f\n", x1, y1, x2, y2);
+        //  printf("\n");
+        //   printf("distance : %f,\n", distance);
 
         writeTextToFile(
             jsonFile,
