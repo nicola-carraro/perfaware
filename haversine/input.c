@@ -17,6 +17,12 @@
 
 #define CLUSTER_COUNT 16
 #define EARTH_RADIUS 6371
+#define CLUSTER_WIDTH 5
+#define CLUSTER_HEIGHT 5
+#define MIN_X -180.0
+#define MAX_X 180.0
+#define MIN_Y -90.0
+#define MAX_Y 90.0
 
 typedef struct
 {
@@ -80,34 +86,52 @@ void writeToFile(FILE *file, const char *path, const char *format, ...)
     va_end(varargsList);
 }
 
-double randomLatitude()
+double randomX()
 {
-    return randomDouble(-90.0, 90.0);
+    double result = randomDouble(MIN_X, MAX_X);
+
+    return result;
 }
 
-double randomLongitude()
+double randomY()
 {
-    return randomDouble(-180.0, 180.0);
+    double result = randomDouble(MIN_Y, MAX_Y);
+
+    return result;
 }
 
 Cluster initializeCluster()
 {
     Cluster cluster = {0};
 
-    double x1 = randomLongitude();
-    double x2 = randomLongitude();
-    double y1 = randomLatitude();
-    double y2 = randomLatitude();
+    double x1 = randomX();
+    double x2 = x1 + CLUSTER_WIDTH;
 
-    double minx = min(x1, x2);
-    double maxx = max(x1, x2);
-    double miny = min(y1, y2);
-    double maxy = max(y1, y2);
+    if (x2 > MAX_X)
+    {
+        x2 = MIN_X + (x2 - MAX_X);
+    }
+    else if (x2 < MIN_X)
+    {
+        x2 = MAX_X - (MIN_X - x2);
+    }
 
-    cluster.minX = minx;
-    cluster.maxX = maxx;
-    cluster.minY = miny;
-    cluster.maxY = maxy;
+    double y1 = randomY();
+    double y2 = y1 + CLUSTER_HEIGHT;
+
+    if (y2 > MAX_Y)
+    {
+        y2 = MIN_Y + (y2 - MAX_Y);
+    }
+    else if (y2 < MIN_Y)
+    {
+        y2 = MAX_Y - (MIN_Y - y2);
+    }
+
+    cluster.minX = min(x1, x2);
+    cluster.maxX = max(x1, x2);
+    cluster.minY = min(y1, y2);
+    cluster.maxY = max(y1, y2);
 
     return cluster;
 }
@@ -227,10 +251,10 @@ int main(int argc, char *argv[])
         }
         else
         {
-            x1 = randomLongitude();
-            y1 = randomLatitude();
-            x2 = randomLongitude();
-            y2 = randomLatitude();
+            x1 = randomX();
+            y1 = randomY();
+            x2 = randomX();
+            y2 = randomY();
         }
 
         double distance = haversine(x1, y1, x2, y2, EARTH_RADIUS);
