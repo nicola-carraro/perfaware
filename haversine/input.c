@@ -9,7 +9,12 @@
 #include "string.h"
 #include "math.h"
 
-#define OUTPUT_PATH "data/input.json"
+#define JSON_PATH "data/pairs.json"
+#define FLOATS_PATH "data/pairs.float"
+
+#define UNIFORM_METHOD "uniform"
+#define CLUSTER_METHOD "cluster"
+
 #define CLUSTER_COUNT 16
 #define EARTH_RADIUS 6371
 
@@ -61,7 +66,7 @@ void die(const char *file, const size_t line, char *message, ...)
     exit(EXIT_FAILURE);
 }
 
-void writeToFile(FILE *file, const char *fileName, const char *format, ...)
+void writeToFile(FILE *file, const char *path, const char *format, ...)
 {
     va_list varargsList;
 
@@ -69,7 +74,7 @@ void writeToFile(FILE *file, const char *fileName, const char *format, ...)
 
     if (vfprintf(file, format, varargsList) < 0)
     {
-        die(__FILE__, __LINE__, "Error while writing to %s", fileName);
+        die(__FILE__, __LINE__, "Error while writing to %s", path);
         return;
     }
     va_end(varargsList);
@@ -147,13 +152,13 @@ int main(int argc, char *argv[])
 
     bool clustered = false;
 
-    if (cStringsEqual(argv[1], "cluster"))
+    if (cStringsEqual(argv[1], CLUSTER_METHOD))
     {
         clustered = true;
     }
-    else if (!cStringsEqual(argv[1], "uniform"))
+    else if (!cStringsEqual(argv[1], UNIFORM_METHOD))
     {
-        printf("Invalid method (allowed : uniform, random): %s", argv[0]);
+        printf("Invalid method (allowed : %s, %s): %s", UNIFORM_METHOD, CLUSTER_METHOD, argv[1]);
         return;
     }
 
@@ -178,15 +183,15 @@ int main(int argc, char *argv[])
 
     srand(seed);
 
-    FILE *file = fopen(OUTPUT_PATH, "w");
+    FILE *file = fopen(JSON_PATH, "w");
 
     if (!file)
     {
-        printf("Error while opening %s", OUTPUT_PATH);
+        printf("Error while opening %s", JSON_PATH);
         return;
     }
 
-    writeToFile(file, OUTPUT_PATH, "{\n\t\"pairs\":[\n");
+    writeToFile(file, JSON_PATH, "{\n\t\"pairs\":[\n");
 
     Cluster clusters[CLUSTER_COUNT];
 
@@ -197,14 +202,6 @@ int main(int argc, char *argv[])
             clusters[clusterIndex] = initializeCluster();
         }
     }
-
-    double tx1 = 86.9250;
-    double ty1 = 27.9881;
-    double tx2 = -73.9857;
-    double ty2 = 40.7484;
-
-    double testDistance = haversine(tx1, ty1, tx2, ty2, EARTH_RADIUS);
-    printf("test distance : %f\n", testDistance);
 
     double sum = 0.0;
 
@@ -246,7 +243,7 @@ int main(int argc, char *argv[])
 
         writeToFile(
             file,
-            OUTPUT_PATH,
+            JSON_PATH,
             "\t\t{\"x1\":%f, \"y1\":%f, \"x2\":%f, \"y2\":%f}",
             x1,
             y1,
@@ -255,7 +252,7 @@ int main(int argc, char *argv[])
 
         if (pair < pairs - 1)
         {
-            writeToFile(file, OUTPUT_PATH, ",\n");
+            writeToFile(file, JSON_PATH, ",\n");
         }
     }
 
@@ -263,5 +260,5 @@ int main(int argc, char *argv[])
     printf("Sum: %f\n", sum);
     printf("Average: %f\n", average);
 
-    writeToFile(file, OUTPUT_PATH, "\n\t]\n}");
+    writeToFile(file, JSON_PATH, "\n\t]\n}");
 }
