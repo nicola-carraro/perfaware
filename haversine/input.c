@@ -286,7 +286,7 @@ int main(int argc, char *argv[])
         writeTextToFile(
             jsonFile,
             JSON_PATH,
-            "\t\t{\"x1\":%f, \"y1\":%f, \"x2\":%f, \"y2\":%f}",
+            "\t\t{\"x1\":%1.12f, \"y1\":%1.12f, \"x2\":%1.12f, \"y2\":%1.12f}",
             x1,
             y1,
             x2,
@@ -327,8 +327,8 @@ int main(int argc, char *argv[])
     }
 
     double average = sum / (double)pairs;
-    printf("Sum: %f\n", sum);
-    printf("Average: %f\n", average);
+    printf("Sum: %1.12f\n", sum);
+    printf("Average: %1.12f\n", average);
 
     writeTextToFile(jsonFile, JSON_PATH, "\n\t]\n}");
 
