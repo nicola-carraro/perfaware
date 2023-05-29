@@ -87,7 +87,6 @@ void writeTextToFile(FILE *file, const char *path, const char *format, ...)
         int error = errno;
         fclose(file);
         die(__FILE__, __LINE__, error, "could not write to %s", path);
-        return;
     }
     va_end(varargsList);
 }
@@ -99,7 +98,6 @@ void writeBinaryToFile(FILE *file, const char *path, void *data, size_t size, si
         int error = errno;
         fclose(file);
         die(__FILE__, __LINE__, error, "could not write to %s", path);
-        return;
     }
 }
 

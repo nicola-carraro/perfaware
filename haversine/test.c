@@ -5,9 +5,9 @@
 
 int main(void)
 {
-    FILE *file = fopen("data/pairs.double", "r");
+    FILE *file = fopen("data/pairs.double", "rb");
 
-    for (size_t i = 0; i < 10; i++)
+    for (size_t i = 0; i < 1000; i++)
     {
         for (size_t j = 0; j < 4; j++)
         {
