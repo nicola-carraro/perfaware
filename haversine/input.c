@@ -10,7 +10,7 @@
 #include "math.h"
 
 #define JSON_PATH "data/pairs.json"
-#define DOUBLES_PATH "data/pairs.double"
+#define ANSWERS_PATH "data/answers"
 
 #define UNIFORM_METHOD "uniform"
 #define CLUSTER_METHOD "cluster"
@@ -216,16 +216,16 @@ int main(int argc, char *argv[])
     srand(seed);
 
     FILE *jsonFile = fopen(JSON_PATH, "w");
-    FILE *doublesFile = fopen(DOUBLES_PATH, "wb");
+    FILE *answersFile = fopen(ANSWERS_PATH, "wb");
 
     if (!jsonFile)
     {
         die(__FILE__, __LINE__, errno, "could not open %s", JSON_PATH);
     }
 
-    if (!doublesFile)
+    if (!answersFile)
     {
-        die(__FILE__, __LINE__, errno, "could not open %s", DOUBLES_PATH);
+        die(__FILE__, __LINE__, errno, "could not open %s", ANSWERS_PATH);
     }
 
     writeTextToFile(jsonFile, JSON_PATH, "{\n\t\"pairs\":[\n");
@@ -310,30 +310,9 @@ int main(int argc, char *argv[])
             y2);
 
         writeBinaryToFile(
-            doublesFile,
-            DOUBLES_PATH,
-            &x1,
-            sizeof(double),
-            1);
-
-        writeBinaryToFile(
-            doublesFile,
-            DOUBLES_PATH,
-            &y1,
-            sizeof(double),
-            1);
-
-        writeBinaryToFile(
-            doublesFile,
-            DOUBLES_PATH,
-            &x2,
-            sizeof(double),
-            1);
-
-        writeBinaryToFile(
-            doublesFile,
-            DOUBLES_PATH,
-            &y2,
+            answersFile,
+            ANSWERS_PATH,
+            &distance,
             sizeof(double),
             1);
 
@@ -350,5 +329,5 @@ int main(int argc, char *argv[])
     writeTextToFile(jsonFile, JSON_PATH, "\n\t]\n}");
 
     fclose(jsonFile);
-    fclose(doublesFile);
+    fclose(answersFile);
 }
