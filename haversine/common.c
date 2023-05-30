@@ -4,6 +4,7 @@
 #include "stdlib.h"
 #include "stdarg.h"
 #include "string.h"
+#include "assert.h"
 
 #ifndef COMMON_C
 
@@ -12,10 +13,20 @@
 #define JSON_PATH "data/pairs.json"
 #define ANSWERS_PATH "data/answers"
 
-typedef struct {
-   char *data;
-   size_t size;
+#define ARENA_INITIAL_SIZE 1024
+
+typedef struct
+{
+    char *data;
+    size_t size;
 } String;
+
+typedef struct
+{
+    void *memory;
+    size_t size;
+    size_t offset;
+} Arena;
 
 void die(const char *file, const size_t line, int errorNumber, const char *message, ...)
 {
@@ -79,6 +90,13 @@ size_t getFileSize(FILE *file, char *path)
         if (cursorPosition >= 0)
         {
             result = (size_t)cursorPosition;
+
+            if (fseek(file, 0, SEEK_SET) != 0)
+            {
+                int errorNumber = errno;
+                fclose(file);
+                die(__FILE__, __LINE__, errorNumber, "could not restore cursor position of %s", path);
+            }
         }
         else
         {
@@ -86,6 +104,69 @@ size_t getFileSize(FILE *file, char *path)
             fclose(file);
             die(__FILE__, __LINE__, errorNumber, errorMessage, path);
         }
+    }
+
+    return result;
+}
+
+void arenaInit(Arena *arena)
+{
+    assert(arena != NULL);
+
+    arena->memory = malloc(ARENA_INITIAL_SIZE);
+
+    if (!arena->memory)
+    {
+        die(__FILE__, __LINE__, errno, "could not initialize arena");
+    }
+
+    arena->size = ARENA_INITIAL_SIZE;
+    arena->offset = 0;
+}
+
+void *arenaAllocate(Arena *arena, size_t size)
+{
+    assert(arena != NULL);
+
+    void *result = NULL;
+
+    while (arena->offset + size >= arena->size)
+    {
+        size_t newSize = arena->size * 2;
+        void *newMemory = realloc(arena->memory, newSize);
+
+        if (newMemory == NULL)
+        {
+            die(__FILE__, __LINE__, errno, "could not resize arena");
+        }
+        else
+        {
+            arena->memory = newMemory;
+            arena->size = newSize;
+        }
+    }
+
+    result = (char *)arena->memory + arena->size;
+    arena->offset += size;
+
+    return result;
+}
+
+String *readFileToString(char *path, Arena *arena)
+{
+    FILE *file = fopen(path, "r");
+
+    if (file == NULL)
+    {
+        die(__FILE__, __LINE__, errno, "could not open %s", path);
+    }
+    String *result = (String *)arenaAllocate(arena, sizeof(String));
+    result->size = getFileSize(file, path);
+    result->data = arenaAllocate(arena, result->size);
+
+    if (fread(result->data, 1, result->size, file) != 1)
+    {
+        die(__FILE__, __LINE__, errno, "could not read %s", path);
     }
 
     return result;

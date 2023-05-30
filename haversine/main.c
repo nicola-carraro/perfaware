@@ -8,11 +8,13 @@
 int main(void)
 {
 
-    FILE *jsonFile = fopen(JSON_PATH, "r");
+    Arena arena = {0};
+    arenaInit(&arena);
 
-    size_t size = getFileSize(jsonFile, JSON_PATH);
+    String *text = readFileToString(JSON_PATH, &arena);
 
-    printf("size: %zu", size);
+    printf("Json: %.*s", (int)text->size, text->data);
+    // printf("hi");
 
     return 0;
 }
