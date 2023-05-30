@@ -11,8 +11,7 @@
 
 #include "common.c"
 
-#define JSON_PATH "data/pairs.json"
-#define ANSWERS_PATH "data/answers"
+
 
 #define UNIFORM_METHOD "uniform"
 #define CLUSTER_METHOD "cluster"
