@@ -113,6 +113,7 @@ size_t getFileSize(FILE *file, char *path)
 
 void arenaInit(Arena *arena)
 {
+
     assert(arena != NULL);
 
     arena->memory = malloc(ARENA_INITIAL_SIZE);
@@ -159,7 +160,7 @@ void *arenaAllocate(Arena *arena, size_t size)
     return result;
 }
 
-String *readFileToString(char *path, Arena *arena)
+String readFileToString(char *path)
 {
     FILE *file = fopen(path, "r");
 
@@ -167,15 +168,15 @@ String *readFileToString(char *path, Arena *arena)
     {
         die(__FILE__, __LINE__, errno, "could not open %s", path);
     }
-    String *result = (String *)arenaAllocate(arena, sizeof(String));
-    result->size = getFileSize(file, path);
-    result->data = arenaAllocate(arena, result->size);
+    String result = {0};
+    result.size = getFileSize(file, path);
+    result.data = malloc(result.size);
 
-    if (fread(result->data, result->size, 1, file) != 1)
+    size_t read = fread(result.data, 1, result.size, file);
+
+    if (read == 0)
     {
-        // die(__FILE__, __LINE__, errno, "could not read %s", path);
-
-        perror("could not read file");
+        die(__FILE__, __LINE__, errno, "could not read %s", path);
     }
 
     return result;
