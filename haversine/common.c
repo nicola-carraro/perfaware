@@ -32,10 +32,12 @@ void die(const char *file, const size_t line, int errorNumber, const char *messa
 {
     printf("ERROR (%s:%zu): ", file, line);
 
-    va_list args;
-    va_start(args, message);
-    vprintf(message, args);
-    va_end(args);
+    printf("%s", message);
+
+    // va_list args;
+    // va_start(args, message);
+    // vprintf(message, args);
+    // va_end(args);
 
     if (errorNumber != 0)
     {
@@ -130,9 +132,14 @@ void *arenaAllocate(Arena *arena, size_t size)
 
     void *result = NULL;
 
-    while (arena->offset + size >= arena->size)
+    if (arena->offset + size >= arena->size)
     {
-        size_t newSize = arena->size * 2;
+        size_t newSize = arena->size;
+        do
+        {
+            newSize *= 2;
+        } while (arena->offset + size >= newSize);
+
         void *newMemory = realloc(arena->memory, newSize);
 
         if (newMemory == NULL)
@@ -146,7 +153,7 @@ void *arenaAllocate(Arena *arena, size_t size)
         }
     }
 
-    result = (char *)arena->memory + arena->size;
+    result = (char *)arena->memory + arena->offset;
     arena->offset += size;
 
     return result;
@@ -164,9 +171,11 @@ String *readFileToString(char *path, Arena *arena)
     result->size = getFileSize(file, path);
     result->data = arenaAllocate(arena, result->size);
 
-    if (fread(result->data, 1, result->size, file) != 1)
+    if (fread(result->data, result->size, 1, file) != 1)
     {
-        die(__FILE__, __LINE__, errno, "could not read %s", path);
+        // die(__FILE__, __LINE__, errno, "could not read %s", path);
+
+        perror("could not read file");
     }
 
     return result;
