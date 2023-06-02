@@ -19,5 +19,7 @@ int main(void)
 
     Parser parser = initParser(text, &arena);
 
+    parseElement(&parser);
+
     return 0;
 }
