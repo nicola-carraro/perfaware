@@ -5,17 +5,19 @@
 
 #include "common.c"
 
+#include "parser.c"
+
 int main(void)
 {
-
-    
 
     Arena arena = arenaInit();
 
     String text = readFileToString(JSON_PATH, &arena);
 
-    printf("Json: %.*s", (int)text.size, text.data);
-    // printf("hi");
+    // printf("Json: %.*s", (int)text.size, text.data);
+    //  printf("hi");
+
+    Parser parser = initParser(text, &arena);
 
     return 0;
 }
