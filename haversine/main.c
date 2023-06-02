@@ -8,7 +8,11 @@
 int main(void)
 {
 
-    String text = readFileToString(JSON_PATH);
+    
+
+    Arena arena = arenaInit();
+
+    String text = readFileToString(JSON_PATH, &arena);
 
     printf("Json: %.*s", (int)text.size, text.data);
     // printf("hi");

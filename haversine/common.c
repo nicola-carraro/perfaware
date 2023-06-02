@@ -13,7 +13,7 @@
 #define JSON_PATH "data/pairs.json"
 #define ANSWERS_PATH "data/answers"
 
-#define ARENA_INITIAL_SIZE 1024
+#define ARENA_SIZE 1024 * 1024
 
 typedef struct
 {
@@ -32,12 +32,10 @@ void die(const char *file, const size_t line, int errorNumber, const char *messa
 {
     printf("ERROR (%s:%zu): ", file, line);
 
-    printf("%s", message);
-
-    // va_list args;
-    // va_start(args, message);
-    // vprintf(message, args);
-    // va_end(args);
+    va_list args;
+    va_start(args, message);
+    vprintf(message, args);
+    va_end(args);
 
     if (errorNumber != 0)
     {
@@ -111,20 +109,22 @@ size_t getFileSize(FILE *file, char *path)
     return result;
 }
 
-void arenaInit(Arena *arena)
+Arena arenaInit()
 {
 
-    assert(arena != NULL);
+    Arena arena = {0};
 
-    arena->memory = malloc(ARENA_INITIAL_SIZE);
+    arena.memory = malloc(ARENA_SIZE);
 
-    if (!arena->memory)
+    if (!arena.memory)
     {
         die(__FILE__, __LINE__, errno, "could not initialize arena");
     }
 
-    arena->size = ARENA_INITIAL_SIZE;
-    arena->offset = 0;
+    arena.size = ARENA_SIZE;
+    arena.offset = 0;
+
+    return arena;
 }
 
 void *arenaAllocate(Arena *arena, size_t size)
@@ -135,23 +135,7 @@ void *arenaAllocate(Arena *arena, size_t size)
 
     if (arena->offset + size >= arena->size)
     {
-        size_t newSize = arena->size;
-        do
-        {
-            newSize *= 2;
-        } while (arena->offset + size >= newSize);
-
-        void *newMemory = realloc(arena->memory, newSize);
-
-        if (newMemory == NULL)
-        {
-            die(__FILE__, __LINE__, errno, "could not resize arena");
-        }
-        else
-        {
-            arena->memory = newMemory;
-            arena->size = newSize;
-        }
+        die(__FILE__, __LINE__, errno, "could not allocate from arena");
     }
 
     result = (char *)arena->memory + arena->offset;
@@ -160,9 +144,9 @@ void *arenaAllocate(Arena *arena, size_t size)
     return result;
 }
 
-String readFileToString(char *path)
+String readFileToString(char *path, Arena *arena)
 {
-    FILE *file = fopen(path, "r");
+    FILE *file = fopen(path, "rb");
 
     if (file == NULL)
     {
@@ -170,13 +154,13 @@ String readFileToString(char *path)
     }
     String result = {0};
     result.size = getFileSize(file, path);
-    result.data = malloc(result.size);
+    result.data = arenaAllocate(arena, result.size);
 
     size_t read = fread(result.data, 1, result.size, file);
 
-    if (read == 0)
+    if (read < result.size)
     {
-        die(__FILE__, __LINE__, errno, "could not read %s", path);
+        die(__FILE__, __LINE__, errno, "could not read %s, read %zu", path, read);
     }
 
     return result;
