@@ -74,7 +74,7 @@ String next(Parser *parser)
 
    if (byte > 0x7f)
    {
-      die(__FILE__, __LINE__, 0, "Non ASCII parsing not implemented: found %#08X (line %zu, column %zu)", byte, parser->line, parser->column);
+      die(__FILE__, __LINE__, 0, "Non ASCII parsing not implemented: found %#02X (line %zu, column %zu)", byte, parser->line, parser->column);
    }
 
    bool isCarriageReturn = byte == '\r';
@@ -144,7 +144,7 @@ Value parseElement(Parser *parser)
    }
    else
    {
-      printf("%c", byte);
+      die(__FILE__, __LINE__, 0, "Expected JSON value, found \"%c\"", byte);
    }
 
    skipWhitespace(parser);
