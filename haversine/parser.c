@@ -92,7 +92,7 @@ String next(Parser *parser)
    }
    else
    {
-      result.size = 2;
+      result.size = 1;
       if (isNewLine)
       {
          nextLine(parser);
