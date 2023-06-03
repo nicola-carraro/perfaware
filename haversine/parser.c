@@ -321,9 +321,9 @@ double parseNumber(Parser *parser)
 
    // char *numberStart = parser->text.data + parser->offset;
 
-   size_t integerSize = countIntegerDigits(parser);
+   size_t integerDigits= countIntegerDigits(parser);
 
-   if (integerSize == 0)
+   if (integerDigits == 0)
    {
       char byte = peekByte(parser);
       die(__FILE__, __LINE__, 0, "expected digit, found %c (%zu:%zu)\n", byte, parser->line + 1, parser->column + 1);
