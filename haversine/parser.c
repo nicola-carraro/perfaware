@@ -135,6 +135,17 @@ bool isDoubleQuotes(Parser *parser)
    return byte == DOUBLE_QUOTES;
 }
 
+bool isControlCharacter(Parser *parser)
+{
+   if (!hasNext(parser))
+   {
+      return false;
+   }
+   char byte = peekByte(parser);
+
+   return byte < 0x20;
+}
+
 String parseString(Parser *parser)
 {
    assert(parser != NULL);
@@ -149,7 +160,6 @@ String parseString(Parser *parser)
    result.data = parser->text.data + parser->offset;
 
    next(parser);
-   // char nextByte;
 
    while (!isDoubleQuotes(parser))
    {
@@ -157,6 +167,12 @@ String parseString(Parser *parser)
       if (!hasNext(parser))
       {
          die(__FILE__, __LINE__, 0, "unclosed string: expected \"\"\", found end of file (%zu:%zu)\n", stringFirstLine + 1, stringFirstColumn + 1);
+      }
+
+      if (isControlCharacter(parser))
+      {
+         char illegalCharacter = peekByte(parser);
+         die(__FILE__, __LINE__, 0, "illegal control character in string literal: found %#02X (%zu:%zu)\n", illegalCharacter, parser->line + 1, parser->column + 1);
       }
 
       String column = next(parser);
