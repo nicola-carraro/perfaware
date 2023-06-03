@@ -174,9 +174,14 @@ String parseString(Parser *parser)
    size_t stringFirstColumn = parser->column;
    String result = {0};
 
-   result.data = parser->text.data + parser->offset;
-
    next(parser);
+
+   if (!hasNext(parser))
+   {
+      die(__FILE__, __LINE__, 0, "unclosed string: expected \"\"\", found end of file (%zu:%zu)\n", stringFirstLine + 1, stringFirstColumn + 1);
+   }
+
+   result.data = parser->text.data + parser->offset;
 
    while (!isDoubleQuotes(parser))
    {
@@ -199,11 +204,28 @@ String parseString(Parser *parser)
 
       String column = next(parser);
 
+      result.size += column.size;
+
       assert(column.size > 0);
    }
 
-   printf(parser->text.data + parser->offset);
+   next(parser);
+
    return result;
+}
+
+void printString(String string)
+{
+   int bytesToPrint;
+   if (string.size > INT_MAX)
+   {
+      bytesToPrint = INT_MAX;
+   }
+   else
+   {
+      bytesToPrint = (int)string.size;
+   }
+   printf("%.*s", bytesToPrint, string.data);
 }
 
 Value parseElement(Parser *parser)
@@ -215,7 +237,9 @@ Value parseElement(Parser *parser)
 
    if (isDoubleQuotes(parser))
    {
-      parseString(parser);
+      result.payload.string = parseString(parser);
+      result.type = ValueType_String;
+      printString(result.payload.string);
    }
    else
    {
