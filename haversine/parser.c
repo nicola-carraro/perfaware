@@ -249,6 +249,17 @@ bool isOneNine(Parser *parser)
    return byte >= '1' && byte <= '9';
 }
 
+bool isHexDigit(Parser *parser)
+{
+   if (!hasNext(parser))
+   {
+      return false;
+   }
+   char byte = peekByte(parser);
+
+   return (byte >= 'A' && byte <= 'F') || (byte >= 'a' && byte <= 'f');
+}
+
 bool isDigit(Parser *parser)
 {
    if (!hasNext(parser))
@@ -256,7 +267,7 @@ bool isDigit(Parser *parser)
       return false;
    }
 
-   return isZero(parser) || isOneNine(parser);
+   return isZero(parser) || isOneNine(parser) || isHexDigit(parser);
 }
 
 bool isNumberStart(Parser *parser)
@@ -267,6 +278,58 @@ bool isNumberStart(Parser *parser)
    }
 
    return isDigit(parser) || isMinusSign(parser);
+}
+
+size_t countIntegerDigits(Parser *parser)
+{
+   size_t result = 0;
+
+   if (isMinusSign(parser))
+   {
+      next(parser);
+      result++;
+   }
+
+   if (isOneNine(parser))
+   {
+      while (isDigit(parser))
+      {
+         next(parser);
+         result++;
+      }
+   }
+   else if (isDigit(parser))
+   {
+
+      next(parser);
+      result++;
+   }
+   else
+   {
+      return 0;
+   }
+
+   return result;
+}
+
+double parseNumber(Parser *parser)
+{
+   assert(parser != NULL);
+   assert(parser->text.data != NULL);
+   assert(hasNext(parser));
+   assert(isNumberStart(parser));
+
+   // char *numberStart = parser->text.data + parser->offset;
+
+   size_t integerSize = countIntegerDigits(parser);
+
+   if (integerSize == 0)
+   {
+      char byte = peekByte(parser);
+      die(__FILE__, __LINE__, 0, "expected digit, found %c (%zu:%zu)\n", byte, parser->line + 1, parser->column + 1);
+   }
+
+   return 0.0;
 }
 
 void printString(String string)
@@ -294,7 +357,13 @@ Value parseElement(Parser *parser)
    {
       result.payload.string = parseString(parser);
       result.type = ValueType_String;
-      printString(result.payload.string);
+      // printString(result.payload.string);
+   }
+   else if (isNumberStart(parser))
+   {
+      result.payload.number = parseNumber(parser);
+      result.type = ValueType_Number;
+      printf("%f", result.payload.number);
    }
    else
    {
