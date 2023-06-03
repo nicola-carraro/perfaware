@@ -4,6 +4,7 @@
 #include "stdbool.h"
 
 #define DOUBLE_QUOTES '"'
+#define REVERSE_SOLIDUS '\\'
 
 typedef struct
 {
@@ -35,6 +36,7 @@ typedef struct
 } Value;
 
 char peekByte(Parser *parser);
+bool hasNext(Parser *parser);
 
 Parser initParser(String text, Arena *arena)
 {
@@ -47,6 +49,10 @@ Parser initParser(String text, Arena *arena)
 
 bool isWhitespace(Parser *parser)
 {
+   if (!hasNext(parser))
+   {
+      return false;
+   }
 
    char byte = parser->text.data[parser->offset];
    return byte == 0x20 || byte == 0x0a || byte == 0x0d || byte == 0x09;
@@ -135,6 +141,17 @@ bool isDoubleQuotes(Parser *parser)
    return byte == DOUBLE_QUOTES;
 }
 
+bool isReverseSolidus(Parser *parser)
+{
+   if (!hasNext(parser))
+   {
+      return false;
+   }
+   char byte = peekByte(parser);
+
+   return byte == REVERSE_SOLIDUS;
+}
+
 bool isControlCharacter(Parser *parser)
 {
    if (!hasNext(parser))
@@ -172,7 +189,12 @@ String parseString(Parser *parser)
       if (isControlCharacter(parser))
       {
          char illegalCharacter = peekByte(parser);
-         die(__FILE__, __LINE__, 0, "illegal control character in string literal: found %#02X (%zu:%zu)\n", illegalCharacter, parser->line + 1, parser->column + 1);
+         die(__FILE__, __LINE__, 0, "illegal control character in string: found %#02X (%zu:%zu)\n", illegalCharacter, parser->line + 1, parser->column + 1);
+      }
+
+      if (isReverseSolidus(parser))
+      {
+         die(__FILE__, __LINE__, 0, "escape sequences in strings not implemented (%zu:%zu)\n", parser->line + 1, parser->column + 1);
       }
 
       String column = next(parser);
