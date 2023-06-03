@@ -238,6 +238,28 @@ bool isZero(Parser *parser)
    return byte == '0';
 }
 
+bool isDot(Parser *parser)
+{
+   if (!hasNext(parser))
+   {
+      return false;
+   }
+   char byte = peekByte(parser);
+
+   return byte == '.';
+}
+
+bool isExponentStart(Parser *parser)
+{
+   if (!hasNext(parser))
+   {
+      return false;
+   }
+   char byte = peekByte(parser);
+
+   return byte == 'e' || byte == 'E';
+}
+
 bool isOneNine(Parser *parser)
 {
    if (!hasNext(parser))
@@ -267,7 +289,7 @@ bool isDigit(Parser *parser)
       return false;
    }
 
-   return isZero(parser) || isOneNine(parser) || isHexDigit(parser);
+   return isZero(parser) || isOneNine(parser);
 }
 
 bool isNumberStart(Parser *parser)
@@ -280,33 +302,31 @@ bool isNumberStart(Parser *parser)
    return isDigit(parser) || isMinusSign(parser);
 }
 
-size_t countIntegerDigits(Parser *parser)
+size_t countDigits(Parser *parser)
 {
    size_t result = 0;
-
-   if (isMinusSign(parser))
+   while (isDigit(parser))
    {
       next(parser);
       result++;
    }
 
+   return result;
+}
+
+size_t countIntegerDigits(Parser *parser)
+{
+   size_t result = 0;
+
    if (isOneNine(parser))
    {
-      while (isDigit(parser))
-      {
-         next(parser);
-         result++;
-      }
+      result += countDigits(parser);
    }
    else if (isDigit(parser))
    {
 
       next(parser);
       result++;
-   }
-   else
-   {
-      return 0;
    }
 
    return result;
@@ -319,17 +339,73 @@ double parseNumber(Parser *parser)
    assert(hasNext(parser));
    assert(isNumberStart(parser));
 
-   // char *numberStart = parser->text.data + parser->offset;
+   char *numberStart = parser->text.data + parser->offset;
 
-   size_t integerDigits= countIntegerDigits(parser);
+   size_t offset = 0;
+
+   if (isMinusSign(parser))
+   {
+      next(parser);
+      offset++;
+   }
+
+   size_t integerDigits = countIntegerDigits(parser);
 
    if (integerDigits == 0)
    {
       char byte = peekByte(parser);
       die(__FILE__, __LINE__, 0, "expected digit, found %c (%zu:%zu)\n", byte, parser->line + 1, parser->column + 1);
    }
+   else
+   {
+      offset += integerDigits;
 
-   return 0.0;
+      if (isDot(parser))
+      {
+         next(parser);
+         offset++;
+         size_t fractionDigits = countIntegerDigits(parser);
+         offset += fractionDigits;
+      }
+
+      if (isExponentStart(parser))
+      {
+         bool hasMinusSign = false;
+         if (isMinusSign(parser))
+         {
+            next(parser);
+            offset++;
+            hasMinusSign = true;
+         }
+         next(parser);
+         offset++;
+         size_t exponentDigits = countIntegerDigits(parser);
+
+         if (hasMinusSign && exponentDigits == 0)
+         {
+            char byte = peekByte(parser);
+            die(__FILE__, __LINE__, 0, "expected digit, found %c (%zu:%zu)\n", byte, parser->line + 1, parser->column + 1);
+         }
+
+         offset += exponentDigits;
+      }
+   }
+
+   char *buffer = arenaAllocate(parser->arena, offset + 1);
+
+   buffer[offset] = '\0';
+
+   strncpy(buffer, numberStart, offset);
+
+   char *end;
+
+   double result = strtod(buffer, &end);
+
+   assert(end - buffer > 0);
+
+   assert((int)(end - buffer) == offset);
+
+   return result;
 }
 
 void printString(String string)
