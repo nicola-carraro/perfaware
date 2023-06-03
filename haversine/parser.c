@@ -402,10 +402,9 @@ double parseNumber(Parser *parser)
 
    double result = strtod(buffer, &end);
 
-   assert(end - buffer > 0);
-
    if (offset <= PTRDIFF_MAX)
    {
+      assert(end - buffer > 0);
       assert((end - buffer) == (ptrdiff_t)offset);
    }
 
