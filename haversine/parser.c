@@ -144,7 +144,8 @@ Value parseElement(Parser *parser)
    }
    else
    {
-      die(__FILE__, __LINE__, 0, "Expected JSON value, found \"%c\"", byte);
+      String codepoint = next(parser);
+      die(__FILE__, __LINE__, 0, "Expected JSON value, found \"%.*s\"\n", codepoint.size, codepoint.data);
    }
 
    skipWhitespace(parser);
