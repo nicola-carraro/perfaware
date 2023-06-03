@@ -144,8 +144,14 @@ Value parseElement(Parser *parser)
    }
    else
    {
-      String codepoint = next(parser);
-      die(__FILE__, __LINE__, 0, "Expected JSON value, found \"%.*s\"\n", codepoint.size, codepoint.data);
+      if (hasNext(parser))
+      {
+         String codepoint = next(parser);
+         die(__FILE__, __LINE__, 0, "Expected JSON value, found \"%.*s\"\n", codepoint.size, codepoint.data);
+      }
+      {
+         die(__FILE__, __LINE__, 0, "Expected JSON value, found end of file");
+      }
    }
 
    skipWhitespace(parser);
