@@ -404,7 +404,12 @@ double parseNumber(Parser *parser)
 
    assert(end - buffer > 0);
 
-   assert((end - buffer) == (int64_t)offset);
+   if (offset > PTRDIFF_MAX)
+   {
+      die(__FILE__, __LINE__, 0, "cannot parse a number longer than %d, found %zu (%zu:%zu)\n", PTRDIFF_MAX, offset, parser->line + 1, parser->column + 1);
+   }
+
+   assert((end - buffer) == (ptrdiff_t)offset);
 
    return result;
 }
