@@ -32,6 +32,7 @@ typedef struct
    union
    {
       String string;
+      double number;
    } payload;
 } Value;
 
@@ -212,6 +213,60 @@ String parseString(Parser *parser)
    next(parser);
 
    return result;
+}
+
+bool isMinusSign(Parser *parser)
+{
+   if (!hasNext(parser))
+   {
+      return false;
+   }
+
+   char byte = peekByte(parser);
+
+   return byte == '-';
+}
+
+bool isZero(Parser *parser)
+{
+   if (!hasNext(parser))
+   {
+      return false;
+   }
+   char byte = peekByte(parser);
+
+   return byte == '0';
+}
+
+bool isOneNine(Parser *parser)
+{
+   if (!hasNext(parser))
+   {
+      return false;
+   }
+   char byte = peekByte(parser);
+
+   return byte >= '1' && byte <= '9';
+}
+
+bool isDigit(Parser *parser)
+{
+   if (!hasNext(parser))
+   {
+      return false;
+   }
+
+   return isZero(parser) || isOneNine(parser);
+}
+
+bool isNumberStart(Parser *parser)
+{
+   if (!hasNext(parser))
+   {
+      return false;
+   }
+
+   return isDigit(parser) || isMinusSign(parser);
 }
 
 void printString(String string)
