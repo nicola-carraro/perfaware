@@ -2,6 +2,7 @@
 #define PARSER_C
 #include "common.c"
 #include "stdbool.h"
+#include "stdint.h"
 
 #define DOUBLE_QUOTES '"'
 #define REVERSE_SOLIDUS '\\'
@@ -403,7 +404,7 @@ double parseNumber(Parser *parser)
 
    assert(end - buffer > 0);
 
-   assert((int)(end - buffer) == offset);
+   assert((end - buffer) == (int64_t)offset);
 
    return result;
 }
