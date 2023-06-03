@@ -16,6 +16,7 @@ typedef struct
 
 typedef enum
 {
+   ValueType_Invalid,
    ValueType_Object,
    ValueType_Array,
    ValueType_String,
