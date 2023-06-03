@@ -3,7 +3,7 @@
 #include "common.c"
 #include "stdbool.h"
 
-#define QUOTATION_MARKS '"'
+#define DOUBLE_QUOTES '"'
 
 typedef struct
 {
@@ -119,14 +119,50 @@ void skipWhitespace(Parser *parser)
    char byte = peekByte(parser);
    while (isWhitespace(parser))
    {
-      parser->offset++;
+      next(parser);
       byte = peekByte(parser);
    }
 }
 
-Value parseString(Parser *parser)
+bool isDoubleQuotes(Parser *parser)
 {
-   Value result = {0};
+   if (!hasNext(parser))
+   {
+      return false;
+   }
+   char byte = peekByte(parser);
+
+   return byte == DOUBLE_QUOTES;
+}
+
+String parseString(Parser *parser)
+{
+   assert(parser != NULL);
+   assert(parser->text.data != NULL);
+   assert(hasNext(parser));
+   assert(isDoubleQuotes(parser));
+
+   size_t stringFirstLine = parser->line;
+   size_t stringFirstColumn = parser->column;
+   String result = {0};
+
+   result.data = parser->text.data + parser->offset;
+
+   next(parser);
+   // char nextByte;
+
+   while (!isDoubleQuotes(parser))
+   {
+
+      if (!hasNext(parser))
+      {
+         die(__FILE__, __LINE__, 0, "unclosed string: expected \"\"\", found end of file (%zu:%zu)\n", stringFirstLine + 1, stringFirstColumn + 1);
+      }
+
+      String column = next(parser);
+
+      assert(column.size > 0);
+   }
 
    printf(parser->text.data + parser->offset);
    return result;
@@ -134,12 +170,12 @@ Value parseString(Parser *parser)
 
 Value parseElement(Parser *parser)
 {
+
+   assert(parser != NULL);
    Value result = {0};
    skipWhitespace(parser);
 
-   char byte = peekByte(parser);
-
-   if (byte == QUOTATION_MARKS)
+   if (isDoubleQuotes(parser))
    {
       parseString(parser);
    }
@@ -147,11 +183,11 @@ Value parseElement(Parser *parser)
    {
       if (hasNext(parser))
       {
-         String codepoint = next(parser);
-         die(__FILE__, __LINE__, 0, "Expected JSON value, found \"%.*s\"\n", codepoint.size, codepoint.data);
+         String column = next(parser);
+         die(__FILE__, __LINE__, 0, ", expected JSON value, found \"%.*s\" (%zu:%zu)\n", column.size, column.data, parser->line + 1, parser->column + 1);
       }
       {
-         die(__FILE__, __LINE__, 0, "Expected JSON value, found end of file");
+         die(__FILE__, __LINE__, 0, "expected JSON value, found end of file(%zu:%zu)\n", parser->line + 1, parser->column + 1);
       }
    }
 
