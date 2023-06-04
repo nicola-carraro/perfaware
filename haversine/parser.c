@@ -57,7 +57,7 @@ typedef struct
 {
    size_t capacity;
    size_t count;
-   Value *elements;
+   Value **elements;
 } Elements;
 
 typedef struct _Value
@@ -94,7 +94,7 @@ void printValue(Value *value, size_t indentation, size_t indentationLevel);
 
 void expectCharacter(Parser *parser, char character);
 
-void addElement(Elements *elements, Value element, Arena *arena);
+void addElement(Elements *elements, Value *element, Arena *arena);
 
 void printSpace();
 
@@ -602,7 +602,7 @@ Elements *parseArray(Parser *parser)
    if (!isRightBracket(parser))
    {
       Value *element = parseElement(parser);
-      addElement(result, *element, parser->arena);
+      addElement(result, element, parser->arena);
    }
 
    while (!isRightBracket(parser))
@@ -610,12 +610,12 @@ Elements *parseArray(Parser *parser)
       expectComma(parser);
       next(parser);
       Value *element = parseElement(parser);
-      addElement(result, *element, parser->arena);
+      addElement(result, element, parser->arena);
    }
 
    next(parser);
 
-   return NULL;
+   return result;
 }
 
 void printString(String string)
@@ -690,15 +690,15 @@ void printArray(Elements *array, size_t indentation, size_t indentationLevel)
    for (size_t elementIndex = 0; elementIndex < array->count - 1; elementIndex++)
    {
 
-      Value element = array->elements[elementIndex];
-      printElement(&element, indentation, indentationLevel);
+      Value *element = array->elements[elementIndex];
+      printElement(element, indentation, indentationLevel);
       printf(",\n");
    }
 
    if (array->count > 0)
    {
-      Value element = array->elements[array->count - 1];
-      printElement(&element, indentation, indentationLevel);
+      Value *element = array->elements[array->count - 1];
+      printElement(element, indentation, indentationLevel);
       printf("\n");
    }
    printf("]\n");
@@ -757,7 +757,7 @@ Elements *initElements(Arena *arena)
 
    result->capacity = ELEMENTS_INITIAL_CAPACITY;
 
-   result->elements = arenaAllocate(arena, result->capacity * sizeof(Value));
+   result->elements = arenaAllocate(arena, result->capacity * sizeof(*result->elements));
 
    result->count = 0;
 
@@ -828,7 +828,7 @@ void addMember(Members *members, Member member, Parser *parser)
    members->count++;
 }
 
-void addElement(Elements *elements, Value element, Arena *arena)
+void addElement(Elements *elements, Value *element, Arena *arena)
 {
 
    assert(elements != NULL);
@@ -836,8 +836,8 @@ void addElement(Elements *elements, Value element, Arena *arena)
    if (elements->count >= elements->capacity)
    {
       size_t newCapacity = elements->capacity * 10;
-      Value *newElements = arenaAllocate(arena, newCapacity * sizeof(Value));
-      memcpy(newElements, elements->elements, elements->capacity * sizeof(Value));
+      Value **newElements = arenaAllocate(arena, newCapacity * sizeof(*elements->elements));
+      memcpy(newElements, elements->elements, elements->capacity * sizeof(*elements->elements));
       elements->capacity = newCapacity;
       elements->elements = newElements;
    }
