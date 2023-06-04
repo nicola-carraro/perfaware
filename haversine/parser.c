@@ -16,6 +16,10 @@
 
 #define COMMA ','
 
+#define LEFT_BRACKET '['
+
+#define RIGHT_BRACKET ']'
+
 typedef struct
 {
    String text;
@@ -48,6 +52,14 @@ typedef struct _Members
    Member *members;
 } Members;
 
+#define ELEMENTS_INITIAL_CAPACITY 100
+typedef struct
+{
+   size_t capacity;
+   size_t count;
+   Value *elements;
+} Elements;
+
 typedef struct _Value
 {
    ValueType type;
@@ -56,6 +68,7 @@ typedef struct _Value
       String string;
       double number;
       Members *object;
+      Elements *array;
    } payload;
 } Value;
 
@@ -81,7 +94,11 @@ void printValue(Value *value, size_t indentation, size_t indentationLevel);
 
 void expectCharacter(Parser *parser, char character);
 
+void addElement(Elements *elements, Value element, Arena *arena);
+
 void printSpace();
+
+Elements *initElements(Arena *arena);
 
 Parser initParser(String text, Arena *arena)
 {
@@ -177,24 +194,22 @@ void skipWhitespace(Parser *parser)
 
 bool isDoubleQuotes(Parser *parser)
 {
-   if (!hasNext(parser))
-   {
-      return false;
-   }
-   char byte = peekByte(parser);
+   return isCharacter(parser, DOUBLE_QUOTES);
+}
 
-   return byte == DOUBLE_QUOTES;
+bool isLeftBracket(Parser *parser)
+{
+   return isCharacter(parser, LEFT_BRACKET);
+}
+
+bool isRightBracket(Parser *parser)
+{
+   return isCharacter(parser, RIGHT_BRACKET);
 }
 
 bool isReverseSolidus(Parser *parser)
 {
-   if (!hasNext(parser))
-   {
-      return false;
-   }
-   char byte = peekByte(parser);
-
-   return byte == REVERSE_SOLIDUS;
+   return isCharacter(parser, REVERSE_SOLIDUS);
 }
 
 bool isControlCharacter(Parser *parser)
@@ -571,7 +586,36 @@ Members *parseObject(Parser *parser)
       addMember(result, member, parser);
    }
 
+   next(parser);
+
    return result;
+}
+
+Elements *parseArray(Parser *parser)
+{
+   assert(parser != NULL);
+   assert(isLeftBracket(parser));
+   next(parser);
+
+   Elements *result = initElements(parser->arena);
+
+   if (!isRightBracket(parser))
+   {
+      Value *element = parseElement(parser);
+      addElement(result, *element, parser->arena);
+   }
+
+   while (!isRightBracket(parser))
+   {
+      expectComma(parser);
+      next(parser);
+      Value *element = parseElement(parser);
+      addElement(result, *element, parser->arena);
+   }
+
+   next(parser);
+
+   return NULL;
 }
 
 void printString(String string)
@@ -634,6 +678,32 @@ void printObject(Members *object, size_t indentation, size_t indentationLevel)
    printf("}\n");
 }
 
+void printElement(Value *element, size_t indentation, size_t indentationLevel)
+{
+   printIndentation(indentation, indentationLevel + 1);
+   printValue(element, indentation, indentationLevel + 1);
+}
+
+void printArray(Elements *array, size_t indentation, size_t indentationLevel)
+{
+   printf("[\n");
+   for (size_t elementIndex = 0; elementIndex < array->count - 1; elementIndex++)
+   {
+
+      Value element = array->elements[elementIndex];
+      printElement(&element, indentation, indentationLevel);
+      printf(",\n");
+   }
+
+   if (array->count > 0)
+   {
+      Value element = array->elements[array->count - 1];
+      printElement(&element, indentation, indentationLevel);
+      printf("\n");
+   }
+   printf("]\n");
+}
+
 void printValue(Value *value, size_t indentation, size_t indentationLevel)
 {
 
@@ -654,6 +724,11 @@ void printValue(Value *value, size_t indentation, size_t indentationLevel)
       printObject(value->payload.object, indentation, indentationLevel);
    }
    break;
+   case ValueType_Array:
+   {
+      printArray(value->payload.array, indentation, indentationLevel);
+   }
+   break;
    default:
    {
       die(__FILE__, __LINE__, 0, "unsupported value type %d", value->type);
@@ -669,6 +744,20 @@ Members *initMembers(Arena *arena)
    result->capacity = MEMBERS_INITIAL_CAPACITY;
 
    result->members = arenaAllocate(arena, result->capacity * sizeof(Member));
+
+   result->count = 0;
+
+   return result;
+}
+
+Elements *initElements(Arena *arena)
+{
+
+   Elements *result = arenaAllocate(arena, sizeof(Elements));
+
+   result->capacity = ELEMENTS_INITIAL_CAPACITY;
+
+   result->elements = arenaAllocate(arena, result->capacity * sizeof(Value));
 
    result->count = 0;
 
@@ -739,6 +828,24 @@ void addMember(Members *members, Member member, Parser *parser)
    members->count++;
 }
 
+void addElement(Elements *elements, Value element, Arena *arena)
+{
+
+   assert(elements != NULL);
+
+   if (elements->count >= elements->capacity)
+   {
+      size_t newCapacity = elements->capacity * 10;
+      Value *newElements = arenaAllocate(arena, newCapacity * sizeof(Value));
+      memcpy(newElements, elements->elements, elements->capacity * sizeof(Value));
+      elements->capacity = newCapacity;
+      elements->elements = newElements;
+   }
+
+   elements->elements[elements->count] = element;
+   elements->count++;
+}
+
 Value *parseElement(Parser *parser)
 {
 
@@ -762,6 +869,11 @@ Value *parseElement(Parser *parser)
    {
       result->payload.object = parseObject(parser);
       result->type = ValueType_Object;
+   }
+   else if (isLeftBracket(parser))
+   {
+      result->payload.array = parseArray(parser);
+      result->type = ValueType_Array;
    }
    else
    {
