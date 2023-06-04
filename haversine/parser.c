@@ -75,7 +75,7 @@ Members *initMembers(Arena *arena);
 
 bool isCharacter(Parser *parser, char character);
 
-void addMember(Members *members, Member member, Arena *arena);
+void addMember(Members *members, Member member, Parser *parser);
 
 void printValue(Value *value, size_t indentation, size_t indentationLevel);
 
@@ -560,7 +560,7 @@ Members *parseObject(Parser *parser)
    if (!isRightBrace(parser))
    {
       Member member = parseMember(parser);
-      addMember(result, member, parser->arena);
+      addMember(result, member, parser);
    }
 
    while (!isRightBrace(parser))
@@ -568,7 +568,7 @@ Members *parseObject(Parser *parser)
       expectComma(parser);
       next(parser);
       Member member = parseMember(parser);
-      addMember(result, member, parser->arena);
+      addMember(result, member, parser);
    }
 
    return result;
@@ -675,14 +675,61 @@ Members *initMembers(Arena *arena)
    return result;
 }
 
-void addMember(Members *members, Member member, Arena *arena)
+bool stringsEqual(String left, String right)
+{
+   if (left.size != right.size)
+   {
+      return false;
+   }
+
+   size_t size = left.size;
+
+   for (size_t byteIndex = 0; byteIndex < size; byteIndex++)
+   {
+
+      if (left.data[byteIndex] != right.data[byteIndex])
+      {
+         return false;
+      }
+   }
+
+   return true;
+}
+
+Value *getMemberValue(Members *members, String key)
+{
+   for (size_t memberIndex = 0; memberIndex < members->count; memberIndex++)
+   {
+      Member member = members->members[memberIndex];
+
+      if (stringsEqual(member.key, key))
+      {
+         return member.value;
+      }
+   }
+
+   return NULL;
+}
+
+bool hasKey(Members *members, String key)
+{
+   return getMemberValue(members, key) != NULL;
+}
+
+void addMember(Members *members, Member member, Parser *parser)
 {
 
    assert(members != NULL);
+
+   if (hasKey(members, member.key))
+   {
+      die(__FILE__, __LINE__, 0, "duplicate key: \"%.*s\" (%zu:%zu)\n", member.key.size, member.key.data, parser->line + 1, parser->column + 1);
+   }
+
    if (members->count >= members->capacity)
    {
       size_t newCapacity = members->capacity * 10;
-      Member *newMembers = arenaAllocate(arena, newCapacity * sizeof(Member));
+      Member *newMembers = arenaAllocate(parser->arena, newCapacity * sizeof(Member));
       memcpy(newMembers, members->members, members->capacity * sizeof(Member));
       members->capacity = newCapacity;
       members->members = newMembers;
