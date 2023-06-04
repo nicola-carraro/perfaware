@@ -723,7 +723,7 @@ void printObject(Members *object, size_t indentation, size_t indentationLevel)
       printf("\n");
    }
    printIndentation(indentation, indentationLevel);
-   printf("}\n");
+   printf("}");
 }
 
 void printElement(Value *element, size_t indentation, size_t indentationLevel)
@@ -750,7 +750,7 @@ void printArray(Elements *array, size_t indentation, size_t indentationLevel)
       printf("\n");
    }
    printIndentation(indentation, indentationLevel);
-   printf("]\n");
+   printf("]");
 }
 
 void printValue(Value *value, size_t indentation, size_t indentationLevel)
