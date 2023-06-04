@@ -20,6 +20,18 @@
 
 #define RIGHT_BRACKET ']'
 
+#define NULL_LITERAL "null"
+
+#define TRUE_LITERAL "true"
+
+#define FALSE_LITERAL "false"
+
+const String nullLiteral = {NULL_LITERAL, sizeof(NULL_LITERAL) - 1};
+
+const String trueLiteral = {TRUE_LITERAL, sizeof(TRUE_LITERAL) - 1};
+
+const String falseLiteral = {FALSE_LITERAL, sizeof(FALSE_LITERAL) - 1};
+
 typedef struct
 {
    String text;
@@ -31,12 +43,12 @@ typedef struct
 
 typedef enum
 {
-   ValueType_Invalid,
    ValueType_Object,
    ValueType_Array,
    ValueType_String,
    ValueType_Number,
    ValueType_True,
+   ValueType_False,
    ValueType_Null
 } ValueType;
 
@@ -118,6 +130,41 @@ bool isWhitespace(Parser *parser)
 
    char byte = parser->text.data[parser->offset];
    return byte == 0x20 || byte == 0x0a || byte == 0x0d || byte == 0x09;
+}
+
+bool isLiteral(Parser *parser, String literal)
+{
+   if (parser->text.size - parser->offset < literal.size)
+   {
+      return false;
+   }
+
+   for (size_t byteIndex = 0; byteIndex < literal.size; byteIndex++)
+   {
+      char byte = parser->text.data[parser->offset + byteIndex];
+
+      if (byte != literal.data[byteIndex])
+      {
+         return false;
+      }
+   }
+
+   return true;
+}
+
+bool isTrueLiteral(Parser *parser)
+{
+   return isLiteral(parser, trueLiteral);
+}
+
+bool isFalseLiteral(Parser *parser)
+{
+   return isLiteral(parser, falseLiteral);
+}
+
+bool isNullLiteral(Parser *parser)
+{
+   return isLiteral(parser, nullLiteral);
 }
 
 bool hasNext(Parser *parser)
@@ -675,6 +722,7 @@ void printObject(Members *object, size_t indentation, size_t indentationLevel)
       printMember(member, indentation, indentationLevel);
       printf("\n");
    }
+   printIndentation(indentation, indentationLevel);
    printf("}\n");
 }
 
@@ -701,6 +749,7 @@ void printArray(Elements *array, size_t indentation, size_t indentationLevel)
       printElement(element, indentation, indentationLevel);
       printf("\n");
    }
+   printIndentation(indentation, indentationLevel);
    printf("]\n");
 }
 
@@ -727,6 +776,21 @@ void printValue(Value *value, size_t indentation, size_t indentationLevel)
    case ValueType_Array:
    {
       printArray(value->payload.array, indentation, indentationLevel);
+   }
+   break;
+   case ValueType_True:
+   {
+      printf(TRUE_LITERAL);
+   }
+   break;
+   case ValueType_False:
+   {
+      printf(FALSE_LITERAL);
+   }
+   break;
+   case ValueType_Null:
+   {
+      printf(NULL_LITERAL);
    }
    break;
    default:
@@ -846,6 +910,11 @@ void addElement(Elements *elements, Value *element, Arena *arena)
    elements->count++;
 }
 
+void skipCharacters(Parser *parser, size_t count)
+{
+   parser->offset += count;
+}
+
 Value *parseElement(Parser *parser)
 {
 
@@ -874,6 +943,21 @@ Value *parseElement(Parser *parser)
    {
       result->payload.array = parseArray(parser);
       result->type = ValueType_Array;
+   }
+   else if (isTrueLiteral(parser))
+   {
+      skipCharacters(parser, trueLiteral.size);
+      result->type = ValueType_True;
+   }
+   else if (isFalseLiteral(parser))
+   {
+      skipCharacters(parser, falseLiteral.size);
+      result->type = ValueType_False;
+   }
+   else if (isNullLiteral(parser))
+   {
+      skipCharacters(parser, nullLiteral.size);
+      result->type = ValueType_Null;
    }
    else
    {
