@@ -19,7 +19,11 @@ int main(void)
 
     Parser parser = initParser(text, &arena);
 
-    parseElement(&parser);
+    Value *json = parseElement(&parser);
+
+    // printf("Json: %p", json);
+
+    // printString(json->payload.string);
 
     return 0;
 }

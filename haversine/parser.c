@@ -6,6 +6,8 @@
 
 #define DOUBLE_QUOTES '"'
 #define REVERSE_SOLIDUS '\\'
+#define LEFT_BRACE '{'
+#define RIGHT_BRACE '}'
 
 typedef struct
 {
@@ -27,15 +29,32 @@ typedef enum
    ValueType_Null
 } ValueType;
 
-typedef struct
+typedef struct _Value Value;
+typedef struct _Member Member;
+typedef struct _Members Members;
+
+typedef struct _Members
+{
+   size_t count;
+   Member *members;
+} Members;
+
+typedef struct _Value
 {
    ValueType type;
    union
    {
       String string;
       double number;
+      Members object;
    } payload;
 } Value;
+
+typedef struct _Member
+{
+   String *key;
+   Value value;
+} Member;
 
 char peekByte(Parser *parser);
 bool hasNext(Parser *parser);
@@ -303,6 +322,30 @@ bool isNumberStart(Parser *parser)
    return isDigit(parser) || isMinusSign(parser);
 }
 
+bool isLeftBrace(Parser *parser)
+{
+   if (!hasNext(parser))
+   {
+      return false;
+   }
+
+   char byte = peekByte(parser);
+
+   return byte == LEFT_BRACE;
+}
+
+bool isRightBrace(Parser *parser)
+{
+   if (!hasNext(parser))
+   {
+      return false;
+   }
+
+   char byte = peekByte(parser);
+
+   return byte == RIGHT_BRACE;
+}
+
 size_t countDigits(Parser *parser)
 {
    size_t result = 0;
@@ -425,24 +468,28 @@ void printString(String string)
    printf("%.*s", bytesToPrint, string.data);
 }
 
-Value parseElement(Parser *parser)
+Value *parseElement(Parser *parser)
 {
 
    assert(parser != NULL);
-   Value result = {0};
+   Value *result = (Value *)arenaAllocate(parser->arena, sizeof(Value));
    skipWhitespace(parser);
 
    if (isDoubleQuotes(parser))
    {
-      result.payload.string = parseString(parser);
-      result.type = ValueType_String;
+      result->payload.string = parseString(parser);
+      result->type = ValueType_String;
       // printString(result.payload.string);
    }
    else if (isNumberStart(parser))
    {
-      result.payload.number = parseNumber(parser);
-      result.type = ValueType_Number;
-      printf("%f", result.payload.number);
+      result->payload.number = parseNumber(parser);
+      result->type = ValueType_Number;
+      printf("%f", result->payload.number);
+   }
+   else if (isLeftBrace(parser))
+   {
+      result->type = ValueType_Object;
    }
    else
    {
