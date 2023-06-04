@@ -518,7 +518,7 @@ double parseNumber(Parser *parser)
       {
          next(parser);
          offset++;
-         size_t fractionDigits = countIntegerDigits(parser);
+         size_t fractionDigits = countDigits(parser);
          offset += fractionDigits;
       }
 
@@ -533,7 +533,7 @@ double parseNumber(Parser *parser)
          }
          next(parser);
          offset++;
-         size_t exponentDigits = countIntegerDigits(parser);
+         size_t exponentDigits = countDigits(parser);
 
          if (hasMinusSign && exponentDigits == 0)
          {
