@@ -21,7 +21,7 @@ int main(void)
 
     Value *json = parseElement(&parser);
 
-    printValue(json, 2, 0);
+    printValue(json, 4, 0);
 
     return 0;
 }

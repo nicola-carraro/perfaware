@@ -81,6 +81,8 @@ void printValue(Value *value, size_t indentation, size_t indentationLevel);
 
 void expectCharacter(Parser *parser, char character);
 
+void printSpace();
+
 Parser initParser(String text, Arena *arena)
 {
    Parser parser = {0};
@@ -586,6 +588,14 @@ void printString(String string)
    printf("\"%.*s\"", bytesToPrint, string.data);
 }
 
+void printIndentation(size_t indentation, size_t indentationLevel)
+{
+   for (size_t space = 0; space < indentation * indentationLevel; space++)
+   {
+      printSpace();
+   }
+}
+
 void printSpace()
 {
    printf(" ");
@@ -596,24 +606,36 @@ void printNumber(double number)
    printf("%1.12f", number);
 }
 
+void printMember(Member member, size_t indentation, size_t indentationLevel)
+{
+   printIndentation(indentation, indentationLevel + 1);
+   printString(member.key);
+   printf(" : ");
+   printValue(member.value, indentation, indentationLevel + 1);
+}
+
 void printObject(Members *object, size_t indentation, size_t indentationLevel)
 {
-   for (size_t memberIndex = 0; memberIndex < object->count; memberIndex++)
+   printf("{\n");
+   for (size_t memberIndex = 0; memberIndex < object->count - 1; memberIndex++)
    {
+
       Member member = object->members[memberIndex];
-      printString(member.key);
-      printf(" : ");
-      printValue(member.value, indentation, indentationLevel + 1);
+      printMember(member, indentation, indentationLevel);
+      printf(",\n");
    }
+
+   if (object->count > 0)
+   {
+      Member member = object->members[object->count - 1];
+      printMember(member, indentation, indentationLevel);
+      printf("\n");
+   }
+   printf("}\n");
 }
 
 void printValue(Value *value, size_t indentation, size_t indentationLevel)
 {
-
-   for (size_t space = 0; space < indentation * indentationLevel; space++)
-   {
-      printSpace();
-   }
 
    switch (value->type)
    {
