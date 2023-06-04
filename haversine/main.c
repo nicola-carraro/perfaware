@@ -21,9 +21,7 @@ int main(void)
 
     Value *json = parseElement(&parser);
 
-    printf("Json: %p\n", json);
-
-    printString(json->payload.string);
+    printValue(json, 2, 0);
 
     return 0;
 }

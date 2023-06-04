@@ -5,10 +5,16 @@
 #include "stdint.h"
 
 #define DOUBLE_QUOTES '"'
+
 #define REVERSE_SOLIDUS '\\'
+
 #define LEFT_BRACE '{'
+
 #define RIGHT_BRACE '}'
+
 #define COLON ':'
+
+#define COMMA ','
 
 typedef struct
 {
@@ -49,7 +55,7 @@ typedef struct _Value
    {
       String string;
       double number;
-      Members object;
+      Members *object;
    } payload;
 } Value;
 
@@ -66,6 +72,14 @@ bool hasNext(Parser *parser);
 Value *parseElement(Parser *parser);
 
 Members *initMembers(Arena *arena);
+
+bool isCharacter(Parser *parser, char character);
+
+void addMember(Members *members, Member member, Arena *arena);
+
+void printValue(Value *value, size_t indentation, size_t indentationLevel);
+
+void expectCharacter(Parser *parser, char character);
 
 Parser initParser(String text, Arena *arena)
 {
@@ -197,7 +211,7 @@ String parseString(Parser *parser)
    assert(parser != NULL);
    assert(parser->text.data != NULL);
    assert(hasNext(parser));
-   assert(isDoubleQuotes(parser));
+   expectCharacter(parser, DOUBLE_QUOTES);
 
    size_t stringFirstLine = parser->line;
    size_t stringFirstColumn = parser->column;
@@ -366,6 +380,18 @@ bool isColon(Parser *parser)
    return byte == COLON;
 }
 
+bool isCharacter(Parser *parser, char character)
+{
+   if (!hasNext(parser))
+   {
+      return false;
+   }
+
+   char byte = peekByte(parser);
+
+   return byte == character;
+}
+
 size_t countDigits(Parser *parser)
 {
    size_t result = 0;
@@ -473,26 +499,45 @@ double parseNumber(Parser *parser)
 
    return result;
 }
+
+void expectCharacter(Parser *parser, char character)
+{
+   if (!hasNext(parser))
+   {
+      die(__FILE__, __LINE__, 0, "expected %c, found end of file (%zu:%zu)\n", character, parser->line + 1, parser->column + 1);
+   }
+   else if (!isCharacter(parser, character))
+   {
+
+      String nextColumn = next(parser);
+      die(__FILE__, __LINE__, 0, "expected %c, found %.*s (%zu:%zu)\n", character, nextColumn.size, nextColumn.data, parser->line + 1, parser->column + 1);
+   }
+}
+
+void expectColon(Parser *parser)
+{
+   expectCharacter(parser, COLON);
+}
+
+void expectComma(Parser *parser)
+{
+   expectCharacter(parser, COMMA);
+}
+
 Member parseMember(Parser *parser)
 {
+
+   skipWhitespace(parser);
+
    Member result = {0};
 
    result.key = parseString(parser);
 
    skipWhitespace(parser);
 
-   if (!isColon(parser))
-   {
-      if (!hasNext(parser))
-      {
-         die(__FILE__, __LINE__, 0, "expected colon, found end of file (%zu:%zu)\n", parser->line + 1, parser->column + 1);
-      }
-      else
-      {
-         String nextColumn = next(parser);
-         die(__FILE__, __LINE__, 0, "expected colon, found %.*s (%zu:%zu)\n", nextColumn.size, nextColumn.data, parser->line + 1, parser->column + 1);
-      }
-   }
+   expectColon(parser);
+
+   next(parser);
 
    result.value = parseElement(parser);
 
@@ -508,6 +553,22 @@ Members *parseObject(Parser *parser)
 
    next(parser);
 
+   skipWhitespace(parser);
+
+   if (!isRightBrace(parser))
+   {
+      Member member = parseMember(parser);
+      addMember(result, member, parser->arena);
+   }
+
+   while (!isRightBrace(parser))
+   {
+      expectComma(parser);
+      next(parser);
+      Member member = parseMember(parser);
+      addMember(result, member, parser->arena);
+   }
+
    return result;
 }
 
@@ -522,7 +583,60 @@ void printString(String string)
    {
       bytesToPrint = (int)string.size;
    }
-   printf("%.*s", bytesToPrint, string.data);
+   printf("\"%.*s\"", bytesToPrint, string.data);
+}
+
+void printSpace()
+{
+   printf(" ");
+}
+
+void printNumber(double number)
+{
+   printf("%1.12f", number);
+}
+
+void printObject(Members *object, size_t indentation, size_t indentationLevel)
+{
+   for (size_t memberIndex = 0; memberIndex < object->count; memberIndex++)
+   {
+      Member member = object->members[memberIndex];
+      printString(member.key);
+      printf(" : ");
+      printValue(member.value, indentation, indentationLevel + 1);
+   }
+}
+
+void printValue(Value *value, size_t indentation, size_t indentationLevel)
+{
+
+   for (size_t space = 0; space < indentation * indentationLevel; space++)
+   {
+      printSpace();
+   }
+
+   switch (value->type)
+   {
+   case ValueType_String:
+   {
+      printString(value->payload.string);
+   }
+   break;
+   case ValueType_Number:
+   {
+      printNumber(value->payload.number);
+   }
+   break;
+   case ValueType_Object:
+   {
+      printObject(value->payload.object, indentation, indentationLevel);
+   }
+   break;
+   default:
+   {
+      die(__FILE__, __LINE__, 0, "unsupported value type %d", value->type);
+   }
+   }
 }
 
 Members *initMembers(Arena *arena)
@@ -573,10 +687,11 @@ Value *parseElement(Parser *parser)
    {
       result->payload.number = parseNumber(parser);
       result->type = ValueType_Number;
-      printf("%f", result->payload.number);
+      // printf("%f", result->payload.number);
    }
    else if (isLeftBrace(parser))
    {
+      result->payload.object = parseObject(parser);
       result->type = ValueType_Object;
    }
    else
