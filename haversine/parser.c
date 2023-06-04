@@ -8,6 +8,7 @@
 #define REVERSE_SOLIDUS '\\'
 #define LEFT_BRACE '{'
 #define RIGHT_BRACE '}'
+#define COLON ':'
 
 typedef struct
 {
@@ -33,8 +34,10 @@ typedef struct _Value Value;
 typedef struct _Member Member;
 typedef struct _Members Members;
 
+#define MEMBERS_INITIAL_CAPACITY 100
 typedef struct _Members
 {
+   size_t capacity;
    size_t count;
    Member *members;
 } Members;
@@ -52,12 +55,17 @@ typedef struct _Value
 
 typedef struct _Member
 {
-   String *key;
-   Value value;
+   String key;
+   Value *value;
 } Member;
 
 char peekByte(Parser *parser);
+
 bool hasNext(Parser *parser);
+
+Value *parseElement(Parser *parser);
+
+Members *initMembers(Arena *arena);
 
 Parser initParser(String text, Arena *arena)
 {
@@ -346,6 +354,18 @@ bool isRightBrace(Parser *parser)
    return byte == RIGHT_BRACE;
 }
 
+bool isColon(Parser *parser)
+{
+   if (!hasNext(parser))
+   {
+      return false;
+   }
+
+   char byte = peekByte(parser);
+
+   return byte == COLON;
+}
+
 size_t countDigits(Parser *parser)
 {
    size_t result = 0;
@@ -453,6 +473,43 @@ double parseNumber(Parser *parser)
 
    return result;
 }
+Member parseMember(Parser *parser)
+{
+   Member result = {0};
+
+   result.key = parseString(parser);
+
+   skipWhitespace(parser);
+
+   if (!isColon(parser))
+   {
+      if (!hasNext(parser))
+      {
+         die(__FILE__, __LINE__, 0, "expected colon, found end of file (%zu:%zu)\n", parser->line + 1, parser->column + 1);
+      }
+      else
+      {
+         String nextColumn = next(parser);
+         die(__FILE__, __LINE__, 0, "expected colon, found %.*s (%zu:%zu)\n", nextColumn.size, nextColumn.data, parser->line + 1, parser->column + 1);
+      }
+   }
+
+   result.value = parseElement(parser);
+
+   return result;
+}
+
+Members *parseObject(Parser *parser)
+{
+   assert(parser != NULL);
+   assert(isLeftBrace(parser));
+
+   Members *result = initMembers(parser->arena);
+
+   next(parser);
+
+   return result;
+}
 
 void printString(String string)
 {
@@ -466,6 +523,37 @@ void printString(String string)
       bytesToPrint = (int)string.size;
    }
    printf("%.*s", bytesToPrint, string.data);
+}
+
+Members *initMembers(Arena *arena)
+{
+
+   Members *result = arenaAllocate(arena, sizeof(Members));
+
+   result->capacity = MEMBERS_INITIAL_CAPACITY;
+
+   result->members = arenaAllocate(arena, result->capacity * sizeof(Member));
+
+   result->count = 0;
+
+   return result;
+}
+
+void addMember(Members *members, Member member, Arena *arena)
+{
+
+   assert(members != NULL);
+   if (members->count >= members->capacity)
+   {
+      size_t newCapacity = members->capacity * 10;
+      Member *newMembers = arenaAllocate(arena, newCapacity * sizeof(Member));
+      memcpy(newMembers, members->members, members->capacity * sizeof(Member));
+      members->capacity = newCapacity;
+      members->members = newMembers;
+   }
+
+   members->members[members->count] = member;
+   members->count++;
 }
 
 Value *parseElement(Parser *parser)
