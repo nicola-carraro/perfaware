@@ -849,7 +849,7 @@ bool stringsEqual(String left, String right)
    return true;
 }
 
-bool stringsEqualsCstring(String string, char *cString)
+bool stringEqualsCstring(String string, char *cString)
 {
 
    assert(cString != NULL);
@@ -954,7 +954,7 @@ Value *getMemberValueOfObject(Value *object, char *key)
 
       Member member = object->payload.object->members[memberIndex];
 
-      if (stringsEqualsCstring(member.key, key))
+      if (stringEqualsCstring(member.key, key))
       {
          return member.value;
       }
