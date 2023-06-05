@@ -864,7 +864,16 @@ bool stringsEqualsCstring(String string, char *cString)
       }
    }
 
-   return true;
+   char byte = cString[string.size];
+
+   if (byte != '\0')
+   {
+      return false;
+   }
+   else
+   {
+      return true;
+   }
 }
 
 Value *getMemberValueOfMembers(Members *members, String key)
