@@ -5,6 +5,7 @@
 #include "stdarg.h"
 #include "string.h"
 #include "assert.h"
+#include "math.h"
 
 #ifndef COMMON_C
 
@@ -14,6 +15,8 @@
 #define ANSWERS_PATH "data/answers"
 
 #define ARENA_SIZE 1024 * 1024 * 1024
+
+#define EARTH_RADIUS 6371
 
 typedef struct
 {
@@ -162,6 +165,31 @@ String readFileToString(char *path, Arena *arena)
     {
         die(__FILE__, __LINE__, errno, "could not read %s, read %zu", path, read);
     }
+
+    return result;
+}
+
+double degreesToRadians(double degrees)
+{
+    return degrees * 0.01745329251994329577;
+}
+
+double square(double n)
+{
+    return n * n;
+}
+
+double haversine(double x1Degrees, double y1Degrees, double x2Degrees, double y2Degrees, double radius)
+{
+
+    double x1Radians = degreesToRadians(x1Degrees);
+    double y1Radians = degreesToRadians(y1Degrees);
+    double x2Radians = degreesToRadians(x2Degrees);
+    double y2Radians = degreesToRadians(y2Degrees);
+
+    double rootTerm = square(sin((y2Radians - y1Radians) / 2.0)) + cos(y1Radians) * cos(y2Radians) * square(sin((x2Radians - x1Radians) / 2.0));
+
+    double result = 2.0 * radius * asin(sqrt(rootTerm));
 
     return result;
 }

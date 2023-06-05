@@ -849,7 +849,25 @@ bool stringsEqual(String left, String right)
    return true;
 }
 
-Value *getMemberValue(Members *members, String key)
+bool stringsEqualsCstring(String string, char *cString)
+{
+
+   assert(cString != NULL);
+   assert(string.data != NULL);
+   for (size_t byteIndex = 0; byteIndex < string.size; byteIndex++)
+   {
+
+      char byte = cString[byteIndex];
+      if (byte == '\0' || byte != string.data[byteIndex])
+      {
+         return false;
+      }
+   }
+
+   return true;
+}
+
+Value *getMemberValueOfMembers(Members *members, String key)
 {
    for (size_t memberIndex = 0; memberIndex < members->count; memberIndex++)
    {
@@ -866,7 +884,7 @@ Value *getMemberValue(Members *members, String key)
 
 bool hasKey(Members *members, String key)
 {
-   return getMemberValue(members, key) != NULL;
+   return getMemberValueOfMembers(members, key) != NULL;
 }
 
 void addMember(Members *members, Member member, Parser *parser)
@@ -913,6 +931,68 @@ void addElement(Elements *elements, Value *element, Arena *arena)
 void skipCharacters(Parser *parser, size_t count)
 {
    parser->offset += count;
+}
+
+Value *getMemberValueOfObject(Value *object, char *key)
+{
+   if (object->type != ValueType_Object)
+   {
+      die(__FILE__, __LINE__, 0, "Cannot get member of non-object value. trying to get %s", key);
+   }
+
+   for (size_t memberIndex = 0; memberIndex < object->payload.object->count; memberIndex++)
+   {
+
+      Member member = object->payload.object->members[memberIndex];
+
+      if (stringsEqualsCstring(member.key, key))
+      {
+         return member.value;
+      }
+   }
+
+   die(__FILE__, __LINE__, 0, "No element named %s", key);
+
+   return NULL;
+}
+
+double getAsNumber(Value *number)
+{
+
+   if (number->type != ValueType_Number)
+   {
+      die(__FILE__, __LINE__, 0, "Cannot get non-number as number");
+   }
+
+   return number->payload.number;
+}
+
+Value *getElementOfArray(Value *array, size_t index)
+{
+   if (array->type != ValueType_Array)
+   {
+      die(__FILE__, __LINE__, 0, "Cannot get element of non-array value");
+   }
+
+   if (array->payload.array->count > index)
+   {
+      return array->payload.array->elements[index];
+   }
+   else
+   {
+      die(__FILE__, __LINE__, 0, "Index out of bount %zu", index);
+      return NULL;
+   }
+}
+
+size_t getElementCount(Value *array)
+{
+   if (array->type != ValueType_Array)
+   {
+      die(__FILE__, __LINE__, 0, "Cannot get element count of non-array value");
+   }
+
+   return array->payload.array->count;
 }
 
 Value *parseElement(Parser *parser)

@@ -11,13 +11,10 @@
 
 #include "common.c"
 
-
-
 #define UNIFORM_METHOD "uniform"
 #define CLUSTER_METHOD "cluster"
 
 #define CLUSTER_COUNT 8
-#define EARTH_RADIUS 6371
 #define CLUSTER_WIDTH 5.0
 #define CLUSTER_HEIGHT 5.0
 #define MIN_X -180.0
@@ -105,31 +102,6 @@ Cluster initializeCluster(double width, double height)
 bool cStringsEqual(char *left, char *right)
 {
     return strcmp(left, right) == 0;
-}
-
-double square(double n)
-{
-    return n * n;
-}
-
-double degreesToRadians(double degrees)
-{
-    return degrees * 0.01745329251994329577;
-}
-
-double haversine(double x1Degrees, double y1Degrees, double x2Degrees, double y2Degrees, double radius)
-{
-
-    double x1Radians = degreesToRadians(x1Degrees);
-    double y1Radians = degreesToRadians(y1Degrees);
-    double x2Radians = degreesToRadians(x2Degrees);
-    double y2Radians = degreesToRadians(y2Degrees);
-
-    double rootTerm = square(sin((y2Radians - y1Radians) / 2.0)) + cos(y1Radians) * cos(y2Radians) * square(sin((x2Radians - x1Radians) / 2.0));
-
-    double result = 2.0 * radius * asin(sqrt(rootTerm));
-
-    return result;
 }
 
 int main(int argc, char *argv[])
