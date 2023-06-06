@@ -92,6 +92,8 @@ typedef struct _Member
 
 uint8_t peekByte(Parser *parser);
 
+uint8_t peekBytePlusN(Parser *parser, size_t n);
+
 bool hasNext(Parser *parser);
 
 Value *parseElement(Parser *parser);
@@ -186,38 +188,54 @@ String next(Parser *parser)
    String result = {0};
    result.data = parser->text.data + parser->offset;
 
-   uint8_t byte = peekByte(parser);
+   uint8_t firstByte = peekByte(parser);
 
-   if (byte > 0x7f)
+   bool isNewLine = firstByte == '\n';
+
+   size_t byteCount = 0;
+
+   if (firstByte <= 0x7f)
    {
-      die(__FILE__, __LINE__, 0, "Non ASCII parsing not implemented: found %#02X (line %zu, column %zu)", byte, parser->line, parser->column);
+      byteCount = 1;
    }
-
-   bool isCarriageReturn = byte == '\r';
-
-   bool isNewLine = byte == '\n';
-
-   parser->offset++;
-
-   if (isCarriageReturn && hasNext(parser) && peekByte(parser) == '\n')
+   else if (firstByte <= 0xdf)
    {
-      parser->offset++;
-      nextLine(parser);
-
-      result.size = 2;
+      byteCount = 2;
+   }
+   else if (firstByte <= 0xef)
+   {
+      byteCount = 3;
+   }
+   else if (firstByte <= 0xf7)
+   {
+      byteCount = 4;
    }
    else
    {
-      result.size = 1;
-      if (isNewLine)
+      die(__FILE__, __LINE__, 0, "invalid first byte in UTF-8 codepoint, found : found %#02X (%zu:%zu)", firstByte, parser->line, parser->column);
+   }
+
+   for (size_t byteIndex = 1; byteIndex < byteCount; byteIndex++)
+   {
+      uint8_t continuationByte = peekBytePlusN(parser, byteIndex);
+      if (continuationByte < 0x80 || continuationByte > 0xbf)
       {
-         nextLine(parser);
-      }
-      else
-      {
-         parser->column++;
+         die(__FILE__, __LINE__, 0, "invalid continuation byte in UTF-8 codepoint, found : found %#02X (%zu:%zu)", continuationByte, parser->line, parser->column);
       }
    }
+
+   if (isNewLine)
+   {
+      nextLine(parser);
+   }
+   else
+   {
+      parser->column++;
+   }
+
+   parser->offset += byteCount;
+
+   result.size = byteCount;
 
    return result;
 }
@@ -225,6 +243,13 @@ String next(Parser *parser)
 uint8_t peekByte(Parser *parser)
 {
    uint8_t result = ((uint8_t *)(parser->text.data))[parser->offset];
+
+   return result;
+}
+
+uint8_t peekBytePlusN(Parser *parser, size_t n)
+{
+   uint8_t result = ((uint8_t *)(parser->text.data + n))[parser->offset];
 
    return result;
 }
@@ -309,11 +334,11 @@ String parseString(Parser *parser)
          die(__FILE__, __LINE__, 0, "escape sequences in strings not implemented (%zu:%zu)\n", parser->line + 1, parser->column + 1);
       }
 
-      String column = next(parser);
+      String codepoint = next(parser);
 
-      result.size += column.size;
+      result.size += codepoint.size;
 
-      assert(column.size > 0);
+      assert(codepoint.size > 0);
    }
 
    next(parser);
@@ -527,8 +552,8 @@ void expectCharacter(Parser *parser, char character)
    else if (!isCharacter(parser, character))
    {
 
-      String nextColumn = next(parser);
-      die(__FILE__, __LINE__, 0, "expected %c, found %.*s (%zu:%zu)\n", character, nextColumn.size, nextColumn.data, parser->line + 1, parser->column + 1);
+      String nextCodepoint = next(parser);
+      die(__FILE__, __LINE__, 0, "expected %c, found %.*s (%zu:%zu)\n", character, nextCodepoint.data, parser->line + 1, parser->column + 1);
    }
 }
 
