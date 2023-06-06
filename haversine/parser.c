@@ -188,7 +188,31 @@ uint32_t decodeUtf8Unchecked(String codepoint)
 
    uint8_t firstByte = ((uint8_t *)(codepoint.data))[0];
 
-   uint8_t fistBytePayload = firstByte & 0x0f;
+   uint8_t fistBytePayload;
+
+   switch (codepoint.size)
+   {
+   case 1:
+   {
+      fistBytePayload = firstByte;
+   }
+   break;
+   case 2:
+   {
+      fistBytePayload = firstByte & 0x1f;
+   }
+   break;
+   case 3:
+   {
+      fistBytePayload = firstByte & 0x0f;
+   }
+   break;
+   default:
+   {
+      fistBytePayload = firstByte & 0x07;
+   }
+   break;
+   }
 
    uint32_t result = fistBytePayload;
 
