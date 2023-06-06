@@ -181,6 +181,28 @@ void nextLine(Parser *parser)
    parser->column = 0;
 }
 
+uint32_t decodeUtf8Unchecked(String codepoint)
+{
+   assert(codepoint.data != NULL);
+   assert(codepoint.size > 0 && codepoint.size < 5);
+
+   uint8_t firstByte = ((uint8_t *)(codepoint.data))[0];
+
+   uint8_t fistBytePayload = firstByte & 0x0f;
+
+   uint32_t result = fistBytePayload;
+
+   for (size_t byteIndex = 1; byteIndex < codepoint.size; byteIndex++)
+   {
+      result = result << 6;
+      uint8_t continuationByte = ((uint8_t *)(codepoint.data))[byteIndex];
+      uint8_t continuationBytePayload = continuationByte & 0x3f;
+      result |= continuationBytePayload;
+   }
+
+   return result;
+}
+
 String next(Parser *parser)
 {
 
@@ -227,8 +249,19 @@ String next(Parser *parser)
       uint8_t continuationByte = peekBytePlusN(parser, byteIndex);
       if (continuationByte < 0x80 || continuationByte > 0xbf)
       {
-         die(__FILE__, __LINE__, 0, "invalid continuation byte in UTF-8 codepoint, found : found %#02X (%zu:%zu)", continuationByte, parser->line, parser->column);
+         die(__FILE__, __LINE__, 0, "invalid continuation byte in UTF-8 codepoint : found %#02X (%zu:%zu)", continuationByte, parser->line, parser->column);
       }
+   }
+
+   parser->offset += byteCount;
+
+   result.size = byteCount;
+
+   uint32_t codePoint = decodeUtf8Unchecked(result);
+
+   if (codePoint > 0x7f)
+   {
+      printf("Codepoint : %u\n", codePoint);
    }
 
    if (isNewLine)
@@ -239,10 +272,6 @@ String next(Parser *parser)
    {
       parser->column++;
    }
-
-   parser->offset += byteCount;
-
-   result.size = byteCount;
 
    return result;
 }
