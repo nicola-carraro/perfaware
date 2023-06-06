@@ -11,27 +11,8 @@
 #include "windows.h"
 #endif
 
-int main(void)
+void printAverageDistance(Value *json)
 {
-
-#ifdef _WIN32
-    SetConsoleOutputCP(65001);
-#endif
-    Arena arena = arenaInit();
-
-    String text = readFileToString(JSON_PATH, &arena);
-
-    // printf("Json: %.*s", (int)text.size, text.data);
-    //  printf("hi");
-
-    Parser parser = initParser(text, &arena);
-
-    Value *json = parseElement(&parser);
-
-    printElement(json, 2, 0);
-
-    printf("\n");
-
     Value *pairs = getMemberValueOfObject(json, "pairs");
 
     double sum = 0;
@@ -55,6 +36,31 @@ int main(void)
     double average = sum / (double)count;
 
     printf("Average : %1.12f\n\n", average);
+}
+
+int main(void)
+{
+
+#ifdef _WIN32
+    SetConsoleOutputCP(65001);
+#endif
+
+    Arena arena = arenaInit();
+
+    String text = readFileToString(JSON_PATH, &arena);
+
+    // printf("Json: %.*s", (int)text.size, text.data);
+    //  printf("hi");
+
+    Parser parser = initParser(text, &arena);
+
+    Value *json = parseElement(&parser);
+
+    printElement(json, 2, 0);
+
+    printf("\n");
+
+    printAverageDistance(json);
 
     return 0;
 }

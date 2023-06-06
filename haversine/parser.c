@@ -90,7 +90,7 @@ typedef struct _Member
    Value *value;
 } Member;
 
-char peekByte(Parser *parser);
+uint8_t peekByte(Parser *parser);
 
 bool hasNext(Parser *parser);
 
@@ -186,7 +186,7 @@ String next(Parser *parser)
    String result = {0};
    result.data = parser->text.data + parser->offset;
 
-   char byte = peekByte(parser);
+   uint8_t byte = peekByte(parser);
 
    if (byte > 0x7f)
    {
@@ -222,9 +222,9 @@ String next(Parser *parser)
    return result;
 }
 
-char peekByte(Parser *parser)
+uint8_t peekByte(Parser *parser)
 {
-   char result = parser->text.data[parser->offset];
+   uint8_t result = ((uint8_t *)(parser->text.data))[parser->offset];
 
    return result;
 }
@@ -265,7 +265,7 @@ bool isControlCharacter(Parser *parser)
    {
       return false;
    }
-   char byte = peekByte(parser);
+   uint8_t byte = peekByte(parser);
 
    return byte < 0x20;
 }
@@ -300,7 +300,7 @@ String parseString(Parser *parser)
 
       if (isControlCharacter(parser))
       {
-         char illegalCharacter = peekByte(parser);
+         uint8_t illegalCharacter = peekByte(parser);
          die(__FILE__, __LINE__, 0, "illegal control character in string: found %#02X (%zu:%zu)\n", illegalCharacter, parser->line + 1, parser->column + 1);
       }
 
@@ -323,47 +323,22 @@ String parseString(Parser *parser)
 
 bool isMinusSign(Parser *parser)
 {
-   if (!hasNext(parser))
-   {
-      return false;
-   }
-
-   char byte = peekByte(parser);
-
-   return byte == '-';
+   return isCharacter(parser, '-');
 }
 
 bool isZero(Parser *parser)
 {
-   if (!hasNext(parser))
-   {
-      return false;
-   }
-   char byte = peekByte(parser);
-
-   return byte == '0';
+   return isCharacter(parser, '0');
 }
 
 bool isDot(Parser *parser)
 {
-   if (!hasNext(parser))
-   {
-      return false;
-   }
-   char byte = peekByte(parser);
-
-   return byte == '.';
+   return isCharacter(parser, '.');
 }
 
 bool isExponentStart(Parser *parser)
 {
-   if (!hasNext(parser))
-   {
-      return false;
-   }
-   char byte = peekByte(parser);
-
-   return byte == 'e' || byte == 'E';
+   return isCharacter(parser, 'e') || isCharacter(parser, 'E');
 }
 
 bool isOneNine(Parser *parser)
@@ -410,38 +385,17 @@ bool isNumberStart(Parser *parser)
 
 bool isLeftBrace(Parser *parser)
 {
-   if (!hasNext(parser))
-   {
-      return false;
-   }
-
-   char byte = peekByte(parser);
-
-   return byte == LEFT_BRACE;
+   return isCharacter(parser, LEFT_BRACE);
 }
 
 bool isRightBrace(Parser *parser)
 {
-   if (!hasNext(parser))
-   {
-      return false;
-   }
-
-   char byte = peekByte(parser);
-
-   return byte == RIGHT_BRACE;
+   return isCharacter(parser, RIGHT_BRACE);
 }
 
 bool isColon(Parser *parser)
 {
-   if (!hasNext(parser))
-   {
-      return false;
-   }
-
-   char byte = peekByte(parser);
-
-   return byte == COLON;
+   return isCharacter(parser, COLON);
 }
 
 bool isCharacter(Parser *parser, char character)
@@ -451,7 +405,7 @@ bool isCharacter(Parser *parser, char character)
       return false;
    }
 
-   char byte = peekByte(parser);
+   uint8_t byte = peekByte(parser);
 
    return byte == character;
 }
@@ -507,7 +461,7 @@ double parseNumber(Parser *parser)
 
    if (integerDigits == 0)
    {
-      char byte = peekByte(parser);
+      uint8_t byte = peekByte(parser);
       die(__FILE__, __LINE__, 0, "expected digit, found %c (%zu:%zu)\n", byte, parser->line + 1, parser->column + 1);
    }
    else
@@ -537,7 +491,7 @@ double parseNumber(Parser *parser)
 
          if (hasMinusSign && exponentDigits == 0)
          {
-            char byte = peekByte(parser);
+            uint8_t byte = peekByte(parser);
             die(__FILE__, __LINE__, 0, "expected digit, found %c (%zu:%zu)\n", byte, parser->line + 1, parser->column + 1);
          }
 
