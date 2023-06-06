@@ -257,11 +257,18 @@ String next(Parser *parser)
 
    result.size = byteCount;
 
-   uint32_t codePoint = decodeUtf8Unchecked(result);
+   uint32_t codepoint = decodeUtf8Unchecked(result);
 
-   if (codePoint > 0x7f)
+   if (codepoint > 0x10ffff)
    {
-      printf("Codepoint : %u\n", codePoint);
+      die(__FILE__, __LINE__, 0, "invalid UTF-8 codepoint : found %#06X (%zu:%zu)", codepoint, parser->line, parser->column);
+   }
+
+   bool isOverlong = (codepoint < 0x0080 && result.size > 1) || (codepoint < 0x0800 && result.size > 2) || (codepoint < 0x10000 && result.size > 3);
+
+   if (isOverlong)
+   {
+      die(__FILE__, __LINE__, 0, "overlong encoding of UTF-8 codepoint : %#06X encoded using %zu bytes (%zu:%zu)", codepoint, result.size, parser->line, parser->column);
    }
 
    if (isNewLine)
