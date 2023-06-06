@@ -7,9 +7,16 @@
 
 #include "parser.c"
 
+#ifdef _WIN32
+#include "windows.h"
+#endif
+
 int main(void)
 {
 
+#ifdef _WIN32
+    SetConsoleOutputCP(65001);
+#endif
     Arena arena = arenaInit();
 
     String text = readFileToString(JSON_PATH, &arena);
@@ -20,6 +27,10 @@ int main(void)
     Parser parser = initParser(text, &arena);
 
     Value *json = parseElement(&parser);
+
+    printElement(json, 2, 0);
+
+    printf("\n");
 
     Value *pairs = getMemberValueOfObject(json, "pairs");
 
