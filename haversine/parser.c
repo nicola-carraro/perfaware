@@ -215,6 +215,13 @@ String next(Parser *parser)
       die(__FILE__, __LINE__, 0, "invalid first byte in UTF-8 codepoint, found : found %#02X (%zu:%zu)", firstByte, parser->line, parser->column);
    }
 
+   size_t remainingBytes = parser->text.size - parser->offset;
+
+   if (remainingBytes < byteCount)
+   {
+      die(__FILE__, __LINE__, 0, "truncated UTF-8 codepoint, expected %zu bytes, but stream only has %zu left", byteCount, remainingBytes);
+   }
+
    for (size_t byteIndex = 1; byteIndex < byteCount; byteIndex++)
    {
       uint8_t continuationByte = peekBytePlusN(parser, byteIndex);
