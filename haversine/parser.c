@@ -26,6 +26,12 @@
 
 #define FALSE_LITERAL "false"
 
+#define UNICODE_ESCAPE_START 'u'
+
+#define SINGLE_CHARACTER_ESCAPES_COUNT 8
+
+const char singleCharacterEscapes[SINGLE_CHARACTER_ESCAPES_COUNT] = {'\\', '/', 'b', 'f', 'n', 'r', 't', 'u'};
+
 const String nullLiteral = {NULL_LITERAL, sizeof(NULL_LITERAL) - 1};
 
 const String trueLiteral = {TRUE_LITERAL, sizeof(TRUE_LITERAL) - 1};
@@ -112,7 +118,11 @@ void addElement(Elements *elements, Value *element, Arena *arena);
 
 void printSpace();
 
+bool isHexDigit(Parser *parser);
+
 Elements *initElements(Arena *arena);
+
+void skipCodepoints(Parser *parser, size_t count);
 
 Parser initParser(String text, Arena *arena)
 {
@@ -227,7 +237,8 @@ uint32_t decodeUtf8Unchecked(String codepoint)
    return result;
 }
 
-String next(Parser *parser)
+String
+next(Parser *parser)
 {
 
    assert(hasNext(parser));
@@ -362,6 +373,19 @@ bool isControlCharacter(Parser *parser)
    return byte < 0x20;
 }
 
+bool isSingleCharacterEscape(char character)
+{
+   for (size_t escapeIndex = 0; escapeIndex < SINGLE_CHARACTER_ESCAPES_COUNT; escapeIndex++)
+   {
+      if (singleCharacterEscapes[escapeIndex] == character)
+      {
+         return true;
+      }
+   }
+
+   return false;
+}
+
 String parseString(Parser *parser)
 {
    assert(parser != NULL);
@@ -382,6 +406,8 @@ String parseString(Parser *parser)
 
    result.data = parser->text.data + parser->offset;
 
+   bool hasUnicodeEscape = false;
+
    while (!isDoubleQuotes(parser))
    {
 
@@ -398,14 +424,41 @@ String parseString(Parser *parser)
 
       if (isReverseSolidus(parser))
       {
-         die(__FILE__, __LINE__, 0, "escape sequences in strings not implemented (%zu:%zu)\n", parser->line + 1, parser->column + 1);
+         char escapeStart = peekBytePlusN(parser, 1);
+         if (escapeStart == UNICODE_ESCAPE_START)
+         {
+            hasUnicodeEscape = true;
+            next(parser);
+            for (size_t characterIndex = 0; characterIndex < 4; characterIndex++)
+            {
+               if (!isHexDigit(parser))
+               {
+                  String codepoint = next(parser);
+                  die(__FILE__, __LINE__, 0, "illegal character in unicode escape sequence: expected hex, found %.*s (%zu:%zu)\n (%zu:%zu)\n", codepoint.size, codepoint.data, parser->line + 1, parser->column + 1);
+               }
+               else
+               {
+                  next(parser);
+               }
+            }
+         }
+         else if (isSingleCharacterEscape(escapeStart))
+         {
+            skipCodepoints(parser, 2);
+         }
+         else
+         {
+            die(__FILE__, __LINE__, 0, "illegal escape sequence \\%c (%zu:%zu)\n", escapeStart, parser->line + 1, parser->column + 1);
+         }
       }
+      else
+      {
+         String codepoint = next(parser);
 
-      String codepoint = next(parser);
+         result.size += codepoint.size;
 
-      result.size += codepoint.size;
-
-      assert(codepoint.size > 0);
+         assert(codepoint.size > 0);
+      }
    }
 
    next(parser);
@@ -452,7 +505,7 @@ bool isHexDigit(Parser *parser)
    }
    char byte = peekByte(parser);
 
-   return (byte >= 'A' && byte <= 'F') || (byte >= 'a' && byte <= 'f');
+   return (byte >= '0' && byte <= '9') || (byte >= 'A' && byte <= 'F') || (byte >= 'a' && byte <= 'f');
 }
 
 bool isDigit(Parser *parser)
@@ -620,7 +673,7 @@ void expectCharacter(Parser *parser, char character)
    {
 
       String nextCodepoint = next(parser);
-      die(__FILE__, __LINE__, 0, "expected %c, found %.*s (%zu:%zu)\n", character, nextCodepoint.data, parser->line + 1, parser->column + 1);
+      die(__FILE__, __LINE__, 0, "expected %c, found %.*s (%zu:%zu)\n", character, nextCodepoint.size, nextCodepoint.data, parser->line + 1, parser->column + 1);
    }
 }
 
@@ -983,9 +1036,12 @@ void addElement(Elements *elements, Value *element, Arena *arena)
    elements->count++;
 }
 
-void skipCharacters(Parser *parser, size_t count)
+void skipCodepoints(Parser *parser, size_t count)
 {
-   parser->offset += count;
+   for (size_t codepointIndex = 0; codepointIndex < count; codepointIndex++)
+   {
+      next(parser);
+   }
 }
 
 Value *getMemberValueOfObject(Value *object, char *key)
@@ -1081,17 +1137,17 @@ Value *parseElement(Parser *parser)
    }
    else if (isTrueLiteral(parser))
    {
-      skipCharacters(parser, trueLiteral.size);
+      skipCodepoints(parser, trueLiteral.size);
       result->type = ValueType_True;
    }
    else if (isFalseLiteral(parser))
    {
-      skipCharacters(parser, falseLiteral.size);
+      skipCodepoints(parser, falseLiteral.size);
       result->type = ValueType_False;
    }
    else if (isNullLiteral(parser))
    {
-      skipCharacters(parser, nullLiteral.size);
+      skipCodepoints(parser, nullLiteral.size);
       result->type = ValueType_Null;
    }
    else
