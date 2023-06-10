@@ -30,7 +30,7 @@
 
 #define SINGLE_CHARACTER_ESCAPES_COUNT 8
 
-const char singleCharacterEscapes[SINGLE_CHARACTER_ESCAPES_COUNT] = {'\\', '/', 'b', 'f', 'n', 'r', 't', 'u'};
+const char mandatoryEscapes[SINGLE_CHARACTER_ESCAPES_COUNT] = {'\\', 'b', 'f', 'n', 'r', 't', 'u'};
 
 const String nullLiteral = {NULL_LITERAL, sizeof(NULL_LITERAL) - 1};
 
@@ -373,17 +373,66 @@ bool isControlCharacter(Parser *parser)
    return byte < 0x20;
 }
 
-bool isSingleCharacterEscape(char character)
+bool isMandatoryCharacterEscape(Parser *parser)
 {
+   char byte = peekByte(parser);
    for (size_t escapeIndex = 0; escapeIndex < SINGLE_CHARACTER_ESCAPES_COUNT; escapeIndex++)
    {
-      if (singleCharacterEscapes[escapeIndex] == character)
+      if (mandatoryEscapes[escapeIndex] == byte)
       {
          return true;
       }
    }
 
    return false;
+}
+
+bool isSolidus(Parser *parser)
+{
+   return isCharacter(parser, '/');
+}
+
+String escapeOptional(String result)
+{
+   size_t readOffset = 0;
+   size_t writeOffset = 0;
+   size_t byteIndex = 0;
+   size_t size = result.size;
+   while (byteIndex < size)
+   {
+      char byte = result.data[byteIndex];
+      assert(byte != REVERSE_SOLIDUS || byteIndex < result.size - 1);
+
+      char nextByte = result.data[byteIndex + 1];
+
+      if (byte == REVERSE_SOLIDUS)
+      {
+         if (nextByte == '/')
+         {
+            result.data[writeOffset] = '/';
+            readOffset += 2;
+            writeOffset++;
+            result.size--;
+            byteIndex += 2;
+         }
+         else if (nextByte == UNICODE_ESCAPE_START)
+         {
+            die(__FILE__, __LINE__, 0, "unicode escapes not implemented");
+         }
+      }
+      else
+      {
+         byteIndex++;
+         result.data[writeOffset] = nextByte;
+      }
+   }
+
+   return result;
+}
+
+bool isUnicodeEscapeStart(Parser *parser)
+{
+   return isCharacter(parser, UNICODE_ESCAPE_START);
 }
 
 String parseString(Parser *parser)
@@ -406,7 +455,7 @@ String parseString(Parser *parser)
 
    result.data = parser->text.data + parser->offset;
 
-   bool hasUnicodeEscape = false;
+   bool hasOptionalEscape = false;
 
    while (!isDoubleQuotes(parser))
    {
@@ -424,10 +473,11 @@ String parseString(Parser *parser)
 
       if (isReverseSolidus(parser))
       {
-         char escapeStart = peekBytePlusN(parser, 1);
-         if (escapeStart == UNICODE_ESCAPE_START)
+         next(parser);
+
+         if (isUnicodeEscapeStart(parser))
          {
-            hasUnicodeEscape = true;
+            hasOptionalEscape = true;
             next(parser);
             for (size_t characterIndex = 0; characterIndex < 4; characterIndex++)
             {
@@ -436,19 +486,36 @@ String parseString(Parser *parser)
                   String codepoint = next(parser);
                   die(__FILE__, __LINE__, 0, "illegal character in unicode escape sequence: expected hex, found %.*s (%zu:%zu)\n (%zu:%zu)\n", codepoint.size, codepoint.data, parser->line + 1, parser->column + 1);
                }
+               else if (!hasNext(parser))
+               {
+                  die(__FILE__, __LINE__, 0, "Truncated unicode escape sequence expected hex, found end of fail (%zu:%zu)\n (%zu:%zu)\n", parser->line + 1, parser->column + 1);
+               }
                else
                {
                   next(parser);
                }
             }
+            result.size += 6;
          }
-         else if (isSingleCharacterEscape(escapeStart))
+         else if (isSolidus(parser))
          {
-            skipCodepoints(parser, 2);
+            hasOptionalEscape = true;
+            next(parser);
+            result.size += 2;
+         }
+         else if (isMandatoryCharacterEscape(parser))
+         {
+            result.size += 2;
+            next(parser);
+         }
+         else if (!hasNext(parser))
+         {
+            die(__FILE__, __LINE__, 0, "espected escape sequence, found end of file (%zu:%zu)\n", parser->line + 1, parser->column + 1);
          }
          else
          {
-            die(__FILE__, __LINE__, 0, "illegal escape sequence \\%c (%zu:%zu)\n", escapeStart, parser->line + 1, parser->column + 1);
+            String codepoint = next(parser);
+            die(__FILE__, __LINE__, 0, "illegal escape sequence %.*s (%zu:%zu)\n", codepoint.size, codepoint.data, parser->line + 1, parser->column + 1);
          }
       }
       else
@@ -459,6 +526,11 @@ String parseString(Parser *parser)
 
          assert(codepoint.size > 0);
       }
+   }
+
+   if (hasOptionalEscape)
+   {
+      result = escapeOptional(result);
    }
 
    next(parser);
