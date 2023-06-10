@@ -392,6 +392,44 @@ bool isSolidus(Parser *parser)
    return isCharacter(parser, '/');
 }
 
+uint16_t decodeUnicodeEscape(char *string)
+{
+   assert(string[0] == '\\');
+   assert(string[1] == 'u');
+
+   uint16_t result = 0;
+   uint16_t power = 16 * 16 * 16;
+   for (size_t byteIndex = 2; byteIndex < 6; byteIndex++)
+   {
+      uint16_t digitValue = 0;
+
+      char byte = string[byteIndex];
+
+      if (byte >= '0' && byte <= '9')
+      {
+         digitValue = byte - '0';
+      }
+      else if (byte >= 'a' && byte <= 'f')
+      {
+         digitValue = byte - 'a' + 10;
+      }
+      else if (byte >= 'A' && byte <= 'F')
+      {
+         digitValue = byte - 'A' + 10;
+      }
+      else
+      {
+         assert(false);
+      }
+
+      result += digitValue * power;
+
+      power /= 16;
+   }
+
+   return result;
+}
+
 String escapeOptional(String result)
 {
    size_t readOffset = 0;
@@ -417,7 +455,9 @@ String escapeOptional(String result)
          }
          else if (nextByte == UNICODE_ESCAPE_START)
          {
-            die(__FILE__, __LINE__, 0, "unicode escapes not implemented");
+            uint16_t codepoint = decodeUnicodeEscape(result.data + byteIndex);
+            printf("%x\n", codepoint);
+            assert(false && "unicode escape not implemented");
          }
       }
       else

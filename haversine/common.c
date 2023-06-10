@@ -64,6 +64,8 @@ void writeTextToFile(FILE *file, const char *path, const char *format, ...)
     va_end(varargsList);
 }
 
+
+
 void writeBinaryToFile(FILE *file, const char *path, void *data, size_t size, size_t count)
 {
     if (fwrite(data, size, count, file) != count)
