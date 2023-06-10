@@ -434,14 +434,13 @@ String escapeOptional(String result)
 {
    size_t readOffset = 0;
    size_t writeOffset = 0;
-   size_t byteIndex = 0;
    size_t size = result.size;
-   while (byteIndex < size)
+   while (readOffset < size)
    {
-      char byte = result.data[byteIndex];
-      assert(byte != REVERSE_SOLIDUS || byteIndex < size - 1);
+      char byte = result.data[readOffset];
+      assert(byte != REVERSE_SOLIDUS || readOffset < size - 1);
 
-      char nextByte = result.data[byteIndex + 1];
+      char nextByte = result.data[readOffset + 1];
 
       if (byte == REVERSE_SOLIDUS)
       {
@@ -451,19 +450,25 @@ String escapeOptional(String result)
             readOffset += 2;
             writeOffset++;
             result.size--;
-            byteIndex += 2;
          }
          else if (nextByte == UNICODE_ESCAPE_START)
          {
-            uint16_t codepoint = decodeUnicodeEscape(result.data + byteIndex);
+            uint16_t codepoint = decodeUnicodeEscape(result.data + readOffset);
             printf("%x\n", codepoint);
             assert(false && "unicode escape not implemented");
+         }
+         else
+         {
+            result.data[writeOffset] = nextByte;
+            readOffset++;
+            writeOffset++;
          }
       }
       else
       {
-         byteIndex++;
          result.data[writeOffset] = nextByte;
+         readOffset++;
+         writeOffset++;
       }
    }
 
