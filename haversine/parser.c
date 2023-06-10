@@ -401,7 +401,7 @@ String escapeOptional(String result)
    while (byteIndex < size)
    {
       char byte = result.data[byteIndex];
-      assert(byte != REVERSE_SOLIDUS || byteIndex < result.size - 1);
+      assert(byte != REVERSE_SOLIDUS || byteIndex < size - 1);
 
       char nextByte = result.data[byteIndex + 1];
 
