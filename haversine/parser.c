@@ -438,13 +438,13 @@ void encodeCodepoint(uint32_t codepoint, String *output)
       output->size = 1;
       strncpy(output->data.signedData, (char *)(&codepoint), 1);
    }
-   else if (codepoint <= 0x080)
+   else if (codepoint <= 0x07ff)
    {
       output->size = 2;
       uint8_t firstByte = (uint8_t)((codepoint >> 6U) | 0xc0U);
-      uint8_t secondbyte = (uint8_t)((codepoint & 0x3fU) | 0x80U);
-      uint32_t encoded = firstByte << 8 | secondbyte;
-      strncpy(output->data.signedData, (char *)(&encoded), 2);
+      uint8_t secondByte = (uint8_t)((codepoint & 0x3fU) | 0x80U);
+      output->data.unsignedData[0] = firstByte;
+      output->data.unsignedData[1] = secondByte;
    }
    else
    {
@@ -482,6 +482,7 @@ String escapeOptional(String result)
          else if (nextByte == UNICODE_ESCAPE_START)
          {
             uint16_t codepoint = decodeUnicodeEscape(result.data.signedData + readOffset);
+
             String encodedCodepoint;
             encodedCodepoint.size = 0;
             char buffer[4] = {0};
