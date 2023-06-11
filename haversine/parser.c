@@ -140,7 +140,7 @@ bool isWhitespace(Parser *parser)
       return false;
    }
 
-   char byte = parser->text.data[parser->offset];
+   uint8_t byte = parser->text.data.unsignedData[parser->offset];
    return byte == 0x20 || byte == 0x0a || byte == 0x0d || byte == 0x09;
 }
 
@@ -153,9 +153,9 @@ bool isLiteral(Parser *parser, String literal)
 
    for (size_t byteIndex = 0; byteIndex < literal.size; byteIndex++)
    {
-      char byte = parser->text.data[parser->offset + byteIndex];
+      uint8_t byte = parser->text.data.unsignedData[parser->offset + byteIndex];
 
-      if (byte != literal.data[byteIndex])
+      if (byte != literal.data.unsignedData[byteIndex])
       {
          return false;
       }
@@ -193,10 +193,10 @@ void nextLine(Parser *parser)
 
 uint32_t decodeUtf8Unchecked(String codepoint)
 {
-   assert(codepoint.data != NULL);
+   assert(codepoint.data.unsignedData != NULL);
    assert(codepoint.size > 0 && codepoint.size < 5);
 
-   uint8_t firstByte = ((uint8_t *)(codepoint.data))[0];
+   uint8_t firstByte = codepoint.data.unsignedData[0];
 
    uint8_t fistBytePayload;
 
@@ -229,7 +229,7 @@ uint32_t decodeUtf8Unchecked(String codepoint)
    for (size_t byteIndex = 1; byteIndex < codepoint.size; byteIndex++)
    {
       result = result << 6;
-      uint8_t continuationByte = ((uint8_t *)(codepoint.data))[byteIndex];
+      uint8_t continuationByte = codepoint.data.unsignedData[byteIndex];
       uint8_t continuationBytePayload = continuationByte & 0x3f;
       result |= continuationBytePayload;
    }
@@ -243,7 +243,7 @@ next(Parser *parser)
 
    assert(hasNext(parser));
    String result = {0};
-   result.data = parser->text.data + parser->offset;
+   result.data.unsignedData = parser->text.data.unsignedData + parser->offset;
 
    uint8_t firstByte = peekByte(parser);
 
@@ -320,14 +320,14 @@ next(Parser *parser)
 
 uint8_t peekByte(Parser *parser)
 {
-   uint8_t result = ((uint8_t *)(parser->text.data))[parser->offset];
+   uint8_t result = parser->text.data.unsignedData[parser->offset];
 
    return result;
 }
 
 uint8_t peekBytePlusN(Parser *parser, size_t n)
 {
-   uint8_t result = ((uint8_t *)(parser->text.data + n))[parser->offset];
+   uint8_t result = (parser->text.data.unsignedData + n)[parser->offset];
 
    return result;
 }
@@ -430,6 +430,33 @@ uint16_t decodeUnicodeEscape(char *string)
    return result;
 }
 
+void encodeCodepoint(uint16_t codepoint, String *output)
+{
+
+   if (codepoint <= 0x007f)
+   {
+      output->size = 1;
+      strncpy(output->data.signedData, (char *)(&codepoint), 1);
+   }
+   else if (codepoint <= 0x080)
+   {
+      output->size = 2;
+      uint8_t firstByte = (uint8_t)((codepoint >> 6U) | 0xc0U);
+      uint8_t secondbyte = (uint8_t)((codepoint & 0x3fU) | 0x80U);
+      uint16_t encoded = firstByte << 8 | secondbyte;
+      strncpy(output->data.signedData, (char *)(&encoded), 2);
+   }
+   else
+   {
+      output->size = 3;
+      uint8_t firstByte = (codepoint >> 12) | 0x3f;
+      uint8_t secondbyte = ((codepoint >> 6) & 0x3f) | 0x80;
+      uint8_t thirdByte = (codepoint & 0x3f) | 0x80;
+      uint16_t encoded = firstByte << 16 | secondbyte << 8 | thirdByte;
+      strncpy(output->data.signedData, (char *)(&encoded), 3);
+   }
+}
+
 String escapeOptional(String result)
 {
    size_t readOffset = 0;
@@ -437,36 +464,44 @@ String escapeOptional(String result)
    size_t size = result.size;
    while (readOffset < size)
    {
-      char byte = result.data[readOffset];
+      char byte = result.data.signedData[readOffset];
       assert(byte != REVERSE_SOLIDUS || readOffset < size - 1);
 
-      char nextByte = result.data[readOffset + 1];
+      char nextByte = result.data.signedData[readOffset + 1];
 
       if (byte == REVERSE_SOLIDUS)
       {
          if (nextByte == '/')
          {
-            result.data[writeOffset] = '/';
+            result.data.signedData[writeOffset] = '/';
             readOffset += 2;
             writeOffset++;
             result.size--;
          }
          else if (nextByte == UNICODE_ESCAPE_START)
          {
-            uint16_t codepoint = decodeUnicodeEscape(result.data + readOffset);
-            printf("%x\n", codepoint);
-            assert(false && "unicode escape not implemented");
+            uint16_t codepoint = decodeUnicodeEscape(result.data.signedData + readOffset);
+            String encodedCodepoint;
+            encodedCodepoint.size = 0;
+            char buffer[4] = {0};
+            encodedCodepoint.data.signedData = buffer;
+
+            encodeCodepoint(codepoint, &encodedCodepoint);
+            strncpy(result.data.signedData + writeOffset, encodedCodepoint.data.signedData, encodedCodepoint.size);
+            writeOffset += encodedCodepoint.size;
+            readOffset += 6;
+            result.size -= (6 - encodedCodepoint.size);
          }
          else
          {
-            result.data[writeOffset] = nextByte;
+            result.data.unsignedData[writeOffset] = nextByte;
             readOffset++;
             writeOffset++;
          }
       }
       else
       {
-         result.data[writeOffset] = nextByte;
+         result.data.unsignedData[writeOffset] = nextByte;
          readOffset++;
          writeOffset++;
       }
@@ -483,7 +518,7 @@ bool isUnicodeEscapeStart(Parser *parser)
 String parseString(Parser *parser)
 {
    assert(parser != NULL);
-   assert(parser->text.data != NULL);
+   assert(parser->text.data.unsignedData != NULL);
    assert(hasNext(parser));
    expectCharacter(parser, DOUBLE_QUOTES);
 
@@ -498,7 +533,7 @@ String parseString(Parser *parser)
       die(__FILE__, __LINE__, 0, "unclosed string: expected \"\"\", found end of file (%zu:%zu)\n", stringFirstLine + 1, stringFirstColumn + 1);
    }
 
-   result.data = parser->text.data + parser->offset;
+   result.data.unsignedData = parser->text.data.unsignedData + parser->offset;
 
    bool hasOptionalEscape = false;
 
@@ -705,11 +740,11 @@ size_t countIntegerDigits(Parser *parser)
 double parseNumber(Parser *parser)
 {
    assert(parser != NULL);
-   assert(parser->text.data != NULL);
+   assert(parser->text.data.unsignedData != NULL);
    assert(hasNext(parser));
    assert(isNumberStart(parser));
 
-   char *numberStart = parser->text.data + parser->offset;
+   char *numberStart = parser->text.data.signedData + parser->offset;
 
    size_t offset = 0;
 
@@ -892,7 +927,7 @@ void printString(String string)
    {
       bytesToPrint = (int)string.size;
    }
-   printf("\"%.*s\"", bytesToPrint, string.data);
+   printf("\"%.*s\"", bytesToPrint, string.data.signedData);
 }
 
 void printIndentation(size_t indentation, size_t indentationLevel)
@@ -1056,7 +1091,7 @@ bool stringsEqual(String left, String right)
    for (size_t byteIndex = 0; byteIndex < size; byteIndex++)
    {
 
-      if (left.data[byteIndex] != right.data[byteIndex])
+      if (left.data.unsignedData[byteIndex] != right.data.unsignedData[byteIndex])
       {
          return false;
       }
@@ -1069,12 +1104,12 @@ bool stringEqualsCstring(String string, char *cString)
 {
 
    assert(cString != NULL);
-   assert(string.data != NULL);
+   assert(string.data.unsignedData != NULL);
    for (size_t byteIndex = 0; byteIndex < string.size; byteIndex++)
    {
 
       char byte = cString[byteIndex];
-      if (byte == '\0' || byte != string.data[byteIndex])
+      if (byte == '\0' || byte != string.data.unsignedData[byteIndex])
       {
          return false;
       }

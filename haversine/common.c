@@ -6,6 +6,7 @@
 #include "string.h"
 #include "assert.h"
 #include "math.h"
+#include "stdint.h"
 
 #ifndef COMMON_C
 
@@ -20,7 +21,12 @@
 
 typedef struct
 {
-    char *data;
+    union
+    {
+        char *signedData;
+        uint8_t *unsignedData;
+    } data;
+
     size_t size;
 } String;
 
@@ -63,8 +69,6 @@ void writeTextToFile(FILE *file, const char *path, const char *format, ...)
     }
     va_end(varargsList);
 }
-
-
 
 void writeBinaryToFile(FILE *file, const char *path, void *data, size_t size, size_t count)
 {
@@ -159,9 +163,9 @@ String readFileToString(char *path, Arena *arena)
     }
     String result = {0};
     result.size = getFileSize(file, path);
-    result.data = arenaAllocate(arena, result.size);
+    result.data.signedData = arenaAllocate(arena, result.size);
 
-    size_t read = fread(result.data, 1, result.size, file);
+    size_t read = fread(result.data.signedData, 1, result.size, file);
 
     if (read < result.size)
     {
