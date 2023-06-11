@@ -124,6 +124,8 @@ Elements *initElements(Arena *arena);
 
 void skipCodepoints(Parser *parser, size_t count);
 
+void printString(String string);
+
 Parser initParser(String text, Arena *arena)
 {
    Parser parser = {0};
@@ -503,10 +505,12 @@ String escapeOptional(String result)
       }
       else
       {
-         result.data.unsignedData[writeOffset] = nextByte;
+         result.data.unsignedData[writeOffset] = byte;
          readOffset++;
          writeOffset++;
       }
+      printString(result);
+      printf("\n");
    }
 
    return result;
