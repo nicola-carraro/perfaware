@@ -394,39 +394,46 @@ bool isSolidus(Parser *parser)
    return isCharacter(parser, '/');
 }
 
-uint16_t decodeUnicodeEscape(char *string)
+uint16_t decodeUnicodeEscape(Parser *parser)
 {
-   assert(string[0] == '\\');
-   assert(string[1] == 'u');
 
    uint16_t result = 0;
    uint16_t power = 16 * 16 * 16;
-   for (size_t byteIndex = 2; byteIndex < 6; byteIndex++)
+   for (size_t byteIndex = 0; byteIndex < 4; byteIndex++)
    {
       uint16_t digitValue = 0;
 
-      char byte = string[byteIndex];
-
-      if (byte >= '0' && byte <= '9')
+      if (isHexDigit(parser))
       {
-         digitValue = byte - '0';
+         char byte = peekByte(parser);
+         if (byte >= '0' && byte <= '9')
+         {
+            digitValue = byte - '0';
+         }
+         else if (byte >= 'a' && byte <= 'f')
+         {
+            digitValue = byte - 'a' + 10;
+         }
+         else if (byte >= 'A' && byte <= 'F')
+         {
+            digitValue = byte - 'A' + 10;
+         }
       }
-      else if (byte >= 'a' && byte <= 'f')
+      else if (!hasNext(parser))
       {
-         digitValue = byte - 'a' + 10;
-      }
-      else if (byte >= 'A' && byte <= 'F')
-      {
-         digitValue = byte - 'A' + 10;
+         die(__FILE__, __LINE__, 0, "Truncated unicode escape sequence expected hex, found end of fail (%zu:%zu)\n (%zu:%zu)\n", parser->line + 1, parser->column + 1);
       }
       else
       {
-         assert(false);
+         String codepoint = next(parser);
+         die(__FILE__, __LINE__, 0, "illegal character in unicode escape sequence: expected hex, found %.*s (%zu:%zu)\n (%zu:%zu)\n", codepoint.size, codepoint.data, parser->line + 1, parser->column + 1);
       }
 
       result += digitValue * power;
 
       power /= 16;
+
+      next(parser);
    }
 
    return result;
@@ -460,66 +467,6 @@ void encodeCodepoint(uint32_t codepoint, String *output)
    }
 }
 
-String escapeOptional(String result)
-{
-   size_t readOffset = 0;
-   size_t writeOffset = 0;
-   size_t size = result.size;
-   while (readOffset < size)
-   {
-      char byte = result.data.signedData[readOffset];
-      assert(byte != REVERSE_SOLIDUS || readOffset < size - 1);
-
-      char nextByte = result.data.signedData[readOffset + 1];
-
-      if (byte == REVERSE_SOLIDUS)
-      {
-         if (nextByte == '/')
-         {
-            result.data.signedData[writeOffset] = '/';
-            readOffset += 2;
-            writeOffset++;
-            result.size--;
-         }
-         else if (nextByte == UNICODE_ESCAPE_START)
-         {
-            uint16_t codepoint = decodeUnicodeEscape(result.data.signedData + readOffset);
-
-            if (codepoint >= 0xd800 && codepoint <= 0xdfff)
-            {
-               assert(false && "high and low surrogates not implemented");
-            }
-            String encodedCodepoint;
-            encodedCodepoint.size = 0;
-            char buffer[4] = {0};
-            encodedCodepoint.data.signedData = buffer;
-
-            encodeCodepoint(codepoint, &encodedCodepoint);
-            strncpy(result.data.signedData + writeOffset, encodedCodepoint.data.signedData, encodedCodepoint.size);
-            writeOffset += encodedCodepoint.size;
-            readOffset += 6;
-            result.size -= (6 - encodedCodepoint.size);
-         }
-         else
-         {
-            result.data.unsignedData[writeOffset] = nextByte;
-            readOffset++;
-            writeOffset++;
-         }
-      }
-      else
-      {
-         result.data.unsignedData[writeOffset] = byte;
-         readOffset++;
-         writeOffset++;
-      }
-      // printString(result);
-      // printf("\n");
-   }
-
-   return result;
-}
-
 bool isUnicodeEscapeStart(Parser *parser)
 {
    return isCharacter(parser, UNICODE_ESCAPE_START);
@@ -545,7 +492,10 @@ String parseString(Parser *parser)
 
    result.data.unsignedData = parser->text.data.unsignedData + parser->offset;
 
-   bool hasOptionalEscape = false;
+   String nextCodepoint = {0};
+   nextCodepoint.size = 0;
+
+   char *writeCursor = parser->text.data.signedData + parser->offset;
 
    while (!isDoubleQuotes(parser))
    {
@@ -567,35 +517,34 @@ String parseString(Parser *parser)
 
          if (isUnicodeEscapeStart(parser))
          {
-            hasOptionalEscape = true;
             next(parser);
-            for (size_t characterIndex = 0; characterIndex < 4; characterIndex++)
+            uint16_t codepoint = decodeUnicodeEscape(parser);
+            if (codepoint >= 0xd800 && codepoint <= 0xdfff)
             {
-               if (!isHexDigit(parser))
-               {
-                  String codepoint = next(parser);
-                  die(__FILE__, __LINE__, 0, "illegal character in unicode escape sequence: expected hex, found %.*s (%zu:%zu)\n (%zu:%zu)\n", codepoint.size, codepoint.data, parser->line + 1, parser->column + 1);
-               }
-               else if (!hasNext(parser))
-               {
-                  die(__FILE__, __LINE__, 0, "Truncated unicode escape sequence expected hex, found end of fail (%zu:%zu)\n (%zu:%zu)\n", parser->line + 1, parser->column + 1);
-               }
-               else
-               {
-                  next(parser);
-               }
+               assert(false && "high and low surrogates not implemented");
             }
-            result.size += 6;
+
+            String encodedCodepoint = {0};
+            encodedCodepoint.size = 0;
+            char buffer[4] = {0};
+            encodedCodepoint.data.signedData = buffer;
+
+            encodeCodepoint(codepoint, &encodedCodepoint);
+
+            nextCodepoint = encodedCodepoint;
          }
          else if (isSolidus(parser))
          {
-            hasOptionalEscape = true;
+            nextCodepoint.size = 1;
+            nextCodepoint.data.signedData[0] = '/';
             next(parser);
-            result.size += 2;
          }
          else if (isMandatoryCharacterEscape(parser))
          {
-            result.size += 2;
+            nextCodepoint.size = 2;
+            uint8_t byte = peekByte(parser);
+            nextCodepoint.data.signedData[0] = '\\';
+            nextCodepoint.data.signedData[1] = byte;
             next(parser);
          }
          else if (!hasNext(parser))
@@ -610,17 +559,17 @@ String parseString(Parser *parser)
       }
       else
       {
-         String codepoint = next(parser);
-
-         result.size += codepoint.size;
-
-         assert(codepoint.size > 0);
+         nextCodepoint = next(parser);
       }
-   }
 
-   if (hasOptionalEscape)
-   {
-      result = escapeOptional(result);
+      assert(nextCodepoint.size > 0);
+
+      result.size += nextCodepoint.size;
+      strncpy(writeCursor, nextCodepoint.data.signedData, nextCodepoint.size);
+      writeCursor += nextCodepoint.size;
+      printString(nextCodepoint);
+      printString(result);
+      printf("\n");
    }
 
    next(parser);
