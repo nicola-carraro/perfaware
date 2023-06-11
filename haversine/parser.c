@@ -485,6 +485,10 @@ String escapeOptional(String result)
          {
             uint16_t codepoint = decodeUnicodeEscape(result.data.signedData + readOffset);
 
+            if (codepoint >= 0xd800 && codepoint <= 0xdfff)
+            {
+               assert(false && "high and low surrogates not implemented");
+            }
             String encodedCodepoint;
             encodedCodepoint.size = 0;
             char buffer[4] = {0};
