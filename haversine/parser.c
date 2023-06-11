@@ -430,7 +430,7 @@ uint16_t decodeUnicodeEscape(char *string)
    return result;
 }
 
-void encodeCodepoint(uint16_t codepoint, String *output)
+void encodeCodepoint(uint32_t codepoint, String *output)
 {
 
    if (codepoint <= 0x007f)
@@ -443,17 +443,18 @@ void encodeCodepoint(uint16_t codepoint, String *output)
       output->size = 2;
       uint8_t firstByte = (uint8_t)((codepoint >> 6U) | 0xc0U);
       uint8_t secondbyte = (uint8_t)((codepoint & 0x3fU) | 0x80U);
-      uint16_t encoded = firstByte << 8 | secondbyte;
+      uint32_t encoded = firstByte << 8 | secondbyte;
       strncpy(output->data.signedData, (char *)(&encoded), 2);
    }
    else
    {
       output->size = 3;
-      uint8_t firstByte = (codepoint >> 12) | 0x3f;
-      uint8_t secondbyte = ((codepoint >> 6) & 0x3f) | 0x80;
-      uint8_t thirdByte = (codepoint & 0x3f) | 0x80;
-      uint16_t encoded = firstByte << 16 | secondbyte << 8 | thirdByte;
-      strncpy(output->data.signedData, (char *)(&encoded), 3);
+      uint8_t firstByte = ((uint8_t)(codepoint >> 12U)) | 0xe0U;
+      uint8_t secondByte = ((codepoint >> 6U) & 0x3fU) | 0x80U;
+      uint8_t thirdByte = (codepoint & 0x3fU) | 0x80U;
+      output->data.unsignedData[0] = firstByte;
+      output->data.unsignedData[1] = secondByte;
+      output->data.unsignedData[2] = thirdByte;
    }
 }
 
