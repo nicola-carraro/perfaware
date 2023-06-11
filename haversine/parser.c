@@ -509,8 +509,8 @@ String escapeOptional(String result)
          readOffset++;
          writeOffset++;
       }
-      printString(result);
-      printf("\n");
+      // printString(result);
+      // printf("\n");
    }
 
    return result;
