@@ -765,6 +765,11 @@ double parseNumber(Parser *parser)
 
    double result = strtod(buffer, &end);
 
+   if (result == HUGE_VAL || !isfinite(result))
+   {
+      die(__FILE__, __LINE__, errno, "could not parse number %s", buffer);
+   }
+
    if (offset <= PTRDIFF_MAX)
    {
       assert(end - buffer > 0);
