@@ -11,9 +11,10 @@
 #include "windows.h"
 #endif
 
-void printAverageDistance(Value *json)
+void printAverageDistance(Value *json, Arena *arena)
 {
-    Value *pairs = getMemberValueOfObject(json, "pairs");
+
+    Value *pairs = getMemberValueOfObject(json, "\npai\rs", arena);
 
     double sum = 0;
     size_t count = getElementCount(pairs);
@@ -22,11 +23,11 @@ void printAverageDistance(Value *json)
     {
         Value *pair = getElementOfArray(pairs, elementIndex);
 
-        double x1 = getAsNumber(getMemberValueOfObject(pair, "x1"));
-        double y1 = getAsNumber(getMemberValueOfObject(pair, "y1"));
+        double x1 = getAsNumber(getMemberValueOfObject(pair, "x1", arena));
+        double y1 = getAsNumber(getMemberValueOfObject(pair, "y1", arena));
 
-        double x2 = getAsNumber(getMemberValueOfObject(pair, "x2"));
-        double y2 = getAsNumber(getMemberValueOfObject(pair, "y2"));
+        double x2 = getAsNumber(getMemberValueOfObject(pair, "x2", arena));
+        double y2 = getAsNumber(getMemberValueOfObject(pair, "y2", arena));
 
         double distance = haversine(x1, y1, x2, y2, EARTH_RADIUS);
 
@@ -60,7 +61,7 @@ int main(void)
 
     printf("\n");
 
-    printAverageDistance(json);
+    printAverageDistance(json, &arena);
 
     return 0;
 }

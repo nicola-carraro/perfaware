@@ -28,9 +28,23 @@
 
 #define UNICODE_ESCAPE_START 'u'
 
-#define SINGLE_CHARACTER_ESCAPES_COUNT 8
+#define MANDATORY_ESCAPES_COUNT 7
 
-const char mandatoryEscapes[SINGLE_CHARACTER_ESCAPES_COUNT] = {'\\', 'b', 'f', 'n', 'r', 't', 'u'};
+typedef struct
+{
+   char characterToEscape;
+   char escape;
+} JsonEscape;
+
+JsonEscape mandatoryEscapes[MANDATORY_ESCAPES_COUNT] = {
+    {'\\', '\\'},
+    {'\b', 'b'},
+    {'\f', 'f'},
+    {'\n', 'n'},
+    {'\r', 'r'},
+    {'\t', 't'},
+
+};
 
 const String nullLiteral = {NULL_LITERAL, sizeof(NULL_LITERAL) - 1};
 
@@ -375,12 +389,25 @@ bool isControlCharacter(Parser *parser)
    return byte < 0x20;
 }
 
+bool shoudBeEscaped(char character)
+{
+   for (size_t escapeIndex = 0; escapeIndex < MANDATORY_ESCAPES_COUNT; escapeIndex++)
+   {
+      if (mandatoryEscapes[escapeIndex].characterToEscape == character)
+      {
+         return true;
+      }
+   }
+
+   return false;
+}
+
 bool isMandatoryCharacterEscape(Parser *parser)
 {
    char byte = peekByte(parser);
-   for (size_t escapeIndex = 0; escapeIndex < SINGLE_CHARACTER_ESCAPES_COUNT; escapeIndex++)
+   for (size_t escapeIndex = 0; escapeIndex < MANDATORY_ESCAPES_COUNT; escapeIndex++)
    {
-      if (mandatoryEscapes[escapeIndex] == byte)
+      if (mandatoryEscapes[escapeIndex].escape == byte)
       {
          return true;
       }
@@ -494,6 +521,7 @@ String parseString(Parser *parser)
 
    String nextCodepoint = {0};
    nextCodepoint.size = 0;
+   char buffer[4] = { 0 };
 
    char *writeCursor = parser->text.data.signedData + parser->offset;
 
@@ -526,7 +554,7 @@ String parseString(Parser *parser)
 
             String encodedCodepoint = {0};
             encodedCodepoint.size = 0;
-            char buffer[4] = {0};
+            
             encodedCodepoint.data.signedData = buffer;
 
             encodeCodepoint(codepoint, &encodedCodepoint);
@@ -536,6 +564,7 @@ String parseString(Parser *parser)
          else if (isSolidus(parser))
          {
             nextCodepoint.size = 1;
+            nextCodepoint.data.signedData = buffer;
             nextCodepoint.data.signedData[0] = '/';
             next(parser);
          }
@@ -543,6 +572,7 @@ String parseString(Parser *parser)
          {
             nextCodepoint.size = 2;
             uint8_t byte = peekByte(parser);
+            nextCodepoint.data.signedData = buffer;
             nextCodepoint.data.signedData[0] = '\\';
             nextCodepoint.data.signedData[1] = byte;
             next(parser);
@@ -1162,19 +1192,61 @@ void skipCodepoints(Parser *parser, size_t count)
    }
 }
 
-Value *getMemberValueOfObject(Value *object, char *key)
+void escapeMandatory(char *source, char *dest)
+{
+   size_t readOffset = 0;
+   size_t writeOffset = 0;
+
+   char byte = source[readOffset];
+   while (byte != '\0')
+   {
+      bool isEscape = false;
+
+      for (size_t escapeIndex = 0; escapeIndex < MANDATORY_ESCAPES_COUNT; escapeIndex++)
+      {
+         JsonEscape escape = mandatoryEscapes[escapeIndex];
+         if (escape.characterToEscape == byte)
+         {
+            dest[writeOffset] = REVERSE_SOLIDUS;
+            dest[writeOffset + 1] = escape.escape;
+            writeOffset += 2;
+            isEscape = true;
+         }
+      }
+
+      if (!isEscape)
+      {
+         dest[writeOffset] = source[readOffset];
+         writeOffset++;
+      }
+
+      readOffset++;
+
+      byte = source[readOffset];
+   }
+
+   dest[writeOffset] = '\0';
+}
+
+Value *getMemberValueOfObject(Value *object, char *key, Arena *arena)
 {
    if (object->type != ValueType_Object)
    {
       die(__FILE__, __LINE__, 0, "Cannot get member of non-object value. trying to get %s", key);
    }
 
+   size_t keySize = strlen(key);
+
+   char *buffer = arenaAllocate(arena, keySize * 2);
+
+   escapeMandatory(key, buffer);
+
    for (size_t memberIndex = 0; memberIndex < object->payload.object->count; memberIndex++)
    {
 
       Member member = object->payload.object->members[memberIndex];
 
-      if (stringEqualsCstring(member.key, key))
+      if (stringEqualsCstring(member.key, buffer))
       {
          return member.value;
       }

@@ -19,6 +19,11 @@
 
 #define EARTH_RADIUS 6371
 
+#define MAKE_STRING(s)   \
+    {                    \
+        s, sizeof(s) - 1 \
+    }
+
 typedef struct
 {
     union
