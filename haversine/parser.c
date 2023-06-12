@@ -521,7 +521,7 @@ String parseString(Parser *parser)
 
    String nextCodepoint = {0};
    nextCodepoint.size = 0;
-   char buffer[4] = { 0 };
+   char buffer[4] = {0};
 
    char *writeCursor = parser->text.data.signedData + parser->offset;
 
@@ -554,7 +554,7 @@ String parseString(Parser *parser)
 
             String encodedCodepoint = {0};
             encodedCodepoint.size = 0;
-            
+
             encodedCodepoint.data.signedData = buffer;
 
             encodeCodepoint(codepoint, &encodedCodepoint);
@@ -1248,6 +1248,8 @@ Value *getMemberValueOfObject(Value *object, char *key, Arena *arena)
 
       if (stringEqualsCstring(member.key, buffer))
       {
+
+         freeLastAllocation(arena);
          return member.value;
       }
    }
