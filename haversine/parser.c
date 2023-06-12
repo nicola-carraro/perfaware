@@ -567,9 +567,9 @@ String parseString(Parser *parser)
       result.size += nextCodepoint.size;
       strncpy(writeCursor, nextCodepoint.data.signedData, nextCodepoint.size);
       writeCursor += nextCodepoint.size;
-      printString(nextCodepoint);
-      printString(result);
-      printf("\n");
+      // printString(nextCodepoint);
+      // printString(result);
+      // printf("\n");
    }
 
    next(parser);
@@ -775,6 +775,8 @@ double parseNumber(Parser *parser)
       assert(end - buffer > 0);
       assert((end - buffer) == (ptrdiff_t)offset);
    }
+
+   freeLastAllocation(parser->arena);
 
    return result;
 }

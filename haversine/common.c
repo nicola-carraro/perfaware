@@ -34,7 +34,8 @@ typedef struct
 {
     void *memory;
     size_t size;
-    size_t offset;
+    size_t currentOffset;
+    size_t previousOffset;
 } Arena;
 
 void die(const char *file, const size_t line, int errorNumber, const char *message, ...)
@@ -131,7 +132,8 @@ Arena arenaInit()
     }
 
     arena.size = ARENA_SIZE;
-    arena.offset = 0;
+    arena.currentOffset = 0;
+    arena.previousOffset = 0;
 
     return arena;
 }
@@ -142,15 +144,21 @@ void *arenaAllocate(Arena *arena, size_t size)
 
     void *result = NULL;
 
-    if (arena->offset + size >= arena->size)
+    if (arena->currentOffset + size >= arena->size)
     {
         die(__FILE__, __LINE__, errno, "could not allocate from arena");
     }
 
-    result = (char *)arena->memory + arena->offset;
-    arena->offset += size;
+    result = (char *)arena->memory + arena->currentOffset;
+    arena->previousOffset = arena->currentOffset;
+    arena->currentOffset += size;
 
     return result;
+}
+
+void freeLastAllocation(Arena *arena)
+{
+    arena->currentOffset = arena->previousOffset;
 }
 
 String readFileToString(char *path, Arena *arena)
