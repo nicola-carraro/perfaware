@@ -149,6 +149,15 @@ Parser initParser(String text, Arena *arena)
    return parser;
 }
 
+uint32_t codePointFromSurrogatePair(uint16_t highSurrogate, uint16_t lowSurrogate)
+{
+   uint32_t highSurrogateTerm = (highSurrogate - 0xd800) * 0X400;
+   uint32_t lowSurrogateTerm = lowSurrogate - 0xdc00;
+   uint32_t result = (highSurrogateTerm + lowSurrogateTerm) + 0x10000;
+
+   return result;
+}
+
 bool isWhitespace(Parser *parser)
 {
    if (!hasNext(parser))
@@ -482,7 +491,7 @@ void encodeCodepoint(uint32_t codepoint, String *output)
       output->data.unsignedData[0] = firstByte;
       output->data.unsignedData[1] = secondByte;
    }
-   else
+   else if (codepoint <= 0xffff)
    {
       output->size = 3;
       uint8_t firstByte = ((uint8_t)(codepoint >> 12U)) | 0xe0U;
@@ -491,6 +500,18 @@ void encodeCodepoint(uint32_t codepoint, String *output)
       output->data.unsignedData[0] = firstByte;
       output->data.unsignedData[1] = secondByte;
       output->data.unsignedData[2] = thirdByte;
+   }
+   else
+   {
+      output->size = 4;
+      uint8_t firstByte = ((uint8_t)(codepoint >> 18U)) | 0xf0U;
+      uint8_t secondByte = ((codepoint >> 12U) & 0x3fU) | 0x80U;
+      uint8_t thirdByte = ((codepoint >> 6U) & 0x3fU) | 0x80U;
+      uint8_t fourthByte = (codepoint & 0x3fU) | 0x80U;
+      output->data.unsignedData[0] = firstByte;
+      output->data.unsignedData[1] = secondByte;
+      output->data.unsignedData[2] = thirdByte;
+      output->data.unsignedData[3] = fourthByte;
    }
 }
 
@@ -541,21 +562,51 @@ String parseString(Parser *parser)
 
       if (isReverseSolidus(parser))
       {
+
+         String encodedCodepoint = {0};
+         encodedCodepoint.size = 0;
+
+         encodedCodepoint.data.signedData = buffer;
+
          next(parser);
 
          if (isUnicodeEscapeStart(parser))
          {
             next(parser);
-            uint16_t codepoint = decodeUnicodeEscape(parser);
-            if (codepoint >= 0xd800 && codepoint <= 0xdfff)
+            uint16_t codepointFromFirstEscape = decodeUnicodeEscape(parser);
+            uint32_t codepoint = codepointFromFirstEscape;
+            if (codepointFromFirstEscape >= 0xd800 && codepointFromFirstEscape <= 0xdbff)
             {
-               assert(false && "high and low surrogates not implemented");
+               uint16_t highSurrogate = codepointFromFirstEscape;
+               if (!isReverseSolidus(parser))
+               {
+                  nextCodepoint = next(parser);
+                  die(__FILE__, __LINE__, 0, "high surrogate %u, not followed by escape, found %s (%zu:%zu)\n", codepointFromFirstEscape, nextCodepoint, parser->line + 1, parser->column + 1);
+               }
+
+               next(parser);
+
+               if (!isUnicodeEscapeStart(parser))
+               {
+                  nextCodepoint = next(parser);
+                  die(__FILE__, __LINE__, 0, "expected unicode escape after high surrogate %u, found \\%s (%zu:%zu)\n", codepointFromFirstEscape, nextCodepoint, parser->line + 1, parser->column + 1);
+               }
+
+               next(parser);
+
+               uint16_t lowSurrogate = decodeUnicodeEscape(parser);
+
+               codepoint = codePointFromSurrogatePair(highSurrogate, lowSurrogate);
+            }
+            else if (codepointFromFirstEscape >= 0xdc00 && codepointFromFirstEscape <= 0xdff)
+            {
+               die(__FILE__, __LINE__, 0, "low surrogate without high surrogate, found %u (%zu:%zu)\n", codepoint, parser->line + 1, parser->column + 1);
             }
 
-            String encodedCodepoint = {0};
-            encodedCodepoint.size = 0;
-
-            encodedCodepoint.data.signedData = buffer;
+            if (codepoint > 0x10ffff)
+            {
+               die(__FILE__, __LINE__, 0, "invalid codepoint from surrogate pair, found %u (%zu:%zu)\n", codepoint, parser->line + 1, parser->column + 1);
+            }
 
             encodeCodepoint(codepoint, &encodedCodepoint);
 
@@ -1237,13 +1288,12 @@ Value *getMemberValueOfObject(Value *object, char *key, Arena *arena)
 
    size_t keySize = strlen(key);
 
-   char *buffer = arenaAllocate(arena, keySize * 2);
+   char *buffer = arenaAllocate(arena, (keySize * 2));
 
    escapeMandatory(key, buffer);
 
    for (size_t memberIndex = 0; memberIndex < object->payload.object->count; memberIndex++)
    {
-
       Member member = object->payload.object->members[memberIndex];
 
       if (stringEqualsCstring(member.key, buffer))
