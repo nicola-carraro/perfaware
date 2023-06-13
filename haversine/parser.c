@@ -581,7 +581,7 @@ String parseString(Parser *parser)
                if (!isReverseSolidus(parser))
                {
                   nextCodepoint = next(parser);
-                  die(__FILE__, __LINE__, 0, "high surrogate %u, not followed by escape, found %s (%zu:%zu)\n", codepointFromFirstEscape, nextCodepoint, parser->line + 1, parser->column + 1);
+                  die(__FILE__, __LINE__, 0, "high surrogate %#04X, not followed by escape, found %s (%zu:%zu)\n", codepointFromFirstEscape, nextCodepoint, parser->line + 1, parser->column + 1);
                }
 
                next(parser);
@@ -589,23 +589,28 @@ String parseString(Parser *parser)
                if (!isUnicodeEscapeStart(parser))
                {
                   nextCodepoint = next(parser);
-                  die(__FILE__, __LINE__, 0, "expected unicode escape after high surrogate %u, found \\%s (%zu:%zu)\n", codepointFromFirstEscape, nextCodepoint, parser->line + 1, parser->column + 1);
+                  die(__FILE__, __LINE__, 0, "expected unicode escape after high surrogate %#04X, found \\%s (%zu:%zu)\n", codepointFromFirstEscape, nextCodepoint, parser->line + 1, parser->column + 1);
                }
 
                next(parser);
 
                uint16_t lowSurrogate = decodeUnicodeEscape(parser);
 
+               if (lowSurrogate < 0xdc00 || lowSurrogate > 0xdfff)
+               {
+                  die(__FILE__, __LINE__, 0, "expected low surrogate after high surrogate %#04X, found %x (%zu:%zu)\n", highSurrogate, lowSurrogate, parser->line + 1, parser->column + 1);
+               }
+
                codepoint = codePointFromSurrogatePair(highSurrogate, lowSurrogate);
             }
-            else if (codepointFromFirstEscape >= 0xdc00 && codepointFromFirstEscape <= 0xdff)
+            else if (codepointFromFirstEscape >= 0xdc00 && codepointFromFirstEscape <= 0xdfff)
             {
-               die(__FILE__, __LINE__, 0, "low surrogate without high surrogate, found %u (%zu:%zu)\n", codepoint, parser->line + 1, parser->column + 1);
+               die(__FILE__, __LINE__, 0, "low surrogate without high surrogate, found %#04X(%zu:%zu)\n", codepoint, parser->line + 1, parser->column + 1);
             }
 
             if (codepoint > 0x10ffff)
             {
-               die(__FILE__, __LINE__, 0, "invalid codepoint from surrogate pair, found %u (%zu:%zu)\n", codepoint, parser->line + 1, parser->column + 1);
+               die(__FILE__, __LINE__, 0, "invalid codepoint from surrogate pair, found %#06X (%zu:%zu)\n", codepoint, parser->line + 1, parser->column + 1);
             }
 
             encodeCodepoint(codepoint, &encodedCodepoint);
