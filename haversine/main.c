@@ -14,7 +14,7 @@
 void printAverageDistance(Value *json, Arena *arena)
 {
 
-    Value *pairs = getMemberValueOfObject(json, "\npai\rs", arena);
+    Value *pairs = getMemberValueOfObject(json, "pairs", arena);
 
     double sum = 0;
     size_t count = getElementCount(pairs);
