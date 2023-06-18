@@ -76,7 +76,7 @@ typedef struct _Value Value;
 typedef struct _Member Member;
 typedef struct _Members Members;
 
-#define MEMBERS_INITIAL_CAPACITY 100
+#define MEMBERS_INITIAL_CAPACITY 10
 typedef struct _Members
 {
    size_t capacity;
@@ -84,7 +84,7 @@ typedef struct _Members
    Member *members;
 } Members;
 
-#define ELEMENTS_INITIAL_CAPACITY 100
+#define ELEMENTS_INITIAL_CAPACITY 10
 typedef struct
 {
    size_t capacity;

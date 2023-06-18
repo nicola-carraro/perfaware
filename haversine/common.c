@@ -15,7 +15,7 @@
 #define JSON_PATH "data/pairs.json"
 #define ANSWERS_PATH "data/answers"
 
-#define ARENA_SIZE 1024ll * 1024ll * 1024ll * 5ll
+#define ARENA_SIZE 1024ll * 1024ll * 1024l
 
 #define EARTH_RADIUS 6371
 
