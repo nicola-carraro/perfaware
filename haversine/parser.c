@@ -1211,7 +1211,7 @@ void addMember(Members *members, Member member, Parser *parser)
 
    if (members->count >= members->capacity)
    {
-      size_t newCapacity = members->capacity * 10;
+      size_t newCapacity = members->capacity * 2;
       Member *newMembers = arenaAllocate(parser->arena, newCapacity * sizeof(Member));
       memcpy(newMembers, members->members, members->capacity * sizeof(Member));
       members->capacity = newCapacity;
@@ -1229,7 +1229,7 @@ void addElement(Elements *elements, Value *element, Arena *arena)
 
    if (elements->count >= elements->capacity)
    {
-      size_t newCapacity = elements->capacity * 10;
+      size_t newCapacity = elements->capacity * 2;
       Value **newElements = arenaAllocate(arena, newCapacity * sizeof(*elements->elements));
       memcpy(newElements, elements->elements, elements->capacity * sizeof(*elements->elements));
       elements->capacity = newCapacity;
