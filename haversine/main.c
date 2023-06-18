@@ -143,7 +143,7 @@ int main(void)
 
     printf("Read : %f\n\n", readTime);
 
-    printf("Pare : %f\n\n", parseTime);
+    printf("Parse : %f\n\n", parseTime);
 
     printf("Math : %f\n\n", mathTime);
 
