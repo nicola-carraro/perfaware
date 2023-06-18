@@ -115,9 +115,9 @@ int main(void)
 
     uint64_t parseEnd = __rdtsc();
 
-    // printElement(json, 2, 0);
+    printElement(json, 2, 0);
 
-    // printf("\n");
+    printf("\n");
 
     double average = getAverageDistance(json, &arena);
 

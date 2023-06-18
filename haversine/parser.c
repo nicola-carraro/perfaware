@@ -520,6 +520,37 @@ bool isUnicodeEscapeStart(Parser *parser)
    return isCharacter(parser, UNICODE_ESCAPE_START);
 }
 
+uint32_t parseLowSurrogateEscape(uint16_t highSurrogate, Parser *parser)
+{
+   String nextCodepoint;
+   if (!isReverseSolidus(parser))
+   {
+      nextCodepoint = next(parser);
+      die(__FILE__, __LINE__, 0, "high surrogate %#04X, not followed by escape, found %.*s (%zu:%zu)\n", highSurrogate, nextCodepoint.size, nextCodepoint.data.signedData, parser->line + 1, parser->column + 1);
+   }
+
+   next(parser);
+
+   if (!isUnicodeEscapeStart(parser))
+   {
+      nextCodepoint = next(parser);
+      die(__FILE__, __LINE__, 0, "expected unicode escape after high surrogate %#04X, found \\%.*s (%zu:%zu)\n", highSurrogate, nextCodepoint.size, nextCodepoint.data.signedData, parser->line + 1, parser->column + 1);
+   }
+
+   next(parser);
+
+   uint16_t lowSurrogate = decodeUnicodeEscape(parser);
+
+   if (lowSurrogate < 0xdc00 || lowSurrogate > 0xdfff)
+   {
+      die(__FILE__, __LINE__, 0, "expected low surrogate after high surrogate %#04X, found %#04X (%zu:%zu)\n", highSurrogate, lowSurrogate, parser->line + 1, parser->column + 1);
+   }
+
+   uint32_t codepoint = codePointFromSurrogatePair(highSurrogate, lowSurrogate);
+
+   return codepoint;
+}
+
 String parseString(Parser *parser)
 {
    assert(parser != NULL);
@@ -577,31 +608,7 @@ String parseString(Parser *parser)
             uint32_t codepoint = codepointFromFirstEscape;
             if (codepointFromFirstEscape >= 0xd800 && codepointFromFirstEscape <= 0xdbff)
             {
-               uint16_t highSurrogate = codepointFromFirstEscape;
-               if (!isReverseSolidus(parser))
-               {
-                  nextCodepoint = next(parser);
-                  die(__FILE__, __LINE__, 0, "high surrogate %#04X, not followed by escape, found %.*s (%zu:%zu)\n", codepointFromFirstEscape, nextCodepoint.size, nextCodepoint.data.signedData, parser->line + 1, parser->column + 1);
-               }
-
-               next(parser);
-
-               if (!isUnicodeEscapeStart(parser))
-               {
-                  nextCodepoint = next(parser);
-                  die(__FILE__, __LINE__, 0, "expected unicode escape after high surrogate %#04X, found \\%.*s (%zu:%zu)\n", codepointFromFirstEscape, nextCodepoint.size, nextCodepoint.data.signedData, parser->line + 1, parser->column + 1);
-               }
-
-               next(parser);
-
-               uint16_t lowSurrogate = decodeUnicodeEscape(parser);
-
-               if (lowSurrogate < 0xdc00 || lowSurrogate > 0xdfff)
-               {
-                  die(__FILE__, __LINE__, 0, "expected low surrogate after high surrogate %#04X, found %#04X (%zu:%zu)\n", highSurrogate, lowSurrogate, parser->line + 1, parser->column + 1);
-               }
-
-               codepoint = codePointFromSurrogatePair(highSurrogate, lowSurrogate);
+               codepoint = parseLowSurrogateEscape(codepointFromFirstEscape, parser);
             }
             else if (codepointFromFirstEscape >= 0xdc00 && codepointFromFirstEscape <= 0xdfff)
             {
