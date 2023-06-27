@@ -142,10 +142,12 @@ void printString(String string);
 
 Parser initParser(String text, Arena *arena)
 {
+   uint64_t timerId = startTimer(&COUNTERS, __COUNTER__, __func__);
    Parser parser = {0};
    parser.arena = arena;
    parser.text = text;
 
+   stopTimer(&COUNTERS, timerId);
    return parser;
 }
 
@@ -1419,6 +1421,15 @@ Value *parseElement(Parser *parser)
    skipWhitespace(parser);
 
    return result;
+}
+
+Value *parseJson(Parser *parser)
+{
+   uint64_t timerId = startTimer(&COUNTERS, __COUNTER__, __func__);
+   Value *json = parseElement(parser);
+
+   stopTimer(&COUNTERS, timerId);
+   return json;
 }
 
 #endif

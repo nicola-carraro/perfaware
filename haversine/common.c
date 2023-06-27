@@ -7,7 +7,11 @@
 #include "assert.h"
 #include "math.h"
 #include "stdint.h"
-
+#include "assert.h"
+#ifdef _WIN32
+#include "windows.h"
+#include "intrin.h"
+#endif
 #ifndef COMMON_C
 
 #define COMMON_C
@@ -19,9 +23,13 @@
 
 #define EARTH_RADIUS 6371
 
-#define MAKE_STRING(s)   \
-    {                    \
-        s, sizeof(s) - 1 \
+#define MAX_COUNTERS 100
+
+#define COUNTER_NAME_CAPACITY 50
+
+#define MAKE_STRING(s)       \
+    {                        \
+        (s), (sizeof(s) - 1) \
     }
 
 typedef struct
@@ -37,11 +45,26 @@ typedef struct
 
 typedef struct
 {
+    size_t lastStart[MAX_COUNTERS];
+    size_t totalTicks[MAX_COUNTERS];
+    char names[COUNTER_NAME_CAPACITY][MAX_COUNTERS];
+    size_t countersCount;
+    uint64_t cpuCounterFrequency;
+} Counters;
+
+typedef struct
+{
     void *memory;
     size_t size;
     size_t currentOffset;
     size_t previousOffset;
 } Arena;
+
+size_t startTimer(Counters *counters, size_t id, char *name);
+
+void stopTimer(Counters *counters, size_t id);
+
+static Counters COUNTERS = {0};
 
 void die(const char *file, const size_t line, int errorNumber, const char *message, ...)
 {
@@ -126,7 +149,7 @@ size_t getFileSize(FILE *file, char *path)
 
 Arena arenaInit()
 {
-
+    uint64_t timerId = startTimer(&COUNTERS, __COUNTER__, __func__);
     Arena arena = {0};
 
     arena.memory = malloc(ARENA_SIZE);
@@ -140,6 +163,7 @@ Arena arenaInit()
     arena.currentOffset = 0;
     arena.previousOffset = 0;
 
+    stopTimer(&COUNTERS, timerId);
     return arena;
 }
 
@@ -168,6 +192,7 @@ void freeLastAllocation(Arena *arena)
 
 String readFileToString(char *path, Arena *arena)
 {
+    uint64_t timerId = startTimer(&COUNTERS, __COUNTER__, __func__);
     FILE *file = fopen(path, "rb");
 
     if (file == NULL)
@@ -184,6 +209,8 @@ String readFileToString(char *path, Arena *arena)
     {
         die(__FILE__, __LINE__, errno, "could not read %s, read %zu", path, read);
     }
+
+    stopTimer(&COUNTERS, timerId);
 
     return result;
 }
@@ -211,6 +238,58 @@ double haversine(double x1Degrees, double y1Degrees, double x2Degrees, double y2
     double result = 2.0 * radius * asin(sqrt(rootTerm));
 
     return result;
+}
+
+size_t startTimer(Counters *counters, size_t id, char *name)
+{
+    if (counters->countersCount <= id)
+    {
+        counters->countersCount = id + 1;
+        counters->names[id];
+        strncpy(counters->names[id], name, COUNTER_NAME_CAPACITY - 1);
+    }
+    counters->lastStart[id] = __rdtsc();
+
+    return id;
+}
+
+void stopTimer(Counters *counters, size_t id)
+{
+    size_t endTicks = __rdtsc();
+
+    assert(counters->lastStart[id] != 0);
+
+    size_t elapsed = endTicks - counters->lastStart[id];
+    counters->totalTicks[id] += elapsed;
+
+    counters->lastStart[id] = 0;
+}
+
+void printPerformanceReport(Counters *counters)
+{
+
+    size_t totalCount = 0;
+
+    for (size_t counterIndex = 0; counterIndex < counters->countersCount; counterIndex++)
+    {
+        totalCount += counters->totalTicks[counterIndex];
+    }
+
+    float totalPercentage = 0.0f;
+    char format[] = "%-25s: %20.10f (%14.10f %%)\n";
+
+    for (size_t counterIndex = 0; counterIndex < counters->countersCount; counterIndex++)
+    {
+        assert(counters->lastStart[counterIndex] == 0);
+        float seconds = ((float)(counters->totalTicks[counterIndex])) / ((float)(counters->cpuCounterFrequency));
+        float percentage = (((float)counters->totalTicks[counterIndex]) / ((float)(totalCount))) * 100.0f;
+        totalPercentage += percentage;
+        printf(format, counters->names[counterIndex], seconds, percentage);
+    }
+
+    float totalSeconds = ((float)(totalCount)) / ((float)(counters->cpuCounterFrequency));
+    printf("\n");
+    printf(format, "Total", totalSeconds, totalPercentage);
 }
 
 #endif
