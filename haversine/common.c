@@ -252,10 +252,14 @@ void startCounter(Counters *counters, size_t id, char *name)
        if (counters->countersCount <= id)
     {
         counters->countersCount = id + 1;
-        counters->names[id];
+        
+    }
+
+    if (counters->names[id][0] == '\0'){
         strncpy(counters->names[id], name, COUNTER_NAME_CAPACITY - 1);
     }
-    counters->lastStart[id] = count;
+
+        counters->lastStart[id] = count;
     counters->activeCounter = id;
 }
 

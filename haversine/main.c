@@ -25,6 +25,11 @@ uint64_t getOsTimeStamp()
     return timestamp.QuadPart;
 }
 
+void sleep(uint32_t milliseconds)
+{
+    Sleep(milliseconds);
+}
+
 #endif
 
 float getOsSecondsElapsed(uint64_t start, uint64_t frequency)
@@ -81,6 +86,13 @@ uint64_t estimateCpuCounterFrequency()
      printf("Cpu frequency %llu\n", cpuTicks);*/
 
     return cpuTicks;
+}
+
+void sleepFiveSeconds()
+{
+    TIME_FUNCTION
+
+    sleep(5000);
 }
 
 int main(void)
