@@ -36,7 +36,7 @@ float getOsSecondsElapsed(uint64_t start, uint64_t frequency)
 
 double getAverageDistance(Value *json, Arena *arena)
 {
-    uint64_t timerId = startTimer(&COUNTERS, __COUNTER__, __func__);
+    TIME_FUNCTION
     Value *pairs = getMemberValueOfObject(json, "pairs", arena);
 
     double sum = 0;
@@ -59,8 +59,6 @@ double getAverageDistance(Value *json, Arena *arena)
 
     double average = sum / (double)count;
 
-    stopTimer(&COUNTERS, timerId);
-
     return average;
 }
 
@@ -78,9 +76,9 @@ uint64_t estimateCpuCounterFrequency()
     } while ((osTicks - osStart) < frequency);
     uint64_t cpuTicks = __rdtsc() - cpuStart;
 
-   /* printf("Os frequency %llu\n", frequency);
-    printf("Os ticks %llu\n", osTicks - osStart);
-    printf("Cpu frequency %llu\n", cpuTicks);*/
+    /* printf("Os frequency %llu\n", frequency);
+     printf("Os ticks %llu\n", osTicks - osStart);
+     printf("Cpu frequency %llu\n", cpuTicks);*/
 
     return cpuTicks;
 }
@@ -110,6 +108,8 @@ int main(void)
     // printf("\n");
 
     double average = getAverageDistance(json, &arena);
+
+    stopCounter(&COUNTERS);
 
     printf("Average : %1.12f\n\n", average);
 

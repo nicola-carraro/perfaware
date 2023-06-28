@@ -27,9 +27,9 @@
 
 #define COUNTER_NAME_CAPACITY 50
 
-#define MAKE_STRING(s)       \
-    {                        \
-        (s), (sizeof(s) - 1) \
+#define TIME_FUNCTION                                         \
+    {                                                         \
+        startCounter(&COUNTERS, (__COUNTER__ + 1), __func__); \
     }
 
 typedef struct
@@ -45,11 +45,12 @@ typedef struct
 
 typedef struct
 {
-    size_t lastStart[MAX_COUNTERS];
-    size_t totalTicks[MAX_COUNTERS];
+    uint64_t lastStart[MAX_COUNTERS];
+    uint64_t totalTicks[MAX_COUNTERS];
     char names[COUNTER_NAME_CAPACITY][MAX_COUNTERS];
     size_t countersCount;
     uint64_t cpuCounterFrequency;
+    size_t activeCounter;
 } Counters;
 
 typedef struct
@@ -60,9 +61,9 @@ typedef struct
     size_t previousOffset;
 } Arena;
 
-size_t startTimer(Counters *counters, size_t id, char *name);
+void startCounter(Counters *counters, size_t id, char *name);
 
-void stopTimer(Counters *counters, size_t id);
+void stopCounter(Counters *counters);
 
 static Counters COUNTERS = {0};
 
@@ -149,7 +150,7 @@ size_t getFileSize(FILE *file, char *path)
 
 Arena arenaInit()
 {
-    uint64_t timerId = startTimer(&COUNTERS, __COUNTER__, __func__);
+    TIME_FUNCTION
     Arena arena = {0};
 
     arena.memory = malloc(ARENA_SIZE);
@@ -163,7 +164,6 @@ Arena arenaInit()
     arena.currentOffset = 0;
     arena.previousOffset = 0;
 
-    stopTimer(&COUNTERS, timerId);
     return arena;
 }
 
@@ -192,7 +192,7 @@ void freeLastAllocation(Arena *arena)
 
 String readFileToString(char *path, Arena *arena)
 {
-    uint64_t timerId = startTimer(&COUNTERS, __COUNTER__, __func__);
+    TIME_FUNCTION
     FILE *file = fopen(path, "rb");
 
     if (file == NULL)
@@ -209,8 +209,6 @@ String readFileToString(char *path, Arena *arena)
     {
         die(__FILE__, __LINE__, errno, "could not read %s, read %zu", path, read);
     }
-
-    stopTimer(&COUNTERS, timerId);
 
     return result;
 }
@@ -240,29 +238,38 @@ double haversine(double x1Degrees, double y1Degrees, double x2Degrees, double y2
     return result;
 }
 
-size_t startTimer(Counters *counters, size_t id, char *name)
+void startCounter(Counters *counters, size_t id, char *name)
 {
-    if (counters->countersCount <= id)
+    assert(id != 0);
+    size_t count = __rdtsc();
+    if (counters->activeCounter != 0)
+    {
+        size_t elapsed = count - counters->lastStart[counters->activeCounter];
+        counters->totalTicks[counters->activeCounter] += elapsed;
+        counters->lastStart[counters->activeCounter] = 0;
+    }
+
+       if (counters->countersCount <= id)
     {
         counters->countersCount = id + 1;
         counters->names[id];
         strncpy(counters->names[id], name, COUNTER_NAME_CAPACITY - 1);
     }
-    counters->lastStart[id] = __rdtsc();
-
-    return id;
+    counters->lastStart[id] = count;
+    counters->activeCounter = id;
 }
 
-void stopTimer(Counters *counters, size_t id)
+void stopCounter(Counters *counters)
 {
     size_t endTicks = __rdtsc();
 
-    assert(counters->lastStart[id] != 0);
+    assert(counters->lastStart[counters->activeCounter] != 0);
 
-    size_t elapsed = endTicks - counters->lastStart[id];
-    counters->totalTicks[id] += elapsed;
+    size_t elapsed = endTicks - counters->lastStart[counters->activeCounter];
+    counters->totalTicks[counters->activeCounter] += elapsed;
 
-    counters->lastStart[id] = 0;
+    counters->lastStart[counters->activeCounter] = 0;
+    counters->activeCounter = 0;
 }
 
 void printPerformanceReport(Counters *counters)
@@ -270,7 +277,7 @@ void printPerformanceReport(Counters *counters)
 
     size_t totalCount = 0;
 
-    for (size_t counterIndex = 0; counterIndex < counters->countersCount; counterIndex++)
+    for (size_t counterIndex = 1; counterIndex < counters->countersCount; counterIndex++)
     {
         totalCount += counters->totalTicks[counterIndex];
     }
@@ -278,7 +285,7 @@ void printPerformanceReport(Counters *counters)
     float totalPercentage = 0.0f;
     char format[] = "%-25s: %20.10f (%14.10f %%)\n";
 
-    for (size_t counterIndex = 0; counterIndex < counters->countersCount; counterIndex++)
+    for (size_t counterIndex = 1; counterIndex < counters->countersCount; counterIndex++)
     {
         assert(counters->lastStart[counterIndex] == 0);
         float seconds = ((float)(counters->totalTicks[counterIndex])) / ((float)(counters->cpuCounterFrequency));
