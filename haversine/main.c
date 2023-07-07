@@ -64,6 +64,8 @@ double getAverageDistance(Value *json, Arena *arena)
 
     double average = sum / (double)count;
 
+    stopCounter(&COUNTERS);
+
     return average;
 }
 
@@ -93,6 +95,8 @@ void sleepFiveSeconds()
     TIME_FUNCTION
 
     sleep(5000);
+
+    stopCounter(&COUNTERS);
 }
 
 int main(void)
@@ -120,8 +124,6 @@ int main(void)
     // printf("\n");
 
     double average = getAverageDistance(json, &arena);
-
-    stopCounter(&COUNTERS);
 
     printf("Average : %1.12f\n\n", average);
 

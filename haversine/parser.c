@@ -147,6 +147,8 @@ Parser initParser(String text, Arena *arena)
    parser.arena = arena;
    parser.text = text;
 
+   stopCounter(&COUNTERS);
+
    return parser;
 }
 
@@ -1426,6 +1428,8 @@ Value *parseJson(Parser *parser)
 {
    TIME_FUNCTION
    Value *json = parseElement(parser);
+
+   stopCounter(&COUNTERS);
 
    return json;
 }

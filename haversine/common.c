@@ -164,6 +164,8 @@ Arena arenaInit()
     arena.currentOffset = 0;
     arena.previousOffset = 0;
 
+    stopCounter(&COUNTERS);
+
     return arena;
 }
 
@@ -210,6 +212,8 @@ String readFileToString(char *path, Arena *arena)
         die(__FILE__, __LINE__, errno, "could not read %s, read %zu", path, read);
     }
 
+    stopCounter(&COUNTERS);
+
     return result;
 }
 
@@ -242,24 +246,20 @@ void startCounter(Counters *counters, size_t id, char *name)
 {
     assert(id != 0);
     size_t count = __rdtsc();
-    if (counters->activeCounter != 0)
-    {
-        size_t elapsed = count - counters->lastStart[counters->activeCounter];
-        counters->totalTicks[counters->activeCounter] += elapsed;
-        counters->lastStart[counters->activeCounter] = 0;
-    }
 
-       if (counters->countersCount <= id)
+    assert(counters->activeCounter == 0);
+
+    if (counters->countersCount <= id)
     {
         counters->countersCount = id + 1;
-        
     }
 
-    if (counters->names[id][0] == '\0'){
+    if (counters->names[id][0] == '\0')
+    {
         strncpy(counters->names[id], name, COUNTER_NAME_CAPACITY - 1);
     }
 
-        counters->lastStart[id] = count;
+    counters->lastStart[id] = count;
     counters->activeCounter = id;
 }
 
