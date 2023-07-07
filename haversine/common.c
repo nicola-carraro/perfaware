@@ -23,7 +23,7 @@
 
 #define EARTH_RADIUS 6371
 
-#define MAX_COUNTERS 100
+#define MAX_COUNTERS 4096
 
 #define COUNTER_NAME_CAPACITY 50
 
@@ -47,7 +47,7 @@ typedef struct
 {
     uint64_t lastStart[MAX_COUNTERS];
     uint64_t totalTicks[MAX_COUNTERS];
-    char names[COUNTER_NAME_CAPACITY][MAX_COUNTERS];
+    const char *names[MAX_COUNTERS];
     size_t countersCount;
     uint64_t cpuCounterFrequency;
     size_t activeCounter;
@@ -61,7 +61,7 @@ typedef struct
     size_t previousOffset;
 } Arena;
 
-void startCounter(Counters *counters, size_t id, char *name);
+void startCounter(Counters *counters, size_t id, const char *name);
 
 void stopCounter(Counters *counters);
 
@@ -242,7 +242,7 @@ double haversine(double x1Degrees, double y1Degrees, double x2Degrees, double y2
     return result;
 }
 
-void startCounter(Counters *counters, size_t id, char *name)
+void startCounter(Counters *counters, size_t id, const char *name)
 {
     assert(id != 0);
     size_t count = __rdtsc();
@@ -254,13 +254,13 @@ void startCounter(Counters *counters, size_t id, char *name)
         counters->countersCount = id + 1;
     }
 
-    if (counters->names[id][0] == '\0')
+    if (counters->names[id] == 0)
     {
-        strncpy(counters->names[id], name, COUNTER_NAME_CAPACITY - 1);
-    }
+        counters->names[id] = name;
 
-    counters->lastStart[id] = count;
-    counters->activeCounter = id;
+        counters->lastStart[id] = count;
+        counters->activeCounter = id;
+    }
 }
 
 void stopCounter(Counters *counters)
