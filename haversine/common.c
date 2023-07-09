@@ -49,6 +49,7 @@ typedef struct
     uint64_t end;
     uint64_t lastStart[MAX_COUNTERS];
     uint64_t totalTicks[MAX_COUNTERS];
+    uint64_t childrenTicks[MAX_COUNTERS];
     const char *names[MAX_COUNTERS];
     size_t countersCount;
     uint64_t cpuCounterFrequency;
@@ -273,10 +274,10 @@ void startCounter(Counters *counters, size_t id, const char *name)
     if (counters->names[id] == 0)
     {
         counters->names[id] = name;
-
-        counters->lastStart[id] = count;
-        counters->activeCounter = id;
     }
+
+    counters->lastStart[id] = count;
+    counters->activeCounter = id;
 }
 
 void stopCounter(Counters *counters)

@@ -94,7 +94,7 @@ void sleepFiveSeconds()
 {
     TIME_FUNCTION
 
-    sleep(5000);
+    sleep(1000);
 
     stopCounter(&COUNTERS);
 }
@@ -105,9 +105,10 @@ int main(void)
     COUNTERS.cpuCounterFrequency = estimateCpuCounterFrequency();
 
     startCounters(&COUNTERS);
+    sleepFiveSeconds();
 
 #ifdef _WIN32
-        SetConsoleOutputCP(65001);
+    SetConsoleOutputCP(65001);
 #endif
 
     Arena arena = arenaInit();
@@ -128,6 +129,8 @@ int main(void)
     double average = getAverageDistance(json, &arena);
 
     printf("Average : %1.12f\n\n", average);
+
+    sleepFiveSeconds();
 
     stopCounters(&COUNTERS);
 
