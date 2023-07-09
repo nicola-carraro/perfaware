@@ -32,6 +32,11 @@
         startCounter(&COUNTERS, (__COUNTER__ + 1), __func__); \
     }
 
+#define STOP_COUNTER             \
+    {                            \
+        _stopCounter(&COUNTERS); \
+    }
+
 typedef struct
 {
     union
@@ -72,7 +77,7 @@ typedef struct
 
 void startCounter(Counters *counters, size_t id, const char *name);
 
-void stopCounter(Counters *counters);
+void _stopCounter(Counters *counters);
 
 static Counters COUNTERS = {0};
 
@@ -156,7 +161,7 @@ size_t getFileSize(FILE *file, char *path)
         }
     }
 
-    stopCounter(&COUNTERS);
+    STOP_COUNTER
 
     return result;
 }
@@ -177,7 +182,7 @@ Arena arenaInit()
     arena.currentOffset = 0;
     arena.previousOffset = 0;
 
-    stopCounter(&COUNTERS);
+    STOP_COUNTER
 
     return arena;
 }
@@ -225,7 +230,7 @@ String readFileToString(char *path, Arena *arena)
         die(__FILE__, __LINE__, errno, "could not read %s, read %zu", path, read);
     }
 
-    stopCounter(&COUNTERS);
+    STOP_COUNTER
 
     return result;
 }
@@ -289,9 +294,11 @@ void startCounter(Counters *counters, size_t id, const char *name)
     counters->stackSize++;
 }
 
-void stopCounter(Counters *counters)
+void _stopCounter(Counters *counters)
 {
     size_t endTicks = __rdtsc();
+
+    assert(counters->stackSize > 0);
 
     size_t startTicks = counters->stack[counters->stackSize - 1].start;
     size_t id = counters->stack[counters->stackSize - 1].id;

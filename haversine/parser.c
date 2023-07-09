@@ -147,7 +147,7 @@ Parser initParser(String text, Arena *arena)
    parser.arena = arena;
    parser.text = text;
 
-   stopCounter(&COUNTERS);
+   STOP_COUNTER
 
    return parser;
 }
@@ -556,6 +556,8 @@ uint32_t parseLowSurrogateEscape(uint16_t highSurrogate, Parser *parser)
 
 String parseString(Parser *parser)
 {
+
+   TIME_FUNCTION
    assert(parser != NULL);
    assert(parser->text.data.unsignedData != NULL);
    assert(hasNext(parser));
@@ -669,6 +671,8 @@ String parseString(Parser *parser)
    }
 
    next(parser);
+
+   STOP_COUNTER
 
    return result;
 }
@@ -876,7 +880,7 @@ double parseNumber(Parser *parser)
 
    freeLastAllocation(parser->arena);
 
-   stopCounter(&COUNTERS);
+   STOP_COUNTER
 
    return result;
 }
@@ -927,7 +931,7 @@ Member parseMember(Parser *parser)
 
 Members *parseObject(Parser *parser)
 {
-
+   TIME_FUNCTION
    assert(parser != NULL);
    assert(isLeftBrace(parser));
 
@@ -953,11 +957,14 @@ Members *parseObject(Parser *parser)
 
    next(parser);
 
+   STOP_COUNTER
+
    return result;
 }
 
 Elements *parseArray(Parser *parser)
 {
+   TIME_FUNCTION
    assert(parser != NULL);
    assert(isLeftBracket(parser));
    next(parser);
@@ -980,11 +987,13 @@ Elements *parseArray(Parser *parser)
 
    next(parser);
 
+   STOP_COUNTER
    return result;
 }
 
 void printString(String string)
 {
+
    int bytesToPrint;
    if (string.size > INT_MAX)
    {
@@ -1370,7 +1379,7 @@ size_t getElementCount(Value *array)
 
 Value *parseElement(Parser *parser)
 {
-
+   TIME_FUNCTION
    assert(parser != NULL);
    Value *result = (Value *)arenaAllocate(parser->arena, sizeof(Value));
    skipWhitespace(parser);
@@ -1426,6 +1435,7 @@ Value *parseElement(Parser *parser)
 
    skipWhitespace(parser);
 
+   STOP_COUNTER
    return result;
 }
 
@@ -1434,7 +1444,7 @@ Value *parseJson(Parser *parser)
    TIME_FUNCTION
    Value *json = parseElement(parser);
 
-   stopCounter(&COUNTERS);
+   STOP_COUNTER
 
    return json;
 }

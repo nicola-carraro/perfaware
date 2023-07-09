@@ -7,6 +7,10 @@
 
 #include "parser.c"
 
+void bar();
+
+void foo();
+
 #ifdef _WIN32
 uint64_t getOsTimeFrequency()
 {
@@ -64,8 +68,7 @@ double getAverageDistance(Value *json, Arena *arena)
 
     double average = sum / (double)count;
 
-    stopCounter(&COUNTERS);
-
+    STOP_COUNTER
     return average;
 }
 
@@ -90,13 +93,40 @@ uint64_t estimateCpuCounterFrequency()
     return cpuTicks;
 }
 
-void sleepFiveSeconds()
+void sleepOneSecond()
 {
-    TIME_FUNCTION
+    // TIME_FUNCTION
 
     sleep(1000);
 
-    stopCounter(&COUNTERS);
+    // STOP_COUNTER;
+}
+
+void foo()
+{
+    TIME_FUNCTION
+
+    static bool secondTime = false;
+
+    sleepOneSecond();
+
+    if (!secondTime)
+    {
+        secondTime = true;
+        bar();
+    }
+
+    STOP_COUNTER
+}
+
+void bar()
+{
+    TIME_FUNCTION
+    sleepOneSecond();
+
+    foo();
+
+    STOP_COUNTER
 }
 
 int main(void)
@@ -105,7 +135,7 @@ int main(void)
     COUNTERS.cpuCounterFrequency = estimateCpuCounterFrequency();
 
     startCounters(&COUNTERS);
-    sleepFiveSeconds();
+    // sleepOneSecond();
 
 #ifdef _WIN32
     SetConsoleOutputCP(65001);
@@ -130,7 +160,9 @@ int main(void)
 
     printf("Average : %1.12f\n\n", average);
 
-    sleepFiveSeconds();
+    foo();
+
+    //  sleepFiveSeconds();
 
     stopCounters(&COUNTERS);
 
