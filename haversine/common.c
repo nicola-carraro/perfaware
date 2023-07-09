@@ -121,6 +121,8 @@ void writeBinaryToFile(FILE *file, const char *path, void *data, size_t size, si
 
 size_t getFileSize(FILE *file, char *path)
 {
+    TIME_FUNCTION
+
     size_t result = 0;
 
     const char *errorMessage = "could not query the size of %s";
@@ -153,6 +155,8 @@ size_t getFileSize(FILE *file, char *path)
             die(__FILE__, __LINE__, errorNumber, errorMessage, path);
         }
     }
+
+    stopCounter(&COUNTERS);
 
     return result;
 }

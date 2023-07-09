@@ -794,6 +794,8 @@ size_t countIntegerDigits(Parser *parser)
 
 double parseNumber(Parser *parser)
 {
+   TIME_FUNCTION
+
    assert(parser != NULL);
    assert(parser->text.data.unsignedData != NULL);
    assert(hasNext(parser));
@@ -874,6 +876,8 @@ double parseNumber(Parser *parser)
 
    freeLastAllocation(parser->arena);
 
+   stopCounter(&COUNTERS);
+
    return result;
 }
 
@@ -923,6 +927,7 @@ Member parseMember(Parser *parser)
 
 Members *parseObject(Parser *parser)
 {
+
    assert(parser != NULL);
    assert(isLeftBrace(parser));
 
