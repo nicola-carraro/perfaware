@@ -46,14 +46,20 @@ typedef struct
 typedef struct
 {
     uint64_t start;
+    size_t id;
+} Counter;
+
+typedef struct
+{
+    uint64_t start;
     uint64_t end;
-    uint64_t lastStart[MAX_COUNTERS];
     uint64_t totalTicks[MAX_COUNTERS];
     uint64_t childrenTicks[MAX_COUNTERS];
     const char *names[MAX_COUNTERS];
     size_t countersCount;
     uint64_t cpuCounterFrequency;
-    size_t activeCounter;
+    Counter stack[MAX_COUNTERS];
+    size_t stackSize;
 } Counters;
 
 typedef struct
@@ -264,8 +270,6 @@ void startCounter(Counters *counters, size_t id, const char *name)
     assert(id != 0);
     size_t count = __rdtsc();
 
-    assert(counters->activeCounter == 0);
-
     if (counters->countersCount <= id)
     {
         counters->countersCount = id + 1;
@@ -276,21 +280,22 @@ void startCounter(Counters *counters, size_t id, const char *name)
         counters->names[id] = name;
     }
 
-    counters->lastStart[id] = count;
-    counters->activeCounter = id;
+    counters->stack[counters->stackSize].id = id;
+    counters->stack[counters->stackSize].start = count;
+    counters->stackSize++;
 }
 
 void stopCounter(Counters *counters)
 {
     size_t endTicks = __rdtsc();
 
-    assert(counters->lastStart[counters->activeCounter] != 0);
+    size_t startTicks = counters->stack[counters->stackSize - 1].start;
+    size_t id = counters->stack[counters->stackSize - 1].id;
 
-    size_t elapsed = endTicks - counters->lastStart[counters->activeCounter];
-    counters->totalTicks[counters->activeCounter] += elapsed;
+    size_t elapsed = endTicks - startTicks;
+    counters->totalTicks[id] += elapsed;
 
-    counters->lastStart[counters->activeCounter] = 0;
-    counters->activeCounter = 0;
+    counters->stackSize--;
 }
 
 void printPerformanceReport(Counters *counters)
@@ -298,12 +303,13 @@ void printPerformanceReport(Counters *counters)
 
     size_t totalCount = counters->end - counters->start;
 
+    assert(counters->stackSize == 0);
+
     float totalPercentage = 0.0f;
     char format[] = "%-25s: %20.10f (%14.10f %%)\n";
 
     for (size_t counterIndex = 1; counterIndex < counters->countersCount; counterIndex++)
     {
-        assert(counters->lastStart[counterIndex] == 0);
         float seconds = ((float)(counters->totalTicks[counterIndex])) / ((float)(counters->cpuCounterFrequency));
         float percentage = (((float)counters->totalTicks[counterIndex]) / ((float)(totalCount))) * 100.0f;
         totalPercentage += percentage;
