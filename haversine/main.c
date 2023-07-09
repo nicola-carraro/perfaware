@@ -104,8 +104,10 @@ int main(void)
 
     COUNTERS.cpuCounterFrequency = estimateCpuCounterFrequency();
 
+    startCounters(&COUNTERS);
+
 #ifdef _WIN32
-    SetConsoleOutputCP(65001);
+        SetConsoleOutputCP(65001);
 #endif
 
     Arena arena = arenaInit();
@@ -126,6 +128,8 @@ int main(void)
     double average = getAverageDistance(json, &arena);
 
     printf("Average : %1.12f\n\n", average);
+
+    stopCounters(&COUNTERS);
 
     printPerformanceReport(&COUNTERS);
 

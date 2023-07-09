@@ -45,6 +45,8 @@ typedef struct
 
 typedef struct
 {
+    uint64_t start;
+    uint64_t end;
     uint64_t lastStart[MAX_COUNTERS];
     uint64_t totalTicks[MAX_COUNTERS];
     const char *names[MAX_COUNTERS];
@@ -242,6 +244,20 @@ double haversine(double x1Degrees, double y1Degrees, double x2Degrees, double y2
     return result;
 }
 
+void startCounters(Counters *counters)
+{
+    size_t count = __rdtsc();
+
+    counters->start = count;
+}
+
+void stopCounters(Counters *counters)
+{
+    size_t count = __rdtsc();
+
+    counters->end = count;
+}
+
 void startCounter(Counters *counters, size_t id, const char *name)
 {
     assert(id != 0);
@@ -279,12 +295,7 @@ void stopCounter(Counters *counters)
 void printPerformanceReport(Counters *counters)
 {
 
-    size_t totalCount = 0;
-
-    for (size_t counterIndex = 1; counterIndex < counters->countersCount; counterIndex++)
-    {
-        totalCount += counters->totalTicks[counterIndex];
-    }
+    size_t totalCount = counters->end - counters->start;
 
     float totalPercentage = 0.0f;
     char format[] = "%-25s: %20.10f (%14.10f %%)\n";
