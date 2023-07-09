@@ -300,6 +300,12 @@ void stopCounter(Counters *counters)
     counters->totalTicks[id] += elapsed;
 
     counters->stackSize--;
+
+    if (counters->stackSize > 0)
+    {
+        size_t parentId = counters->stack[counters->stackSize - 1].id;
+        counters->childrenTicks[parentId] += elapsed;
+    }
 }
 
 void printPerformanceReport(Counters *counters)
@@ -310,19 +316,25 @@ void printPerformanceReport(Counters *counters)
     assert(counters->stackSize == 0);
 
     float totalPercentage = 0.0f;
-    char format[] = "%-25s: %20.10f (%14.10f %%)\n";
+    char format[] = "%-25s: %20.10f (%14.10f %%) with children: %20.10f\n";
 
     for (size_t counterIndex = 1; counterIndex < counters->countersCount; counterIndex++)
     {
-        float seconds = ((float)(counters->totalTicks[counterIndex])) / ((float)(counters->cpuCounterFrequency));
-        float percentage = (((float)counters->totalTicks[counterIndex]) / ((float)(totalCount))) * 100.0f;
+        uint64_t totalTicks = counters->totalTicks[counterIndex];
+        uint64_t childrenTicks = counters->childrenTicks[counterIndex];
+        uint64_t ticksWithoutChildren = totalTicks - childrenTicks;
+        float totalSeconds = ((float)(totalTicks)) / ((float)(counters->cpuCounterFrequency));
+        float secondsWithoutChildren = ((float)(ticksWithoutChildren)) / ((float)(counters->cpuCounterFrequency));
+        float percentage = (((float)ticksWithoutChildren) / ((float)(totalCount))) * 100.0f;
         totalPercentage += percentage;
-        printf(format, counters->names[counterIndex], seconds, percentage);
+        printf(format, counters->names[counterIndex], secondsWithoutChildren, percentage, totalSeconds);
     }
 
     float totalSeconds = ((float)(totalCount)) / ((float)(counters->cpuCounterFrequency));
     printf("\n");
-    printf(format, "Total", totalSeconds, totalPercentage);
+
+    char totalFormat[] = "%-25s: %20.10f (%14.10f %%)";
+    printf(totalFormat, "Total", totalSeconds, totalPercentage);
 }
 
 #endif
