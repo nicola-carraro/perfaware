@@ -52,6 +52,7 @@ typedef struct
 {
     uint64_t start;
     size_t id;
+    uint64_t initialTicksInRoot;
 } Counter;
 
 typedef struct
@@ -59,6 +60,7 @@ typedef struct
     uint64_t start;
     uint64_t end;
     uint64_t totalTicks[MAX_COUNTERS];
+    uint64_t ticksInRoot[MAX_COUNTERS];
     uint64_t childrenTicks[MAX_COUNTERS];
     const char *names[MAX_COUNTERS];
     size_t countersCount;
@@ -291,6 +293,7 @@ void startCounter(Counters *counters, size_t id, const char *name)
 
     counters->stack[counters->stackSize].id = id;
     counters->stack[counters->stackSize].start = count;
+    counters->stack[counters->stackSize].initialTicksInRoot = counters->ticksInRoot[id];
     counters->stackSize++;
 }
 
@@ -302,9 +305,12 @@ void _stopCounter(Counters *counters)
 
     size_t startTicks = counters->stack[counters->stackSize - 1].start;
     size_t id = counters->stack[counters->stackSize - 1].id;
+    uint64_t initialTicksInRoot = counters->stack[counters->stackSize - 1].initialTicksInRoot;
+
 
     size_t elapsed = endTicks - startTicks;
     counters->totalTicks[id] += elapsed;
+    counters->ticksInRoot[id] = initialTicksInRoot + elapsed;
 
     counters->stackSize--;
 
@@ -323,18 +329,20 @@ void printPerformanceReport(Counters *counters)
     assert(counters->stackSize == 0);
 
     float totalPercentage = 0.0f;
-    char format[] = "%-25s: %20.10f (%14.10f %%) with children: %20.10f\n";
+    char format[] = "%-25s: %20.10f (%14.10f %%) \t\t with children: %20.10f (%14.10f %%)\n";
 
     for (size_t counterIndex = 1; counterIndex < counters->countersCount; counterIndex++)
     {
         uint64_t totalTicks = counters->totalTicks[counterIndex];
+        uint64_t ticksInRoot = counters->ticksInRoot[counterIndex];
         uint64_t childrenTicks = counters->childrenTicks[counterIndex];
         uint64_t ticksWithoutChildren = totalTicks - childrenTicks;
         float totalSeconds = ((float)(totalTicks)) / ((float)(counters->cpuCounterFrequency));
         float secondsWithoutChildren = ((float)(ticksWithoutChildren)) / ((float)(counters->cpuCounterFrequency));
-        float percentage = (((float)ticksWithoutChildren) / ((float)(totalCount))) * 100.0f;
-        totalPercentage += percentage;
-        printf(format, counters->names[counterIndex], secondsWithoutChildren, percentage, totalSeconds);
+        float percentageWithoutChildren = (((float)ticksWithoutChildren) / ((float)(totalCount))) * 100.0f;
+        float percentageWithChildren = (((float)ticksInRoot) / ((float)(totalCount))) * 100.0f;
+        totalPercentage += percentageWithoutChildren;
+        printf(format, counters->names[counterIndex], secondsWithoutChildren, percentageWithoutChildren, totalSeconds, percentageWithChildren);
     }
 
     float totalSeconds = ((float)(totalCount)) / ((float)(counters->cpuCounterFrequency));

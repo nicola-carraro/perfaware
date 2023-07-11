@@ -160,7 +160,7 @@ int main(void)
 
     printf("Average : %1.12f\n\n", average);
 
-    foo();
+    //foo();
 
     //  sleepFiveSeconds();
 
