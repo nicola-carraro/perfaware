@@ -19,7 +19,7 @@
 #define JSON_PATH "data/pairs.json"
 #define ANSWERS_PATH "data/answers"
 
-#define ARENA_SIZE 1024ll * 1024ll * 1024l
+#define ARENA_SIZE 8 * 1024ll * 1024ll * 1024l
 
 #define EARTH_RADIUS 6371
 
@@ -27,13 +27,13 @@
 
 #define COUNTER_NAME_CAPACITY 50
 
-#define TIME_FUNCTION                                         \
-    {                                                         \
+#define TIME_FUNCTION                                        \
+    {                                                        \
         pushCounter(&COUNTERS, (__COUNTER__ + 1), __func__); \
     }
 
-#define STOP_COUNTER             \
-    {                            \
+#define STOP_COUNTER           \
+    {                          \
         popCounter(&COUNTERS); \
     }
 
@@ -53,16 +53,17 @@ typedef struct
     uint64_t start;
     size_t id;
     uint64_t initialTicksInRoot;
-    
+
 } Counter;
 
-typedef struct {
+typedef struct
+{
 
     uint64_t totalTicks;
     uint64_t ticksInRoot;
     uint64_t childrenTicks;
     const char *name;
-}TimedBlock;
+} TimedBlock;
 
 typedef struct
 {
@@ -314,7 +315,6 @@ void popCounter(Counters *counters)
     size_t id = counters->stack[counters->stackSize - 1].id;
     uint64_t initialTicksInRoot = counters->stack[counters->stackSize - 1].initialTicksInRoot;
 
-
     size_t elapsed = endTicks - startTicks;
     TimedBlock *timedBlock = &(counters->timedBlocks[id]);
     timedBlock->totalTicks += elapsed;
@@ -330,20 +330,25 @@ void popCounter(Counters *counters)
     }
 }
 
-int compareTimedBlocks(const void *left, const void *right){
-    TimedBlock *leftTimedBlock = (TimedBlock*)(left);
+int compareTimedBlocks(const void *left, const void *right)
+{
+    TimedBlock *leftTimedBlock = (TimedBlock *)(left);
 
-    TimedBlock *rightTimedBlock = (TimedBlock*)(right);
+    TimedBlock *rightTimedBlock = (TimedBlock *)(right);
 
-    uint64_t difference = leftTimedBlock->ticksInRoot - rightTimedBlock->ticksInRoot;
+    uint64_t leftTicksInRoot = leftTimedBlock->ticksInRoot;
+    uint64_t rightTicksInRoot = rightTimedBlock->ticksInRoot;
 
-    if(difference > 0){
+    if (leftTicksInRoot > rightTicksInRoot)
+    {
         return -1;
     }
-    else if(difference < 0){
+    else if (leftTicksInRoot < rightTicksInRoot)
+    {
         return 1;
     }
-    else{
+    else
+    {
         return 0;
     }
 }
@@ -358,7 +363,7 @@ void printPerformanceReport(Counters *counters)
     float totalPercentage = 0.0f;
     char format[] = "%-25s: \t\t with children: %20.10f (%14.10f %%) \t\t without children:  %20.10f (%14.10f %%) \n";
 
-    //qsort( (void*)(counters->timedBlocks), counters->blocksCount, sizeof(*counters->timedBlocks), compareTimedBlocks);
+    qsort((void *)(counters->timedBlocks), counters->blocksCount, sizeof(*counters->timedBlocks), compareTimedBlocks);
     for (size_t counterIndex = 1; counterIndex < counters->blocksCount; counterIndex++)
     {
         TimedBlock *timedBlock = &(counters->timedBlocks[counterIndex]);
@@ -371,7 +376,7 @@ void printPerformanceReport(Counters *counters)
         float percentageWithoutChildren = (((float)ticksWithoutChildren) / ((float)(totalCount))) * 100.0f;
         float percentageWithChildren = (((float)ticksInRoot) / ((float)(totalCount))) * 100.0f;
         totalPercentage += percentageWithoutChildren;
-        printf(format, timedBlock->name, secondsWithChildren, percentageWithChildren, secondsWithoutChildren,  percentageWithoutChildren);
+        printf(format, timedBlock->name, secondsWithChildren, percentageWithChildren, secondsWithoutChildren, percentageWithoutChildren);
     }
 
     float totalSeconds = ((float)(totalCount)) / ((float)(counters->cpuCounterFrequency));
