@@ -62,6 +62,7 @@ typedef struct
     uint64_t totalTicks;
     uint64_t ticksInRoot;
     uint64_t childrenTicks;
+    size_t calls;
     const char *name;
 } TimedBlock;
 
@@ -299,6 +300,8 @@ void pushCounter(Counters *counters, size_t id, const char *name)
         timedBlock->name = name;
     }
 
+    timedBlock->calls++;
+
     counters->stack[counters->stackSize].id = id;
     counters->stack[counters->stackSize].start = count;
     counters->stack[counters->stackSize].initialTicksInRoot = timedBlock->ticksInRoot;
@@ -361,7 +364,7 @@ void printPerformanceReport(Counters *counters)
     assert(counters->stackSize == 0);
 
     float totalPercentage = 0.0f;
-    char format[] = "%-25s: \t\t with children: %20.10f (%14.10f %%) \t\t without children:  %20.10f (%14.10f %%) \n";
+    char format[] = "%-25s (called %10zu times): \t\t with children: %20.10f (%14.10f %%) \t\t without children:  %20.10f (%14.10f %%) \n";
 
     qsort((void *)(counters->timedBlocks), counters->blocksCount, sizeof(*counters->timedBlocks), compareTimedBlocks);
     for (size_t counterIndex = 1; counterIndex < counters->blocksCount; counterIndex++)
@@ -376,14 +379,14 @@ void printPerformanceReport(Counters *counters)
         float percentageWithoutChildren = (((float)ticksWithoutChildren) / ((float)(totalCount))) * 100.0f;
         float percentageWithChildren = (((float)ticksInRoot) / ((float)(totalCount))) * 100.0f;
         totalPercentage += percentageWithoutChildren;
-        printf(format, timedBlock->name, secondsWithChildren, percentageWithChildren, secondsWithoutChildren, percentageWithoutChildren);
+        printf(format, timedBlock->name, timedBlock->calls, secondsWithChildren, percentageWithChildren, secondsWithoutChildren, percentageWithoutChildren);
     }
 
     float totalSeconds = ((float)(totalCount)) / ((float)(counters->cpuCounterFrequency));
     printf("\n");
 
-    char totalFormat[] = "%-25s: \t\t %10.10f                        (%14.10f %%)";
-    printf(totalFormat, "Total", totalSeconds, totalPercentage);
+    printf("Total time:       %14.10f\n", totalSeconds);
+    printf("Total percentage: %14.10f\n", totalPercentage);
 }
 
 #endif
