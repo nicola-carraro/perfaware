@@ -29,12 +29,12 @@
 
 #define TIME_FUNCTION                                         \
     {                                                         \
-        startCounter(&COUNTERS, (__COUNTER__ + 1), __func__); \
+        pushCounter(&COUNTERS, (__COUNTER__ + 1), __func__); \
     }
 
 #define STOP_COUNTER             \
     {                            \
-        _stopCounter(&COUNTERS); \
+        popCounter(&COUNTERS); \
     }
 
 typedef struct
@@ -77,9 +77,9 @@ typedef struct
     size_t previousOffset;
 } Arena;
 
-void startCounter(Counters *counters, size_t id, const char *name);
+void pushCounter(Counters *counters, size_t id, const char *name);
 
-void _stopCounter(Counters *counters);
+void popCounter(Counters *counters);
 
 static Counters COUNTERS = {0};
 
@@ -276,7 +276,7 @@ void stopCounters(Counters *counters)
     counters->end = count;
 }
 
-void startCounter(Counters *counters, size_t id, const char *name)
+void pushCounter(Counters *counters, size_t id, const char *name)
 {
     assert(id != 0);
     size_t count = __rdtsc();
@@ -297,7 +297,7 @@ void startCounter(Counters *counters, size_t id, const char *name)
     counters->stackSize++;
 }
 
-void _stopCounter(Counters *counters)
+void popCounter(Counters *counters)
 {
     size_t endTicks = __rdtsc();
 
