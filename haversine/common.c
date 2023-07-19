@@ -330,6 +330,24 @@ void popCounter(Counters *counters)
     }
 }
 
+int compareTimedBlocks(const void *left, const void *right){
+    TimedBlock *leftTimedBlock = (TimedBlock*)(left);
+
+    TimedBlock *rightTimedBlock = (TimedBlock*)(right);
+
+    uint64_t difference = leftTimedBlock->ticksInRoot - rightTimedBlock->ticksInRoot;
+
+    if(difference > 0){
+        return -1;
+    }
+    else if(difference < 0){
+        return 1;
+    }
+    else{
+        return 0;
+    }
+}
+
 void printPerformanceReport(Counters *counters)
 {
 
@@ -340,6 +358,7 @@ void printPerformanceReport(Counters *counters)
     float totalPercentage = 0.0f;
     char format[] = "%-25s: \t\t with children: %20.10f (%14.10f %%) \t\t without children:  %20.10f (%14.10f %%) \n";
 
+    //qsort( (void*)(counters->timedBlocks), counters->blocksCount, sizeof(*counters->timedBlocks), compareTimedBlocks);
     for (size_t counterIndex = 1; counterIndex < counters->blocksCount; counterIndex++)
     {
         TimedBlock *timedBlock = &(counters->timedBlocks[counterIndex]);
@@ -347,12 +366,12 @@ void printPerformanceReport(Counters *counters)
         uint64_t ticksInRoot = timedBlock->ticksInRoot;
         uint64_t childrenTicks = timedBlock->childrenTicks;
         uint64_t ticksWithoutChildren = totalTicks - childrenTicks;
-        float totalSeconds = ((float)(totalTicks)) / ((float)(counters->cpuCounterFrequency));
+        float secondsWithChildren = ((float)(ticksInRoot)) / ((float)(counters->cpuCounterFrequency));
         float secondsWithoutChildren = ((float)(ticksWithoutChildren)) / ((float)(counters->cpuCounterFrequency));
         float percentageWithoutChildren = (((float)ticksWithoutChildren) / ((float)(totalCount))) * 100.0f;
         float percentageWithChildren = (((float)ticksInRoot) / ((float)(totalCount))) * 100.0f;
         totalPercentage += percentageWithoutChildren;
-        printf(format, timedBlock->name, totalSeconds, percentageWithChildren, secondsWithoutChildren,  percentageWithoutChildren);
+        printf(format, timedBlock->name, secondsWithChildren, percentageWithChildren, secondsWithoutChildren,  percentageWithoutChildren);
     }
 
     float totalSeconds = ((float)(totalCount)) / ((float)(counters->cpuCounterFrequency));
