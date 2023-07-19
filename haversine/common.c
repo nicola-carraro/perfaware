@@ -27,8 +27,10 @@
 
 #define COUNTER_NAME_CAPACITY 50
 
+#ifdef PROFILE
 #define TIME_FUNCTION                                        \
     {                                                        \
+                                                             \
         pushCounter(&COUNTERS, (__COUNTER__ + 1), __func__); \
     }
 
@@ -36,6 +38,14 @@
     {                          \
         popCounter(&COUNTERS); \
     }
+#else
+#define TIME_FUNCTION \
+    {                 \
+    }
+#define STOP_COUNTER \
+    {                \
+    }
+#endif
 
 typedef struct
 {
