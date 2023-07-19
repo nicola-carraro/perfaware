@@ -338,7 +338,7 @@ void printPerformanceReport(Counters *counters)
     assert(counters->stackSize == 0);
 
     float totalPercentage = 0.0f;
-    char format[] = "%-25s: %20.10f (%14.10f %%) \t\t with children: %20.10f (%14.10f %%)\n";
+    char format[] = "%-25s: \t\t with children: %20.10f (%14.10f %%) \t\t without children:  %20.10f (%14.10f %%) \n";
 
     for (size_t counterIndex = 1; counterIndex < counters->blocksCount; counterIndex++)
     {
@@ -352,13 +352,13 @@ void printPerformanceReport(Counters *counters)
         float percentageWithoutChildren = (((float)ticksWithoutChildren) / ((float)(totalCount))) * 100.0f;
         float percentageWithChildren = (((float)ticksInRoot) / ((float)(totalCount))) * 100.0f;
         totalPercentage += percentageWithoutChildren;
-        printf(format, timedBlock->name, secondsWithoutChildren, percentageWithoutChildren, totalSeconds, percentageWithChildren);
+        printf(format, timedBlock->name, totalSeconds, percentageWithChildren, secondsWithoutChildren,  percentageWithoutChildren);
     }
 
     float totalSeconds = ((float)(totalCount)) / ((float)(counters->cpuCounterFrequency));
     printf("\n");
 
-    char totalFormat[] = "%-25s: %20.10f (%14.10f %%)";
+    char totalFormat[] = "%-25s: \t\t %10.10f                        (%14.10f %%)";
     printf(totalFormat, "Total", totalSeconds, totalPercentage);
 }
 
