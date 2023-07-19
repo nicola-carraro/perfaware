@@ -53,17 +53,23 @@ typedef struct
     uint64_t start;
     size_t id;
     uint64_t initialTicksInRoot;
+    
 } Counter;
+
+typedef struct {
+
+    uint64_t totalTicks;
+    uint64_t ticksInRoot;
+    uint64_t childrenTicks;
+    const char *name;
+}TimedBlock;
 
 typedef struct
 {
     uint64_t start;
     uint64_t end;
-    uint64_t totalTicks[MAX_COUNTERS];
-    uint64_t ticksInRoot[MAX_COUNTERS];
-    uint64_t childrenTicks[MAX_COUNTERS];
-    const char *names[MAX_COUNTERS];
-    size_t countersCount;
+    TimedBlock timedBlocks[MAX_COUNTERS];
+    size_t blocksCount;
     uint64_t cpuCounterFrequency;
     Counter stack[MAX_COUNTERS];
     size_t stackSize;
@@ -281,19 +287,20 @@ void pushCounter(Counters *counters, size_t id, const char *name)
     assert(id != 0);
     size_t count = __rdtsc();
 
-    if (counters->countersCount <= id)
+    TimedBlock *timedBlock = &(counters->timedBlocks[id]);
+    if (counters->blocksCount <= id)
     {
-        counters->countersCount = id + 1;
+        counters->blocksCount = id + 1;
     }
 
-    if (counters->names[id] == 0)
+    if (timedBlock->name == 0)
     {
-        counters->names[id] = name;
+        timedBlock->name = name;
     }
 
     counters->stack[counters->stackSize].id = id;
     counters->stack[counters->stackSize].start = count;
-    counters->stack[counters->stackSize].initialTicksInRoot = counters->ticksInRoot[id];
+    counters->stack[counters->stackSize].initialTicksInRoot = timedBlock->ticksInRoot;
     counters->stackSize++;
 }
 
@@ -309,15 +316,17 @@ void popCounter(Counters *counters)
 
 
     size_t elapsed = endTicks - startTicks;
-    counters->totalTicks[id] += elapsed;
-    counters->ticksInRoot[id] = initialTicksInRoot + elapsed;
+    TimedBlock *timedBlock = &(counters->timedBlocks[id]);
+    timedBlock->totalTicks += elapsed;
+    timedBlock->ticksInRoot = initialTicksInRoot + elapsed;
 
     counters->stackSize--;
 
     if (counters->stackSize > 0)
     {
         size_t parentId = counters->stack[counters->stackSize - 1].id;
-        counters->childrenTicks[parentId] += elapsed;
+        TimedBlock *parentBlock = &(counters->timedBlocks[parentId]);
+        parentBlock->childrenTicks += elapsed;
     }
 }
 
@@ -331,18 +340,19 @@ void printPerformanceReport(Counters *counters)
     float totalPercentage = 0.0f;
     char format[] = "%-25s: %20.10f (%14.10f %%) \t\t with children: %20.10f (%14.10f %%)\n";
 
-    for (size_t counterIndex = 1; counterIndex < counters->countersCount; counterIndex++)
+    for (size_t counterIndex = 1; counterIndex < counters->blocksCount; counterIndex++)
     {
-        uint64_t totalTicks = counters->totalTicks[counterIndex];
-        uint64_t ticksInRoot = counters->ticksInRoot[counterIndex];
-        uint64_t childrenTicks = counters->childrenTicks[counterIndex];
+        TimedBlock *timedBlock = &(counters->timedBlocks[counterIndex]);
+        uint64_t totalTicks = timedBlock->totalTicks;
+        uint64_t ticksInRoot = timedBlock->ticksInRoot;
+        uint64_t childrenTicks = timedBlock->childrenTicks;
         uint64_t ticksWithoutChildren = totalTicks - childrenTicks;
         float totalSeconds = ((float)(totalTicks)) / ((float)(counters->cpuCounterFrequency));
         float secondsWithoutChildren = ((float)(ticksWithoutChildren)) / ((float)(counters->cpuCounterFrequency));
         float percentageWithoutChildren = (((float)ticksWithoutChildren) / ((float)(totalCount))) * 100.0f;
         float percentageWithChildren = (((float)ticksInRoot) / ((float)(totalCount))) * 100.0f;
         totalPercentage += percentageWithoutChildren;
-        printf(format, counters->names[counterIndex], secondsWithoutChildren, percentageWithoutChildren, totalSeconds, percentageWithChildren);
+        printf(format, timedBlock->name, secondsWithoutChildren, percentageWithoutChildren, totalSeconds, percentageWithChildren);
     }
 
     float totalSeconds = ((float)(totalCount)) / ((float)(counters->cpuCounterFrequency));
