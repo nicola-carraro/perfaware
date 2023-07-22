@@ -803,78 +803,11 @@ double parseNumber(Parser *parser)
 
    char *numberStart = parser->text.data.signedData + parser->offset;
 
-   size_t offset = 0;
+   char *numberEnd;
 
-   if (isMinusSign(parser))
-   {
-      next(parser);
-      offset++;
-   }
+   double result = strtod(numberStart, &numberEnd);
 
-   size_t integerDigits = countIntegerDigits(parser);
-
-   if (integerDigits == 0)
-   {
-      uint8_t byte = peekByte(parser);
-      die(__FILE__, __LINE__, 0, "expected digit, found %c (%zu:%zu)\n", byte, parser->line + 1, parser->column + 1);
-   }
-   else
-   {
-      offset += integerDigits;
-
-      if (isDot(parser))
-      {
-         next(parser);
-         offset++;
-         size_t fractionDigits = countDigits(parser);
-         offset += fractionDigits;
-      }
-
-      if (isExponentStart(parser))
-      {
-         bool hasMinusSign = false;
-         if (isMinusSign(parser))
-         {
-            next(parser);
-            offset++;
-            hasMinusSign = true;
-         }
-         next(parser);
-         offset++;
-         size_t exponentDigits = countDigits(parser);
-
-         if (hasMinusSign && exponentDigits == 0)
-         {
-            uint8_t byte = peekByte(parser);
-            die(__FILE__, __LINE__, 0, "expected digit, found %c (%zu:%zu)\n", byte, parser->line + 1, parser->column + 1);
-         }
-
-         offset += exponentDigits;
-      }
-   }
-
-   char *buffer = arenaAllocate(parser->arena, offset + 1);
-
-   buffer[offset] = '\0';
-
-   strncpy(buffer, numberStart, offset);
-
-   char *end;
-
-   double result = strtod(buffer, &end);
-
-   if (result == HUGE_VAL || !isfinite(result))
-   {
-      die(__FILE__, __LINE__, errno, "could not parse number %s", buffer);
-   }
-
-   if (offset <= PTRDIFF_MAX)
-   {
-      assert(end - buffer > 0);
-      assert((end - buffer) == (ptrdiff_t)offset);
-   }
-
-   freeLastAllocation(parser->arena);
+   skipCodepoints(parser, numberEnd - numberStart);
 
    return result;
 }
