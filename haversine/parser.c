@@ -3,6 +3,7 @@
 #include "common.c"
 #include "stdbool.h"
 #include "stdint.h"
+#include "profiler.c"
 
 #define DOUBLE_QUOTES '"'
 
