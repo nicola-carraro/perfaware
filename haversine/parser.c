@@ -558,7 +558,6 @@ uint32_t parseLowSurrogateEscape(uint16_t highSurrogate, Parser *parser)
 String parseString(Parser *parser)
 {
 
-   TIME_FUNCTION
    assert(parser != NULL);
    assert(parser->text.data.unsignedData != NULL);
    assert(hasNext(parser));
@@ -672,8 +671,6 @@ String parseString(Parser *parser)
    }
 
    next(parser);
-
-   STOP_COUNTER
 
    return result;
 }
@@ -799,8 +796,6 @@ size_t countIntegerDigits(Parser *parser)
 
 double parseNumber(Parser *parser)
 {
-   TIME_FUNCTION
-
    assert(parser != NULL);
    assert(parser->text.data.unsignedData != NULL);
    assert(hasNext(parser));
@@ -866,9 +861,7 @@ double parseNumber(Parser *parser)
 
    char *end;
 
-   TIME_BLOCK("strtod");
    double result = strtod(buffer, &end);
-   STOP_COUNTER
 
    if (result == HUGE_VAL || !isfinite(result))
    {
@@ -882,8 +875,6 @@ double parseNumber(Parser *parser)
    }
 
    freeLastAllocation(parser->arena);
-
-   STOP_COUNTER
 
    return result;
 }
@@ -934,7 +925,6 @@ Member parseMember(Parser *parser)
 
 Members *parseObject(Parser *parser)
 {
-   TIME_FUNCTION
    assert(parser != NULL);
    assert(isLeftBrace(parser));
 
@@ -959,8 +949,6 @@ Members *parseObject(Parser *parser)
    }
 
    next(parser);
-
-   STOP_COUNTER
 
    return result;
 }
@@ -1382,7 +1370,6 @@ size_t getElementCount(Value *array)
 
 Value *parseElement(Parser *parser)
 {
-   TIME_FUNCTION
    assert(parser != NULL);
    Value *result = (Value *)arenaAllocate(parser->arena, sizeof(Value));
    skipWhitespace(parser);
@@ -1438,7 +1425,6 @@ Value *parseElement(Parser *parser)
 
    skipWhitespace(parser);
 
-   STOP_COUNTER
    return result;
 }
 

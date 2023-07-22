@@ -154,7 +154,6 @@ Arena arenaInit()
 void *arenaAllocate(Arena *arena, size_t size)
 {
 
-    TIME_FUNCTION
     assert(arena != NULL);
 
     void *result = NULL;
@@ -168,7 +167,6 @@ void *arenaAllocate(Arena *arena, size_t size)
     arena->previousOffset = arena->currentOffset;
     arena->currentOffset += size;
 
-    STOP_COUNTER
     return result;
 }
 
