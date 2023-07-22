@@ -13,4 +13,6 @@ cl %common% test.c
 cl %common% %defines% main.c
 del *.obj *.ilk
 
+if not exist data mkdir data
+
 endlocal
