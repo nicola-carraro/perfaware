@@ -4,8 +4,6 @@
 
 #include "stdint.h"
 
-#define MAX_COUNTERS 4096
-
 #define COUNTER_NAME_CAPACITY 50
 
 typedef struct
@@ -17,6 +15,7 @@ typedef struct
 } Counter;
 
 #ifdef PROFILE
+#define MAX_COUNTERS 4096
 typedef struct
 {
 
