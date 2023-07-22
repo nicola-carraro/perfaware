@@ -395,16 +395,19 @@ void printPerformanceReport(Counters *counters)
     for (size_t counterIndex = 1; counterIndex < counters->blocksCount; counterIndex++)
     {
         TimedBlock *timedBlock = &(counters->timedBlocks[counterIndex]);
-        uint64_t totalTicks = timedBlock->totalTicks;
-        uint64_t ticksInRoot = timedBlock->ticksInRoot;
-        uint64_t childrenTicks = timedBlock->childrenTicks;
-        uint64_t ticksWithoutChildren = totalTicks - childrenTicks;
-        float secondsWithChildren = ((float)(ticksInRoot)) / ((float)(counters->cpuCounterFrequency));
-        float secondsWithoutChildren = ((float)(ticksWithoutChildren)) / ((float)(counters->cpuCounterFrequency));
-        float percentageWithoutChildren = (((float)ticksWithoutChildren) / ((float)(totalCount))) * 100.0f;
-        float percentageWithChildren = (((float)ticksInRoot) / ((float)(totalCount))) * 100.0f;
-        totalPercentage += percentageWithoutChildren;
-        printf(format, timedBlock->name, timedBlock->calls, secondsWithChildren, percentageWithChildren, secondsWithoutChildren, percentageWithoutChildren);
+        if (timedBlock->name != NULL)
+        {
+            uint64_t totalTicks = timedBlock->totalTicks;
+            uint64_t ticksInRoot = timedBlock->ticksInRoot;
+            uint64_t childrenTicks = timedBlock->childrenTicks;
+            uint64_t ticksWithoutChildren = totalTicks - childrenTicks;
+            float secondsWithChildren = ((float)(ticksInRoot)) / ((float)(counters->cpuCounterFrequency));
+            float secondsWithoutChildren = ((float)(ticksWithoutChildren)) / ((float)(counters->cpuCounterFrequency));
+            float percentageWithoutChildren = (((float)ticksWithoutChildren) / ((float)(totalCount))) * 100.0f;
+            float percentageWithChildren = (((float)ticksInRoot) / ((float)(totalCount))) * 100.0f;
+            totalPercentage += percentageWithoutChildren;
+            printf(format, timedBlock->name, timedBlock->calls, secondsWithChildren, percentageWithChildren, secondsWithoutChildren, percentageWithoutChildren);
+        }
     }
 
     float totalSeconds = ((float)(totalCount)) / ((float)(counters->cpuCounterFrequency));
