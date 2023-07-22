@@ -16,6 +16,7 @@ typedef struct
 
 } Counter;
 
+#ifdef PROFILE
 typedef struct
 {
 
@@ -26,68 +27,22 @@ typedef struct
     const char *name;
 } TimedBlock;
 
+#endif
+
 typedef struct
 {
     uint64_t start;
     uint64_t end;
+    uint64_t cpuCounterFrequency;
+#ifdef PROFILE
     TimedBlock timedBlocks[MAX_COUNTERS];
     size_t blocksCount;
-    uint64_t cpuCounterFrequency;
     Counter stack[MAX_COUNTERS];
     size_t stackSize;
+#endif
 } Counters;
 
 #ifdef PROFILE
-
-void pushCounter(Counters *counters, size_t id, const char *name);
-
-void popCounter(Counters *counters);
-
-#define TIME_BLOCK(NAME)                                 \
-    {                                                    \
-                                                         \
-        pushCounter(&COUNTERS, (__COUNTER__ + 1), NAME); \
-    }
-
-#define TIME_FUNCTION         \
-    {                         \
-                              \
-        TIME_BLOCK(__func__); \
-    }
-
-#define STOP_COUNTER           \
-    {                          \
-        popCounter(&COUNTERS); \
-    }
-#else
-
-#define TIME_BLOCK \
-    {              \
-    }
-
-#define TIME_FUNCTION \
-    {                 \
-    }
-#define STOP_COUNTER \
-    {                \
-    }
-#endif
-
-static Counters COUNTERS = {0};
-
-void startCounters(Counters *counters)
-{
-    size_t count = __rdtsc();
-
-    counters->start = count;
-}
-
-void stopCounters(Counters *counters)
-{
-    size_t count = __rdtsc();
-
-    counters->end = count;
-}
 
 void pushCounter(Counters *counters, size_t id, const char *name)
 {
@@ -161,11 +116,8 @@ int compareTimedBlocks(const void *left, const void *right)
     }
 }
 
-void printPerformanceReport(Counters *counters)
+void printTimedBlocksStats(Counters *counters, size_t totalCount)
 {
-
-    size_t totalCount = counters->end - counters->start;
-
     assert(counters->stackSize == 0);
 
     float totalPercentage = 0.0f;
@@ -189,12 +141,68 @@ void printPerformanceReport(Counters *counters)
             printf(format, timedBlock->name, timedBlock->calls, secondsWithChildren, percentageWithChildren, secondsWithoutChildren, percentageWithoutChildren);
         }
     }
+    printf("Total percentage: %14.10f\n", totalPercentage);
+}
+
+#define TIME_BLOCK(NAME)                                 \
+    {                                                    \
+                                                         \
+        pushCounter(&COUNTERS, (__COUNTER__ + 1), NAME); \
+    }
+
+#define TIME_FUNCTION         \
+    {                         \
+                              \
+        TIME_BLOCK(__func__); \
+    }
+
+#define STOP_COUNTER           \
+    {                          \
+        popCounter(&COUNTERS); \
+    }
+#else
+
+#define TIME_BLOCK \
+    {              \
+    }
+
+#define TIME_FUNCTION \
+    {                 \
+    }
+#define STOP_COUNTER \
+    {                \
+    }
+#endif
+
+static Counters COUNTERS = {0};
+
+void startCounters(Counters *counters)
+{
+    size_t count = __rdtsc();
+
+    counters->start = count;
+}
+
+void stopCounters(Counters *counters)
+{
+    size_t count = __rdtsc();
+
+    counters->end = count;
+}
+
+void printPerformanceReport(Counters *counters)
+{
+
+    size_t totalCount = counters->end - counters->start;
+
+#ifdef PROFILE
+    printTimedBlocksStats(counters, totalCount);
+#endif
 
     float totalSeconds = ((float)(totalCount)) / ((float)(counters->cpuCounterFrequency));
     printf("\n");
 
     printf("Total time:       %14.10f\n", totalSeconds);
-    printf("Total percentage: %14.10f\n", totalPercentage);
 }
 
 #endif
