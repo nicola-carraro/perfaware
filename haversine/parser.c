@@ -578,9 +578,6 @@ String parseString(Parser *parser)
 
    String nextCodepoint = {0};
    nextCodepoint.size = 0;
-   char buffer[4] = {0};
-
-   char *writeCursor = parser->text.data.signedData + parser->offset;
 
    while (!isDoubleQuotes(parser))
    {
@@ -590,81 +587,11 @@ String parseString(Parser *parser)
          die(__FILE__, __LINE__, 0, "unclosed string: expected \"\"\", found end of file (%zu:%zu)\n", stringFirstLine + 1, stringFirstColumn + 1);
       }
 
-      if (isControlCharacter(parser))
-      {
-         uint8_t illegalCharacter = peekByte(parser);
-         die(__FILE__, __LINE__, 0, "illegal control character in string: found %#02X (%zu:%zu)\n", illegalCharacter, parser->line + 1, parser->column + 1);
-      }
-
-      if (isReverseSolidus(parser))
-      {
-
-         String encodedCodepoint = {0};
-         encodedCodepoint.size = 0;
-
-         encodedCodepoint.data.signedData = buffer;
-
-         next(parser);
-
-         if (isUnicodeEscapeStart(parser))
-         {
-            next(parser);
-            uint16_t codepointFromFirstEscape = decodeUnicodeEscape(parser);
-            uint32_t codepoint = codepointFromFirstEscape;
-            if (codepointFromFirstEscape >= 0xd800 && codepointFromFirstEscape <= 0xdbff)
-            {
-               codepoint = parseLowSurrogateEscape(codepointFromFirstEscape, parser);
-            }
-            else if (codepointFromFirstEscape >= 0xdc00 && codepointFromFirstEscape <= 0xdfff)
-            {
-               die(__FILE__, __LINE__, 0, "low surrogate without high surrogate, found %#04X(%zu:%zu)\n", codepoint, parser->line + 1, parser->column + 1);
-            }
-
-            if (codepoint > 0x10ffff)
-            {
-               die(__FILE__, __LINE__, 0, "invalid codepoint from surrogate pair, found %#06X (%zu:%zu)\n", codepoint, parser->line + 1, parser->column + 1);
-            }
-
-            encodeCodepoint(codepoint, &encodedCodepoint);
-
-            nextCodepoint = encodedCodepoint;
-         }
-         else if (isSolidus(parser))
-         {
-            nextCodepoint.size = 1;
-            nextCodepoint.data.signedData = buffer;
-            nextCodepoint.data.signedData[0] = '/';
-            next(parser);
-         }
-         else if (isMandatoryCharacterEscape(parser))
-         {
-            nextCodepoint.size = 2;
-            uint8_t byte = peekByte(parser);
-            nextCodepoint.data.signedData = buffer;
-            nextCodepoint.data.signedData[0] = '\\';
-            nextCodepoint.data.signedData[1] = byte;
-            next(parser);
-         }
-         else if (!hasNext(parser))
-         {
-            die(__FILE__, __LINE__, 0, "espected escape sequence, found end of file (%zu:%zu)\n", parser->line + 1, parser->column + 1);
-         }
-         else
-         {
-            String codepoint = next(parser);
-            die(__FILE__, __LINE__, 0, "illegal escape sequence %.*s (%zu:%zu)\n", codepoint.size, codepoint.data, parser->line + 1, parser->column + 1);
-         }
-      }
-      else
-      {
-         nextCodepoint = next(parser);
-      }
+      nextCodepoint = next(parser);
 
       assert(nextCodepoint.size > 0);
 
       result.size += nextCodepoint.size;
-      strncpy(writeCursor, nextCodepoint.data.signedData, nextCodepoint.size);
-      writeCursor += nextCodepoint.size;
       // printString(nextCodepoint);
       // printString(result);
       // printf("\n");
