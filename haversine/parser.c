@@ -865,7 +865,9 @@ double parseNumber(Parser *parser)
 
    char *end;
 
+   TIME_BLOCK("strtod");
    double result = strtod(buffer, &end);
+   STOP_COUNTER
 
    if (result == HUGE_VAL || !isfinite(result))
    {

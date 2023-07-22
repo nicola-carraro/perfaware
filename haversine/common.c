@@ -28,10 +28,17 @@
 #define COUNTER_NAME_CAPACITY 50
 
 #ifdef PROFILE
-#define TIME_FUNCTION                                        \
-    {                                                        \
-                                                             \
-        pushCounter(&COUNTERS, (__COUNTER__ + 1), __func__); \
+
+#define TIME_BLOCK(NAME)                                 \
+    {                                                    \
+                                                         \
+        pushCounter(&COUNTERS, (__COUNTER__ + 1), NAME); \
+    }
+
+#define TIME_FUNCTION         \
+    {                         \
+                              \
+        TIME_BLOCK(__func__); \
     }
 
 #define STOP_COUNTER           \
@@ -39,6 +46,11 @@
         popCounter(&COUNTERS); \
     }
 #else
+
+#define TIME_BLOCK \
+    {              \
+    }
+
 #define TIME_FUNCTION \
     {                 \
     }
@@ -209,6 +221,8 @@ Arena arenaInit()
 
 void *arenaAllocate(Arena *arena, size_t size)
 {
+
+    TIME_FUNCTION
     assert(arena != NULL);
 
     void *result = NULL;
@@ -222,6 +236,7 @@ void *arenaAllocate(Arena *arena, size_t size)
     arena->previousOffset = arena->currentOffset;
     arena->currentOffset += size;
 
+    STOP_COUNTER
     return result;
 }
 
