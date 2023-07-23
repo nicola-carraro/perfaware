@@ -1322,8 +1322,11 @@ Value *getMemberValueOfObject(Value *object, char *key, Arena *arena)
 
    char *buffer = arenaAllocate(arena, (keySize * 2));
 
+   Value *result = NULL;
+
    escapeMandatory(key, buffer);
 
+   bool valid = false;
    for (size_t memberIndex = 0; memberIndex < object->payload.object->count; memberIndex++)
    {
       Member member = object->payload.object->members[memberIndex];
@@ -1332,13 +1335,18 @@ Value *getMemberValueOfObject(Value *object, char *key, Arena *arena)
       {
 
          freeLastAllocation(arena);
-         return member.value;
+         result = member.value;
+         valid = true;
+         break;
       }
    }
 
-   die(__FILE__, __LINE__, 0, "No element named %s", key);
+   if (!valid)
+   {
+      die(__FILE__, __LINE__, 0, "No element named %s", key);
+   }
 
-   return NULL;
+   return result;
 }
 
 double getAsNumber(Value *number)
@@ -1359,15 +1367,17 @@ Value *getElementOfArray(Value *array, size_t index)
       die(__FILE__, __LINE__, 0, "Cannot get element of non-array value");
    }
 
+   Value *result = NULL;
+
    if (array->payload.array->count > index)
    {
-      return array->payload.array->elements[index];
+      result = array->payload.array->elements[index];
    }
    else
    {
       die(__FILE__, __LINE__, 0, "Index out of bount %zu", index);
-      return NULL;
    }
+   return result;
 }
 
 size_t getElementCount(Value *array)
