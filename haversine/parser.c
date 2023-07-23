@@ -1166,11 +1166,15 @@ Value *getMemberValueOfObject(Value *object, char *key, Arena *arena)
       die(__FILE__, __LINE__, 0, "Cannot get member of non-object value. trying to get %s", key);
    }
 
+   Value *result = NULL;
+
    size_t keySize = strlen(key);
 
    char *buffer = arenaAllocate(arena, (keySize * 2));
 
    escapeMandatory(key, buffer);
+
+   bool valid = false;
 
    for (size_t memberIndex = 0; memberIndex < object->payload.object->count; memberIndex++)
    {
@@ -1180,13 +1184,18 @@ Value *getMemberValueOfObject(Value *object, char *key, Arena *arena)
       {
 
          freeLastAllocation(arena);
-         return member.value;
+         valid = true;
+         result = member.value;
+         break;
       }
    }
 
-   die(__FILE__, __LINE__, 0, "No element named %s", key);
+   if (!valid)
+   {
+      die(__FILE__, __LINE__, 0, "No element named %s", key);
+   }
 
-   return NULL;
+   return result;
 }
 
 double getAsNumber(Value *number)
@@ -1202,6 +1211,7 @@ double getAsNumber(Value *number)
 
 Value *getElementOfArray(Value *array, size_t index)
 {
+   Value *result = NULL;
    if (array->type != ValueType_Array)
    {
       die(__FILE__, __LINE__, 0, "Cannot get element of non-array value");
@@ -1209,13 +1219,14 @@ Value *getElementOfArray(Value *array, size_t index)
 
    if (array->payload.array->count > index)
    {
-      return array->payload.array->elements[index];
+      result = array->payload.array->elements[index];
    }
    else
    {
       die(__FILE__, __LINE__, 0, "Index out of bount %zu", index);
-      return NULL;
    }
+
+   return result;
 }
 
 size_t getElementCount(Value *array)
