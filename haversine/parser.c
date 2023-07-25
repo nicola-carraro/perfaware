@@ -77,7 +77,7 @@ typedef struct _Value Value;
 typedef struct _Member Member;
 typedef struct _Members Members;
 
-#define MEMBERS_INITIAL_CAPACITY 10
+#define MEMBERS_CAPACITY 4
 typedef struct _Members
 {
    size_t capacity;
@@ -85,7 +85,6 @@ typedef struct _Members
    Member *members;
 } Members;
 
-#define ELEMENTS_INITIAL_CAPACITY 10
 typedef struct
 {
    size_t capacity;
@@ -123,7 +122,7 @@ Members *initMembers(Arena *arena);
 
 bool isCharacter(Parser *parser, char character);
 
-void addMember(Members *members, Member member, Parser *parser);
+void addMember(Members *members, Member member);
 
 void printValue(Value *value, size_t indentation, size_t indentationLevel);
 
@@ -491,9 +490,9 @@ double parseNumber(Parser *parser)
 
    char *numberEnd;
 
-   // TIME_BLOCK("strtod");
+   TIME_BLOCK("strtod");
    double result = strtod(numberStart, &numberEnd);
-   // STOP_COUNTER
+   STOP_COUNTER
 
    skipChars(parser, numberEnd - numberStart);
 
@@ -532,14 +531,14 @@ Members *parseObject(Parser *parser)
    if (!isRightBrace(parser))
    {
       Member member = parseMember(parser);
-      addMember(result, member, parser);
+      addMember(result, member);
    }
 
    while (!isRightBrace(parser))
    {
       next(parser);
       Member member = parseMember(parser);
-      addMember(result, member, parser);
+      addMember(result, member);
    }
 
    next(parser);
@@ -720,7 +719,7 @@ Members *initMembers(Arena *arena)
 
    Members *result = arenaAllocate(arena, sizeof(Members));
 
-   result->capacity = MEMBERS_INITIAL_CAPACITY;
+   result->capacity = MEMBERS_CAPACITY;
 
    result->members = arenaAllocate(arena, result->capacity * sizeof(Member));
 
@@ -811,19 +810,12 @@ bool hasKey(Members *members, String key)
    return getMemberValueOfMembers(members, key) != NULL;
 }
 
-void addMember(Members *members, Member member, Parser *parser)
+void addMember(Members *members, Member member)
 {
 
    assert(members != NULL);
 
-   if (members->count >= members->capacity)
-   {
-      size_t newCapacity = members->capacity * 2;
-      Member *newMembers = arenaAllocate(parser->arena, newCapacity * sizeof(Member));
-      memcpy(newMembers, members->members, members->capacity * sizeof(Member));
-      members->capacity = newCapacity;
-      members->members = newMembers;
-   }
+   assert(members->count < members->capacity);
 
    members->members[members->count] = member;
    members->count++;
