@@ -11,7 +11,7 @@ set profile=/D PROFILE
 :argactionstart
 if -%1-==-- goto argactionend
 if "%1"=="noprofile" set profile=
-if "%1"=="release" set build_type=/O2 /Fd /D NODEBUG
+if "%1"=="release" set build_type=/O2 /Fd /D NODEBUG /D NDEBUG 
 shift
 goto argactionstart
 :argactionend
