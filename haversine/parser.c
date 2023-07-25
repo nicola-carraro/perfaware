@@ -266,74 +266,13 @@ uint32_t decodeUtf8Unchecked(String codepoint)
    return result;
 }
 
-String
-next(Parser *parser)
+char next(Parser *parser)
 {
 
    assert(hasNext(parser));
-   String result = {0};
-   result.data.unsignedData = parser->text.data.unsignedData + parser->offset;
+   char result = (parser->text.data.signedData + parser->offset)[0];
 
-   uint8_t firstByte = peekByte(parser);
-
-   bool isNewLine = firstByte == '\n';
-
-   size_t byteCount = 0;
-
-   if (firstByte <= 0x7f)
-   {
-      byteCount = 1;
-   }
-   else if (firstByte <= 0xdf)
-   {
-      byteCount = 2;
-   }
-   else if (firstByte <= 0xef)
-   {
-      byteCount = 3;
-   }
-   else if (firstByte <= 0xf7)
-   {
-      byteCount = 4;
-   }
-   else
-   {
-      die(__FILE__, __LINE__, 0, "invalid first byte in UTF-8 codepoint, found : found %#02X (%zu:%zu)", firstByte, parser->line, parser->column);
-   }
-
-   size_t remainingBytes = parser->text.size - parser->offset;
-
-   if (remainingBytes < byteCount)
-   {
-      die(__FILE__, __LINE__, 0, "truncated UTF-8 codepoint, expected %zu bytes, but stream only has %zu left", byteCount, remainingBytes);
-   }
-
-   for (size_t byteIndex = 1; byteIndex < byteCount; byteIndex++)
-   {
-      uint8_t continuationByte = peekBytePlusN(parser, byteIndex);
-      if (continuationByte < 0x80 || continuationByte > 0xbf)
-      {
-         die(__FILE__, __LINE__, 0, "invalid continuation byte in UTF-8 codepoint : found %#02X (%zu:%zu)", continuationByte, parser->line, parser->column);
-      }
-   }
-
-   parser->offset += byteCount;
-
-   result.size = byteCount;
-
-   uint32_t codepoint = decodeUtf8Unchecked(result);
-
-   if (codepoint > 0x10ffff)
-   {
-      die(__FILE__, __LINE__, 0, "invalid UTF-8 codepoint : found %#06X (%zu:%zu)", codepoint, parser->line, parser->column);
-   }
-
-   bool isOverlong = (codepoint < 0x0080 && result.size > 1) || (codepoint < 0x0800 && result.size > 2) || (codepoint < 0x10000 && result.size > 3);
-
-   if (isOverlong)
-   {
-      die(__FILE__, __LINE__, 0, "overlong encoding of UTF-8 codepoint : %#06X encoded using %zu bytes (%zu:%zu)", codepoint, result.size, parser->line, parser->column);
-   }
+   bool isNewLine = result == '\n';
 
    if (isNewLine)
    {
@@ -343,6 +282,8 @@ next(Parser *parser)
    {
       parser->column++;
    }
+
+   parser->offset++;
 
    return result;
 }
@@ -391,210 +332,24 @@ bool isReverseSolidus(Parser *parser)
    return isCharacter(parser, REVERSE_SOLIDUS);
 }
 
-bool isControlCharacter(Parser *parser)
-{
-   if (!hasNext(parser))
-   {
-      return false;
-   }
-   uint8_t byte = peekByte(parser);
-
-   return byte < 0x20;
-}
-
-bool shoudBeEscaped(char character)
-{
-   for (size_t escapeIndex = 0; escapeIndex < MANDATORY_ESCAPES_COUNT; escapeIndex++)
-   {
-      if (mandatoryEscapes[escapeIndex].characterToEscape == character)
-      {
-         return true;
-      }
-   }
-
-   return false;
-}
-
-bool isMandatoryCharacterEscape(Parser *parser)
-{
-   char byte = peekByte(parser);
-   for (size_t escapeIndex = 0; escapeIndex < MANDATORY_ESCAPES_COUNT; escapeIndex++)
-   {
-      if (mandatoryEscapes[escapeIndex].escape == byte)
-      {
-         return true;
-      }
-   }
-
-   return false;
-}
-
-bool isSolidus(Parser *parser)
-{
-   return isCharacter(parser, '/');
-}
-
-uint16_t decodeUnicodeEscape(Parser *parser)
-{
-
-   uint16_t result = 0;
-   uint16_t power = 16 * 16 * 16;
-   for (size_t byteIndex = 0; byteIndex < 4; byteIndex++)
-   {
-      uint16_t digitValue = 0;
-
-      if (isHexDigit(parser))
-      {
-         char byte = peekByte(parser);
-         if (byte >= '0' && byte <= '9')
-         {
-            digitValue = byte - '0';
-         }
-         else if (byte >= 'a' && byte <= 'f')
-         {
-            digitValue = byte - 'a' + 10;
-         }
-         else if (byte >= 'A' && byte <= 'F')
-         {
-            digitValue = byte - 'A' + 10;
-         }
-      }
-      else if (!hasNext(parser))
-      {
-         die(__FILE__, __LINE__, 0, "Truncated unicode escape sequence expected hex, found end of fail (%zu:%zu)\n (%zu:%zu)\n", parser->line + 1, parser->column + 1);
-      }
-      else
-      {
-         String codepoint = next(parser);
-         die(__FILE__, __LINE__, 0, "illegal character in unicode escape sequence: expected hex, found %.*s (%zu:%zu)\n (%zu:%zu)\n", codepoint.size, codepoint.data, parser->line + 1, parser->column + 1);
-      }
-
-      result += digitValue * power;
-
-      power /= 16;
-
-      next(parser);
-   }
-
-   return result;
-}
-
-void encodeCodepoint(uint32_t codepoint, String *output)
-{
-
-   if (codepoint <= 0x007f)
-   {
-      output->size = 1;
-      strncpy(output->data.signedData, (char *)(&codepoint), 1);
-   }
-   else if (codepoint <= 0x07ff)
-   {
-      output->size = 2;
-      uint8_t firstByte = (uint8_t)((codepoint >> 6U) | 0xc0U);
-      uint8_t secondByte = (uint8_t)((codepoint & 0x3fU) | 0x80U);
-      output->data.unsignedData[0] = firstByte;
-      output->data.unsignedData[1] = secondByte;
-   }
-   else if (codepoint <= 0xffff)
-   {
-      output->size = 3;
-      uint8_t firstByte = ((uint8_t)(codepoint >> 12U)) | 0xe0U;
-      uint8_t secondByte = ((codepoint >> 6U) & 0x3fU) | 0x80U;
-      uint8_t thirdByte = (codepoint & 0x3fU) | 0x80U;
-      output->data.unsignedData[0] = firstByte;
-      output->data.unsignedData[1] = secondByte;
-      output->data.unsignedData[2] = thirdByte;
-   }
-   else
-   {
-      output->size = 4;
-      uint8_t firstByte = ((uint8_t)(codepoint >> 18U)) | 0xf0U;
-      uint8_t secondByte = ((codepoint >> 12U) & 0x3fU) | 0x80U;
-      uint8_t thirdByte = ((codepoint >> 6U) & 0x3fU) | 0x80U;
-      uint8_t fourthByte = (codepoint & 0x3fU) | 0x80U;
-      output->data.unsignedData[0] = firstByte;
-      output->data.unsignedData[1] = secondByte;
-      output->data.unsignedData[2] = thirdByte;
-      output->data.unsignedData[3] = fourthByte;
-   }
-}
-
-bool isUnicodeEscapeStart(Parser *parser)
-{
-   return isCharacter(parser, UNICODE_ESCAPE_START);
-}
-
-uint32_t parseLowSurrogateEscape(uint16_t highSurrogate, Parser *parser)
-{
-   String nextCodepoint;
-   if (!isReverseSolidus(parser))
-   {
-      nextCodepoint = next(parser);
-      die(__FILE__, __LINE__, 0, "high surrogate %#04X, not followed by escape, found %.*s (%zu:%zu)\n", highSurrogate, nextCodepoint.size, nextCodepoint.data.signedData, parser->line + 1, parser->column + 1);
-   }
-
-   next(parser);
-
-   if (!isUnicodeEscapeStart(parser))
-   {
-      nextCodepoint = next(parser);
-      die(__FILE__, __LINE__, 0, "expected unicode escape after high surrogate %#04X, found \\%.*s (%zu:%zu)\n", highSurrogate, nextCodepoint.size, nextCodepoint.data.signedData, parser->line + 1, parser->column + 1);
-   }
-
-   next(parser);
-
-   uint16_t lowSurrogate = decodeUnicodeEscape(parser);
-
-   if (lowSurrogate < 0xdc00 || lowSurrogate > 0xdfff)
-   {
-      die(__FILE__, __LINE__, 0, "expected low surrogate after high surrogate %#04X, found %#04X (%zu:%zu)\n", highSurrogate, lowSurrogate, parser->line + 1, parser->column + 1);
-   }
-
-   uint32_t codepoint = codePointFromSurrogatePair(highSurrogate, lowSurrogate);
-
-   return codepoint;
-}
-
 String parseString(Parser *parser)
 {
 
    assert(parser != NULL);
    assert(parser->text.data.unsignedData != NULL);
    assert(hasNext(parser));
-   expectCharacter(parser, DOUBLE_QUOTES);
 
-   size_t stringFirstLine = parser->line;
-   size_t stringFirstColumn = parser->column;
    String result = {0};
 
    next(parser);
 
-   if (!hasNext(parser))
-   {
-      die(__FILE__, __LINE__, 0, "unclosed string: expected \"\"\", found end of file (%zu:%zu)\n", stringFirstLine + 1, stringFirstColumn + 1);
-   }
-
    result.data.unsignedData = parser->text.data.unsignedData + parser->offset;
-
-   String nextCodepoint = {0};
-   nextCodepoint.size = 0;
 
    while (!isDoubleQuotes(parser))
    {
+      next(parser);
 
-      if (!hasNext(parser))
-      {
-         die(__FILE__, __LINE__, 0, "unclosed string: expected \"\"\", found end of file (%zu:%zu)\n", stringFirstLine + 1, stringFirstColumn + 1);
-      }
-
-      nextCodepoint = next(parser);
-
-      assert(nextCodepoint.size > 0);
-
-      result.size += nextCodepoint.size;
-      // printString(nextCodepoint);
-      // printString(result);
-      // printf("\n");
+      result.size++;
    }
 
    next(parser);
@@ -739,30 +494,6 @@ double parseNumber(Parser *parser)
    return result;
 }
 
-void expectCharacter(Parser *parser, char character)
-{
-   if (!hasNext(parser))
-   {
-      die(__FILE__, __LINE__, 0, "expected %c, found end of file (%zu:%zu)\n", character, parser->line + 1, parser->column + 1);
-   }
-   else if (!isCharacter(parser, character))
-   {
-
-      String nextCodepoint = next(parser);
-      die(__FILE__, __LINE__, 0, "expected %c, found %.*s (%zu:%zu)\n", character, nextCodepoint.size, nextCodepoint.data, parser->line + 1, parser->column + 1);
-   }
-}
-
-void expectColon(Parser *parser)
-{
-   expectCharacter(parser, COLON);
-}
-
-void expectComma(Parser *parser)
-{
-   expectCharacter(parser, COMMA);
-}
-
 Member parseMember(Parser *parser)
 {
 
@@ -774,8 +505,6 @@ Member parseMember(Parser *parser)
 
    skipWhitespace(parser);
 
-   expectColon(parser);
-
    next(parser);
 
    result.value = parseElement(parser);
@@ -785,6 +514,7 @@ Member parseMember(Parser *parser)
 
 Members *parseObject(Parser *parser)
 {
+   TIME_FUNCTION
    assert(parser != NULL);
    assert(isLeftBrace(parser));
 
@@ -802,7 +532,6 @@ Members *parseObject(Parser *parser)
 
    while (!isRightBrace(parser))
    {
-      expectComma(parser);
       next(parser);
       Member member = parseMember(parser);
       addMember(result, member, parser);
@@ -810,6 +539,7 @@ Members *parseObject(Parser *parser)
 
    next(parser);
 
+   STOP_COUNTER
    return result;
 }
 
@@ -830,7 +560,6 @@ Elements *parseArray(Parser *parser)
 
    while (!isRightBracket(parser))
    {
-      expectComma(parser);
       next(parser);
       Value *element = parseElement(parser);
       addElement(result, element, parser->arena);
@@ -1284,14 +1013,7 @@ Value *parseElement(Parser *parser)
    }
    else
    {
-      if (hasNext(parser))
-      {
-         String column = next(parser);
-         die(__FILE__, __LINE__, 0, ", expected JSON value, found \"%.*s\" (%zu:%zu)\n", column.size, column.data, parser->line + 1, parser->column + 1);
-      }
-      {
-         die(__FILE__, __LINE__, 0, "expected JSON value, found end of file(%zu:%zu)\n", parser->line + 1, parser->column + 1);
-      }
+      assert(false);
    }
 
    skipWhitespace(parser);
