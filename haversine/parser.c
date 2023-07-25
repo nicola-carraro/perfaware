@@ -137,7 +137,7 @@ bool isHexDigit(Parser *parser);
 
 Elements *initElements(Arena *arena, size_t maxPairs);
 
-void skipCodepoints(Parser *parser, size_t count);
+void skipChars(Parser *parser, size_t count);
 
 void printString(String string);
 
@@ -491,7 +491,7 @@ double parseNumber(Parser *parser)
    double result = strtod(numberStart, &numberEnd);
    // STOP_COUNTER
 
-   skipCodepoints(parser, numberEnd - numberStart);
+   skipChars(parser, numberEnd - numberStart);
 
    return result;
 }
@@ -841,7 +841,7 @@ void addElement(Elements *elements, Value *element)
    elements->count++;
 }
 
-void skipCodepoints(Parser *parser, size_t count)
+void skipChars(Parser *parser, size_t count)
 {
    for (size_t codepointIndex = 0; codepointIndex < count; codepointIndex++)
    {
@@ -976,17 +976,17 @@ Value *parseElement(Parser *parser)
    }
    else if (isTrueLiteral(parser))
    {
-      skipCodepoints(parser, trueLiteral.size);
+      skipChars(parser, trueLiteral.size);
       result->type = ValueType_True;
    }
    else if (isFalseLiteral(parser))
    {
-      skipCodepoints(parser, falseLiteral.size);
+      skipChars(parser, falseLiteral.size);
       result->type = ValueType_False;
    }
    else if (isNullLiteral(parser))
    {
-      skipCodepoints(parser, nullLiteral.size);
+      skipChars(parser, nullLiteral.size);
       result->type = ValueType_Null;
    }
    else
