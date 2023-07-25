@@ -524,12 +524,12 @@ double parseNumberByHand(Parser *parser)
 
    next(parser);
 
-   double multiplier = 1.0;
+   double multiplier = 0.1;
    double fractionValue = 0.0;
    while (isDigit(parser))
    {
       double digitValue = parseDigit(parser);
-      integerValue += digitValue * multiplier;
+      fractionValue += digitValue * multiplier;
       multiplier /= 10.0;
    }
 
