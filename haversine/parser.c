@@ -505,6 +505,7 @@ double parseDigit(Parser *parser)
 
 double parseNumberByHand(Parser *parser)
 {
+   // TIME_FUNCTION
    bool isNegative = false;
 
    if (isMinusSign(parser))
@@ -539,6 +540,8 @@ double parseNumberByHand(Parser *parser)
    {
       result = -result;
    }
+
+   // STOP_COUNTER;
 
    return result;
 }
