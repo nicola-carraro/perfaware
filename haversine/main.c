@@ -141,6 +141,8 @@ int main(void)
     SetConsoleOutputCP(65001);
 #endif
 
+    assert(false);
+
     Arena arena = arenaInit();
 
     String text = readFileToString(JSON_PATH, &arena);

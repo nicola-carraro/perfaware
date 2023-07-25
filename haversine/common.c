@@ -156,14 +156,9 @@ void *arenaAllocate(Arena *arena, size_t size)
 
     assert(arena != NULL);
 
-    void *result = NULL;
+    assert(arena->currentOffset + size < arena->size);
 
-    if (arena->currentOffset + size >= arena->size)
-    {
-        die(__FILE__, __LINE__, errno, "could not allocate from arena");
-    }
-
-    result = (char *)arena->memory + arena->currentOffset;
+    void *result = (char *)arena->memory + arena->currentOffset;
     arena->previousOffset = arena->currentOffset;
     arena->currentOffset += size;
 
