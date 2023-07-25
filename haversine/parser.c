@@ -487,7 +487,9 @@ double parseNumber(Parser *parser)
 
    char *numberEnd;
 
+   // TIME_BLOCK("strtod");
    double result = strtod(numberStart, &numberEnd);
+   // STOP_COUNTER
 
    skipCodepoints(parser, numberEnd - numberStart);
 
@@ -514,7 +516,6 @@ Member parseMember(Parser *parser)
 
 Members *parseObject(Parser *parser)
 {
-   TIME_FUNCTION
    assert(parser != NULL);
    assert(isLeftBrace(parser));
 
@@ -539,7 +540,6 @@ Members *parseObject(Parser *parser)
 
    next(parser);
 
-   STOP_COUNTER
    return result;
 }
 
@@ -885,40 +885,21 @@ void escapeMandatory(char *source, char *dest)
    dest[writeOffset] = '\0';
 }
 
-Value *getMemberValueOfObject(Value *object, char *key, Arena *arena)
+Value *getMemberValueOfObject(Value *object, char *key)
 {
-   if (object->type != ValueType_Object)
-   {
-      die(__FILE__, __LINE__, 0, "Cannot get member of non-object value. trying to get %s", key);
-   }
 
    Value *result = NULL;
-
-   size_t keySize = strlen(key);
-
-   char *buffer = arenaAllocate(arena, (keySize * 2));
-
-   escapeMandatory(key, buffer);
-
-   bool valid = false;
 
    for (size_t memberIndex = 0; memberIndex < object->payload.object->count; memberIndex++)
    {
       Member member = object->payload.object->members[memberIndex];
 
-      if (stringEqualsCstring(member.key, buffer))
+      if (stringEqualsCstring(member.key, key))
       {
 
-         freeLastAllocation(arena);
-         valid = true;
          result = member.value;
          break;
       }
-   }
-
-   if (!valid)
-   {
-      die(__FILE__, __LINE__, 0, "No element named %s", key);
    }
 
    return result;

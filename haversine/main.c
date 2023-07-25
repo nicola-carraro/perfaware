@@ -43,10 +43,10 @@ float getOsSecondsElapsed(uint64_t start, uint64_t frequency)
     return ((float)time - (float)start) / (float)frequency;
 }
 
-double getAverageDistance(Value *json, Arena *arena)
+double getAverageDistance(Value *json)
 {
     TIME_FUNCTION
-    Value *pairs = getMemberValueOfObject(json, "pairs", arena);
+    Value *pairs = getMemberValueOfObject(json, "pairs");
 
     double sum = 0;
     size_t count = getElementCount(pairs);
@@ -55,11 +55,11 @@ double getAverageDistance(Value *json, Arena *arena)
     {
         Value *pair = getElementOfArray(pairs, elementIndex);
 
-        double x1 = getAsNumber(getMemberValueOfObject(pair, "x1", arena));
-        double y1 = getAsNumber(getMemberValueOfObject(pair, "y1", arena));
+        double x1 = getAsNumber(getMemberValueOfObject(pair, "x1"));
+        double y1 = getAsNumber(getMemberValueOfObject(pair, "y1"));
 
-        double x2 = getAsNumber(getMemberValueOfObject(pair, "x2", arena));
-        double y2 = getAsNumber(getMemberValueOfObject(pair, "y2", arena));
+        double x2 = getAsNumber(getMemberValueOfObject(pair, "x2"));
+        double y2 = getAsNumber(getMemberValueOfObject(pair, "y2"));
 
         double distance = haversine(x1, y1, x2, y2, EARTH_RADIUS);
 
@@ -156,11 +156,11 @@ int main(void)
 
     // printf("\n");
 
-    double average = getAverageDistance(json, &arena);
+    double average = getAverageDistance(json);
 
     printf("Average : %1.12f\n\n", average);
 
-    //foo();
+    // foo();
 
     //  sleepFiveSeconds();
 
