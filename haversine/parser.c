@@ -494,6 +494,55 @@ double parseNumberWithStrtod(Parser *parser)
    return result;
 }
 
+double parseDigit(Parser *parser)
+{
+   char digit = next(parser);
+
+   double result = (double)(digit - '0');
+
+   return result;
+}
+
+double parseNumberByHand(Parser *parser)
+{
+   bool isNegative = false;
+
+   if (isMinusSign(parser))
+   {
+      isNegative = true;
+      next(parser);
+   }
+
+   double integerValue = parseDigit(parser);
+
+   while (!isDot(parser))
+   {
+      integerValue *= 10.0;
+      double digitValue = parseDigit(parser);
+      integerValue += digitValue;
+   }
+
+   next(parser);
+
+   double multiplier = 1.0;
+   double fractionValue = 0.0;
+   while (isDigit(parser))
+   {
+      double digitValue = parseDigit(parser);
+      integerValue += digitValue * multiplier;
+      multiplier /= 10.0;
+   }
+
+   double result = integerValue + fractionValue;
+
+   if (isNegative)
+   {
+      result = -result;
+   }
+
+   return result;
+}
+
 double parseNumber(Parser *parser)
 {
    assert(parser != NULL);
@@ -501,8 +550,11 @@ double parseNumber(Parser *parser)
    assert(hasNext(parser));
    assert(isNumberStart(parser));
 
+#if 0
    double result = parseNumberWithStrtod(parser);
-
+#else
+   double result = parseNumberByHand(parser);
+#endif
    return result;
 }
 
