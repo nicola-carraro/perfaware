@@ -129,13 +129,13 @@ void printValue(Value *value, size_t indentation, size_t indentationLevel);
 
 void expectCharacter(Parser *parser, char character);
 
-void addElement(Elements *elements, Value *element, Arena *arena);
+void addElement(Elements *elements, Value *element);
 
 void printSpace();
 
 bool isHexDigit(Parser *parser);
 
-Elements *initElements(Arena *arena);
+Elements *initElements(Arena *arena, size_t maxPairs);
 
 void skipCodepoints(Parser *parser, size_t count);
 
@@ -550,19 +550,23 @@ Elements *parseArray(Parser *parser)
    assert(isLeftBracket(parser));
    next(parser);
 
-   Elements *result = initElements(parser->arena);
+   const size_t pairMaxSize = 14 * 4;
+
+   size_t maxPairs = parser->text.size / pairMaxSize;
+
+   Elements *result = initElements(parser->arena, maxPairs);
 
    if (!isRightBracket(parser))
    {
       Value *element = parseElement(parser);
-      addElement(result, element, parser->arena);
+      addElement(result, element);
    }
 
    while (!isRightBracket(parser))
    {
       next(parser);
       Value *element = parseElement(parser);
-      addElement(result, element, parser->arena);
+      addElement(result, element);
    }
 
    next(parser);
@@ -721,12 +725,12 @@ Members *initMembers(Arena *arena)
    return result;
 }
 
-Elements *initElements(Arena *arena)
+Elements *initElements(Arena *arena, size_t maxPairs)
 {
 
    Elements *result = arenaAllocate(arena, sizeof(Elements));
 
-   result->capacity = ELEMENTS_INITIAL_CAPACITY;
+   result->capacity = maxPairs;
 
    result->elements = arenaAllocate(arena, result->capacity * sizeof(*result->elements));
 
@@ -826,19 +830,12 @@ void addMember(Members *members, Member member, Parser *parser)
    members->count++;
 }
 
-void addElement(Elements *elements, Value *element, Arena *arena)
+void addElement(Elements *elements, Value *element)
 {
 
    assert(elements != NULL);
 
-   if (elements->count >= elements->capacity)
-   {
-      size_t newCapacity = elements->capacity * 2;
-      Value **newElements = arenaAllocate(arena, newCapacity * sizeof(*elements->elements));
-      memcpy(newElements, elements->elements, elements->capacity * sizeof(*elements->elements));
-      elements->capacity = newCapacity;
-      elements->elements = newElements;
-   }
+   assert(elements->count < elements->capacity);
 
    elements->elements[elements->count] = element;
    elements->count++;
