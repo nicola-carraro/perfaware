@@ -335,6 +335,8 @@ bool isReverseSolidus(Parser *parser)
 String parseString(Parser *parser)
 {
 
+   TIME_FUNCTION
+
    assert(parser != NULL);
    assert(parser->text.data.unsignedData != NULL);
    assert(hasNext(parser));
@@ -353,6 +355,8 @@ String parseString(Parser *parser)
    }
 
    next(parser);
+
+   STOP_COUNTER
 
    return result;
 }
@@ -706,7 +710,7 @@ void printValue(Value *value, size_t indentation, size_t indentationLevel)
    break;
    default:
    {
-      die(__FILE__, __LINE__, 0, "unsupported value type %d", value->type);
+      assert(false);
    }
    }
 }
@@ -812,11 +816,6 @@ void addMember(Members *members, Member member, Parser *parser)
 
    assert(members != NULL);
 
-   if (hasKey(members, member.key))
-   {
-      die(__FILE__, __LINE__, 0, "duplicate key: \"%.*s\" (%zu:%zu)\n", member.key.size, member.key.data, parser->line + 1, parser->column + 1);
-   }
-
    if (members->count >= members->capacity)
    {
       size_t newCapacity = members->capacity * 2;
@@ -908,10 +907,7 @@ Value *getMemberValueOfObject(Value *object, char *key)
 double getAsNumber(Value *number)
 {
 
-   if (number->type != ValueType_Number)
-   {
-      die(__FILE__, __LINE__, 0, "Cannot get non-number as number");
-   }
+   assert(number->type == ValueType_Number);
 
    return number->payload.number;
 }
@@ -919,29 +915,18 @@ double getAsNumber(Value *number)
 Value *getElementOfArray(Value *array, size_t index)
 {
    Value *result = NULL;
-   if (array->type != ValueType_Array)
-   {
-      die(__FILE__, __LINE__, 0, "Cannot get element of non-array value");
-   }
+   assert(array->type == ValueType_Array);
 
-   if (array->payload.array->count > index)
-   {
-      result = array->payload.array->elements[index];
-   }
-   else
-   {
-      die(__FILE__, __LINE__, 0, "Index out of bount %zu", index);
-   }
+   assert(array->payload.array->count > index);
+
+   result = array->payload.array->elements[index];
 
    return result;
 }
 
 size_t getElementCount(Value *array)
 {
-   if (array->type != ValueType_Array)
-   {
-      die(__FILE__, __LINE__, 0, "Cannot get element count of non-array value");
-   }
+   assert(array->type != ValueType_Array);
 
    return array->payload.array->count;
 }
