@@ -479,13 +479,8 @@ size_t countIntegerDigits(Parser *parser)
    return result;
 }
 
-double parseNumber(Parser *parser)
+double parseNumberWithStrtod(Parser *parser)
 {
-   assert(parser != NULL);
-   assert(parser->text.data.unsignedData != NULL);
-   assert(hasNext(parser));
-   assert(isNumberStart(parser));
-
    char *numberStart = parser->text.data.signedData + parser->offset;
 
    char *numberEnd;
@@ -495,6 +490,18 @@ double parseNumber(Parser *parser)
    STOP_COUNTER
 
    skipChars(parser, numberEnd - numberStart);
+
+   return result;
+}
+
+double parseNumber(Parser *parser)
+{
+   assert(parser != NULL);
+   assert(parser->text.data.unsignedData != NULL);
+   assert(hasNext(parser));
+   assert(isNumberStart(parser));
+
+   double result = parseNumberWithStrtod(parser);
 
    return result;
 }
