@@ -980,7 +980,7 @@ Value *getElementOfArray(Value *array, size_t index)
 
 size_t getElementCount(Value *array)
 {
-   assert(array->type != ValueType_Array);
+   assert(array->type == ValueType_Array);
 
    return array->payload.array->count;
 }

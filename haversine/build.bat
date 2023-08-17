@@ -2,9 +2,9 @@
 
 setlocal
 
-set common=/nologo /W4 /Z7 /WX
+set common=/nologo /W4  /WX
 
-set build_type=
+set build_type=/Z7
 
 set profile=/D PROFILE
 
