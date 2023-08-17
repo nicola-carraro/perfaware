@@ -96,7 +96,7 @@ size_t getFileSize(FILE *file, char *path)
 
     const char *errorMessage = "could not query the size of %s";
 
-    if (fseek(file, 0, SEEK_END) != 0)
+    if (_fseeki64(file, 0, SEEK_END) != 0)
     {
         int errorNumber = errno;
         fclose(file);
@@ -104,13 +104,13 @@ size_t getFileSize(FILE *file, char *path)
     }
     else
     {
-        long cursorPosition = ftell(file);
+        int64_t cursorPosition = _ftelli64(file);
 
         if (cursorPosition >= 0)
         {
             result = (size_t)cursorPosition;
 
-            if (fseek(file, 0, SEEK_SET) != 0)
+            if (_fseeki64(file, 0, SEEK_SET) != 0)
             {
                 int errorNumber = errno;
                 fclose(file);
