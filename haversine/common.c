@@ -183,7 +183,9 @@ String readFileToString(char *path, Arena *arena)
     result.size = getFileSize(file, path);
     result.data.signedData = arenaAllocate(arena, result.size);
 
+    MEASURE_THROUGHPUT("fread", result.size);
     size_t read = fread(result.data.signedData, 1, result.size, file);
+    STOP_COUNTER
 
     if (read < result.size)
     {

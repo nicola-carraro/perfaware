@@ -24,6 +24,7 @@ typedef struct
     uint64_t childrenTicks;
     size_t calls;
     const char *name;
+    size_t bytes;
 } TimedBlock;
 
 #endif
@@ -43,12 +44,13 @@ typedef struct
 
 #ifdef PROFILE
 
-void pushCounter(Counters *counters, size_t id, const char *name)
+void pushCounter(Counters *counters, size_t id, const char *name, size_t bytes)
 {
     assert(id != 0);
     size_t count = __rdtsc();
 
     TimedBlock *timedBlock = &(counters->timedBlocks[id]);
+    timedBlock->bytes = bytes;
     if (counters->blocksCount <= id)
     {
         counters->blocksCount = id + 1;
@@ -120,7 +122,8 @@ void printTimedBlocksStats(Counters *counters, size_t totalCount)
     assert(counters->stackSize == 0);
 
     float totalPercentage = 0.0f;
-    char format[] = "%-25s (called %10zu times): \t\t with children: %20.10f (%14.10f %%) \t\t without children:  %20.10f (%14.10f %%) \n";
+
+    char format[] = "%-25s (called %10zu times): \t\t with children: %20.10f (%14.10f %%) \t\t without children:  %20.10f (%14.10f %%) , Throughput: %4.10f 5 gB/S\n";
 
     qsort((void *)(counters->timedBlocks), counters->blocksCount, sizeof(*counters->timedBlocks), compareTimedBlocks);
     for (size_t counterIndex = 1; counterIndex < counters->blocksCount; counterIndex++)
@@ -136,17 +139,34 @@ void printTimedBlocksStats(Counters *counters, size_t totalCount)
             float secondsWithoutChildren = ((float)(ticksWithoutChildren)) / ((float)(counters->cpuCounterFrequency));
             float percentageWithoutChildren = (((float)ticksWithoutChildren) / ((float)(totalCount))) * 100.0f;
             float percentageWithChildren = (((float)ticksInRoot) / ((float)(totalCount))) * 100.0f;
+            float througput = 0.0f;
+
+            if (timedBlock->bytes > 0)
+            {
+                througput = ((float)timedBlock->bytes / secondsWithChildren) / (1024 * 1024 * 1024);
+            }
+
             totalPercentage += percentageWithoutChildren;
-            printf(format, timedBlock->name, timedBlock->calls, secondsWithChildren, percentageWithChildren, secondsWithoutChildren, percentageWithoutChildren);
+            printf(format, timedBlock->name, timedBlock->calls, secondsWithChildren, percentageWithChildren, secondsWithoutChildren, percentageWithoutChildren, througput);
         }
     }
     printf("Total percentage: %14.10f\n", totalPercentage);
 }
 
-#define TIME_BLOCK(NAME)                                 \
-    {                                                    \
-                                                         \
-        pushCounter(&COUNTERS, (__COUNTER__ + 1), NAME); \
+#define MEASURE_THROUGHPUT(NAME, BYTES)                         \
+    {                                                           \
+        pushCounter(&COUNTERS, (__COUNTER__ + 1), NAME, BYTES); \
+    }
+
+#define MEASURE_FUNCTION_THROUGHPUT(BYTES)                          \
+    {                                                               \
+        pushCounter(&COUNTERS, (__COUNTER__ + 1), __func__, BYTES); \
+    }
+
+#define TIME_BLOCK(NAME)             \
+    {                                \
+                                     \
+        MEASURE_THROUGHPUT(NAME, 0); \
     }
 
 #define TIME_FUNCTION         \
@@ -163,6 +183,14 @@ void printTimedBlocksStats(Counters *counters, size_t totalCount)
 
 #define TIME_BLOCK \
     {              \
+    }
+
+#define MEASURE_THROUGHPUT(NAME, BYTES) \
+    {                                   \
+    }
+
+#define MEASURE_FUNCTION_THROUGHPUT(BYTES) \
+    {                                      \
     }
 
 #define TIME_FUNCTION \

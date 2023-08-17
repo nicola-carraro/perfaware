@@ -45,11 +45,12 @@ float getOsSecondsElapsed(uint64_t start, uint64_t frequency)
 
 double getAverageDistance(Value *json)
 {
-    TIME_FUNCTION
     Value *pairs = getMemberValueOfObject(json, "pairs");
 
     double sum = 0;
     size_t count = getElementCount(pairs);
+
+    MEASURE_THROUGHPUT("pairsLoop", count * 4 * sizeof(float));
 
     for (size_t elementIndex = 0; elementIndex < count; elementIndex++)
     {
@@ -65,6 +66,7 @@ double getAverageDistance(Value *json)
 
         sum += distance;
     }
+    STOP_COUNTER
 
     double average = sum / (double)count;
 
