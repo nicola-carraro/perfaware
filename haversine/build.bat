@@ -19,6 +19,7 @@ goto argactionstart
 cl %common% input.c
 cl %common% test.c
 cl %common% %profile% %build_type% main.c
+cl %common% %profile% %build_type% repetition.c
 del *.obj *.ilk
 
 if not exist data mkdir data

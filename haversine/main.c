@@ -12,22 +12,7 @@ void bar();
 void foo();
 
 #ifdef _WIN32
-uint64_t getOsTimeFrequency()
-{
-    LARGE_INTEGER frequency;
-    QueryPerformanceFrequency(&frequency);
 
-    return frequency.QuadPart;
-}
-
-uint64_t getOsTimeStamp()
-{
-    LARGE_INTEGER timestamp;
-
-    QueryPerformanceCounter(&timestamp);
-
-    return timestamp.QuadPart;
-}
 
 void sleep(uint32_t milliseconds)
 {
@@ -74,26 +59,7 @@ double getAverageDistance(Value *json)
     return average;
 }
 
-uint64_t estimateCpuCounterFrequency()
-{
-    uint64_t frequency = getOsTimeFrequency();
 
-    uint64_t osTicks;
-    uint64_t cpuStart = __rdtsc();
-    uint64_t osStart = getOsTimeStamp();
-
-    do
-    {
-        osTicks = getOsTimeStamp();
-    } while ((osTicks - osStart) < frequency);
-    uint64_t cpuTicks = __rdtsc() - cpuStart;
-
-    /* printf("Os frequency %llu\n", frequency);
-     printf("Os ticks %llu\n", osTicks - osStart);
-     printf("Cpu frequency %llu\n", cpuTicks);*/
-
-    return cpuTicks;
-}
 
 void sleepOneSecond()
 {

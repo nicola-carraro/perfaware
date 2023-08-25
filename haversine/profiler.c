@@ -4,6 +4,10 @@
 
 #include "stdint.h"
 
+#include "windows.h"
+
+#include "assert.h"
+
 #define COUNTER_NAME_CAPACITY 50
 
 typedef struct
@@ -230,6 +234,44 @@ void printPerformanceReport(Counters *counters)
     printf("\n");
 
     printf("Total time:       %14.10f\n", totalSeconds);
+}
+
+uint64_t getOsTimeFrequency()
+{
+    LARGE_INTEGER frequency;
+    QueryPerformanceFrequency(&frequency);
+
+    return frequency.QuadPart;
+}
+
+uint64_t getOsTimeStamp()
+{
+    LARGE_INTEGER timestamp;
+
+    QueryPerformanceCounter(&timestamp);
+
+    return timestamp.QuadPart;
+}
+
+uint64_t estimateCpuCounterFrequency()
+{
+    uint64_t frequency = getOsTimeFrequency();
+
+    uint64_t osTicks;
+    uint64_t cpuStart = __rdtsc();
+    uint64_t osStart = getOsTimeStamp();
+
+    do
+    {
+        osTicks = getOsTimeStamp();
+    } while ((osTicks - osStart) < frequency);
+    uint64_t cpuTicks = __rdtsc() - cpuStart;
+
+    /* printf("Os frequency %llu\n", frequency);
+     printf("Os ticks %llu\n", osTicks - osStart);
+     printf("Cpu frequency %llu\n", cpuTicks);*/
+
+    return cpuTicks;
 }
 
 #endif
