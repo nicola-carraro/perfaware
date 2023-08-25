@@ -50,7 +50,7 @@ double getAverageDistance(Value *json)
     double sum = 0;
     size_t count = getElementCount(pairs);
 
-    MEASURE_THROUGHPUT("pairsLoop", count * 4 * sizeof(float));
+    MEASURE_THROUGHPUT("pairsLoop", count * 4 * sizeof(double));
 
     for (size_t elementIndex = 0; elementIndex < count; elementIndex++)
     {
