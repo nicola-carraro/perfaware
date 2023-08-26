@@ -13,43 +13,8 @@ typedef struct
   bool success;
 } Iteration;
 
-Iteration readWithFread(Arena *arena)
+void repeatTest(Iteration (*test)(Arena *), char *testName, uint64_t rdtscFrequency, Arena *arena)
 {
-  Iteration iteration = {0};
-  FILE *file = fopen(JSON_PATH, "rb");
-
-  if (file != NULL)
-  {
-    size_t size = getFileSize(file, JSON_PATH);
-
-    iteration.gb = (float)size / (1024.0f * 1024.0f * 1024.0f);
-
-    char *buffer = arenaAllocate(arena, size);
-
-    uint64_t start = __rdtsc();
-
-    size_t read = fread(buffer, 1, size, file);
-
-    uint64_t stop = __rdtsc();
-    fclose(file);
-
-    if (read < 1)
-    {
-      perror("Read failed");
-    }
-    else
-    {
-      iteration.success = true;
-      iteration.ticksForFunction = stop - start;
-    }
-  }
-
-  return iteration;
-}
-
-int main(void)
-{
-  uint64_t rdtscFrequency = estimateRdtscFrequency();
 
   uint64_t ticksSinceLastReset = __rdtsc();
 
@@ -65,15 +30,13 @@ int main(void)
 
   size_t executionCount = 0;
 
-  Arena arena = arenaInit();
-
-  printf("fread:\n");
+  printf("%s:\n", testName);
 
   while (true)
   {
 
-    Iteration iteration = readWithFread(&arena);
-    arenaFreeAll(&arena);
+    Iteration iteration = test(arena);
+    arenaFreeAll(arena);
 
     if (iteration.success)
     {
@@ -126,6 +89,51 @@ int main(void)
       break;
     }
   }
+
+  printf("\n");
+}
+
+Iteration readWithFread(Arena *arena)
+{
+  Iteration iteration = {0};
+  FILE *file = fopen(JSON_PATH, "rb");
+
+  if (file != NULL)
+  {
+    size_t size = getFileSize(file, JSON_PATH);
+
+    iteration.gb = (float)size / (1024.0f * 1024.0f * 1024.0f);
+
+    char *buffer = arenaAllocate(arena, size);
+
+    uint64_t start = __rdtsc();
+
+    size_t read = fread(buffer, 1, size, file);
+
+    uint64_t stop = __rdtsc();
+    fclose(file);
+
+    if (read < 1)
+    {
+      perror("Read failed");
+    }
+    else
+    {
+      iteration.success = true;
+      iteration.ticksForFunction = stop - start;
+    }
+  }
+
+  return iteration;
+}
+
+int main(void)
+{
+  uint64_t rdtscFrequency = estimateRdtscFrequency();
+
+  Arena arena = arenaInit();
+
+  repeatTest(readWithFread, "fread", rdtscFrequency, &arena);
 
   return 0;
 }
