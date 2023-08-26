@@ -30,7 +30,7 @@ int main(void)
 
   while (true)
   {
-    FILE *file = fopen(JSON_PATH, "r");
+    FILE *file = fopen(JSON_PATH, "rb");
 
     if (file != NULL)
     {
