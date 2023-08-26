@@ -5,6 +5,10 @@
 #include "stdlib.h"
 #include "profiler.c"
 #include "float.h"
+#include "windows.h"
+#include "io.h"
+#include "sys\stat.h"
+#include "fcntl.h"
 
 typedef struct
 {
@@ -127,6 +131,62 @@ Iteration readWithFread(Arena *arena)
   return iteration;
 }
 
+Iteration readWith_read(Arena *arena)
+{
+  Iteration iteration = {0};
+  int fd = _open(JSON_PATH, _O_RDONLY | _O_BINARY, _SH_DENYRW);
+
+  if (fd != 0)
+  {
+    struct __stat64 fileStat = {0};
+    if (_stat64(JSON_PATH, &fileStat) == 0)
+    {
+      size_t size = fileStat.st_size;
+      iteration.gb = (float)size / (1024.0f * 1024.0f * 1024.0f);
+
+      char *buffer = arenaAllocate(arena, size);
+
+      uint64_t start = __rdtsc();
+
+      size_t remainingBytes = size;
+
+      while (remainingBytes > 0)
+      {
+
+        int bytesToRead = 0;
+
+        if (size > INT_MAX)
+        {
+          bytesToRead = INT_MAX;
+        }
+        else
+        {
+          bytesToRead = (int)size;
+        }
+
+        int read = _read(fd, buffer, bytesToRead);
+
+        remainingBytes -= read;
+
+        uint64_t stop = __rdtsc();
+        _close(fd);
+
+        if (read < size)
+        {
+          perror("Read failed");
+        }
+        else
+        {
+          iteration.success = true;
+          iteration.ticksForFunction = stop - start;
+        }
+      }
+    }
+  }
+
+  return iteration;
+}
+
 int main(void)
 {
   uint64_t rdtscFrequency = estimateRdtscFrequency();
@@ -134,6 +194,8 @@ int main(void)
   Arena arena = arenaInit();
 
   repeatTest(readWithFread, "fread", rdtscFrequency, &arena);
+
+  repeatTest(readWith_read, "_read", rdtscFrequency, &arena);
 
   return 0;
 }
