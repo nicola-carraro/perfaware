@@ -13,7 +13,6 @@ void foo();
 
 #ifdef _WIN32
 
-
 void sleep(uint32_t milliseconds)
 {
     Sleep(milliseconds);
@@ -59,8 +58,6 @@ double getAverageDistance(Value *json)
     return average;
 }
 
-
-
 void sleepOneSecond()
 {
     // TIME_FUNCTION
@@ -100,7 +97,7 @@ void bar()
 int main(void)
 {
 
-    COUNTERS.cpuCounterFrequency = estimateCpuCounterFrequency();
+    COUNTERS.cpuCounterFrequency = estimateRdtscFrequency();
 
     startCounters(&COUNTERS);
     // sleepOneSecond();

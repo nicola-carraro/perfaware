@@ -8,7 +8,7 @@
 
 int main(void)
 {
-  uint64_t rdtscFrequency = estimateCpuCounterFrequency();
+  uint64_t rdtscFrequency = estimateRdtscFrequency();
 
   uint64_t ticksSinceLastReset = __rdtsc();
 

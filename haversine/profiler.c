@@ -253,7 +253,7 @@ uint64_t getOsTimeStamp()
     return timestamp.QuadPart;
 }
 
-uint64_t estimateCpuCounterFrequency()
+uint64_t estimateRdtscFrequency()
 {
     uint64_t frequency = getOsTimeFrequency();
 
