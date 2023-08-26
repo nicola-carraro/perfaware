@@ -49,6 +49,7 @@ int main(void)
       if (read < 1)
       {
         perror("Read failed");
+        break;
       }
 
       arenaFreeAll(&arena);
