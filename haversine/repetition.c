@@ -36,6 +36,8 @@ int main(void)
     {
       size_t size = getFileSize(file, JSON_PATH);
 
+      float gb = (float)size / (1024.0f * 1024.0f * 1024.0f);
+
       char *buffer = arenaAllocate(&arena, size);
 
       uint64_t start = __rdtsc();
@@ -48,8 +50,6 @@ int main(void)
       {
         perror("Read failed");
       }
-
-      fclose(file);
 
       arenaFreeAll(&arena);
 
@@ -76,9 +76,13 @@ int main(void)
 
       averageSeconds = sumSeconds / (float)executionCount;
 
-      printf("Min: %f\n", minSeconds);
-      printf("Max: %f\n", maxSeconds);
-      printf("Avg: %f\n", averageSeconds);
+      float maxGbPerSecond = gb / maxSeconds;
+      float minGbPerSecond = gb / minSeconds;
+      float averageGbPerSecond = gb / averageSeconds;
+
+      printf("Min: %f s, Throughput: %f Gb/s\n", minSeconds, minGbPerSecond);
+      printf("Max: %f s, Throughput: %f Gb/s\n", maxSeconds, maxGbPerSecond);
+      printf("Avg: %f s, Throughput: %f Gb/s\n", averageSeconds, averageGbPerSecond);
 
       uint64_t ticks = __rdtsc();
       secondsSinceLastReset = ((float)(ticks - ticksSinceLastReset)) / ((float)rdtscFrequency);
@@ -93,6 +97,8 @@ int main(void)
         printf("\033[F");
       }
     }
+
+    fclose(file);
   }
 
   return 0;
