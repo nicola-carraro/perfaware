@@ -5,7 +5,10 @@
 #include "stdlib.h"
 #include "profiler.c"
 #include "float.h"
+#pragma warning(push, 0)
 #include "windows.h"
+#pragma warning(pop)
+#pragma
 #include "io.h"
 #include "sys\stat.h"
 #include "fcntl.h"
@@ -189,6 +192,78 @@ Iteration readWith_read(Arena *arena)
   return iteration;
 }
 
+Iteration readWithReadFile(Arena *arena)
+{
+  Iteration result = {0};
+  HANDLE file = CreateFile(
+      JSON_PATH,
+      GENERIC_READ,
+      0,
+      0,
+      OPEN_EXISTING,
+      FILE_ATTRIBUTE_NORMAL,
+      NULL);
+
+  if (file != INVALID_HANDLE_VALUE)
+  {
+    DWORD fileSizeHigh = 0;
+    DWORD fileSizeLow = GetFileSize(file, &fileSizeHigh);
+
+    LARGE_INTEGER fileSize = {.LowPart = fileSizeLow, .HighPart = fileSizeHigh};
+
+    if (fileSizeLow != INVALID_FILE_SIZE)
+    {
+
+      char *buffer = arenaAllocate(arena, fileSize.QuadPart);
+
+      uint64_t remainingBytes = (uint64_t)fileSize.QuadPart;
+
+      uint64_t start = __rdtsc();
+      while (remainingBytes > 0)
+      {
+        DWORD bytesToRead = 0;
+        if (remainingBytes > ULONG_MAX)
+        {
+          bytesToRead = ULONG_MAX;
+        }
+        else
+        {
+          bytesToRead = (DWORD)remainingBytes;
+        }
+
+        DWORD bytesRead = 0;
+
+        BOOL success = ReadFile(
+            file,
+            buffer,
+            bytesToRead,
+            &bytesRead,
+            NULL);
+
+        remainingBytes -= bytesRead;
+        if (!success || bytesToRead != bytesRead)
+        {
+          break;
+        }
+      }
+      uint64_t end = __rdtsc();
+
+      if (remainingBytes > 0)
+      {
+        fprintf(stderr, "Error while reading file");
+      }
+      else
+      {
+        result.success = true;
+        result.gb = (float)fileSize.QuadPart / (1024.0f * 1024.0f * 1024.0f);
+        result.ticksForFunction = end - start;
+      }
+    }
+  }
+
+  return result;
+}
+
 int main(void)
 {
   uint64_t rdtscFrequency = estimateRdtscFrequency();
@@ -198,6 +273,8 @@ int main(void)
   repeatTest(readWithFread, "fread", rdtscFrequency, &arena);
 
   repeatTest(readWith_read, "_read", rdtscFrequency, &arena);
+
+  repeatTest(readWithReadFile, "ReadFile", rdtscFrequency, &arena);
 
   return 0;
 }

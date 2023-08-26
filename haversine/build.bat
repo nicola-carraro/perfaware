@@ -2,7 +2,7 @@
 
 setlocal
 
-set common=/nologo /W4  /WX
+set common=/nologo /W4  /WX /std:c11
 
 set build_type=/Z7
 

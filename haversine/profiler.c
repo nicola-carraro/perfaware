@@ -4,7 +4,10 @@
 
 #include "stdint.h"
 
+#pragma warning(push, 0)
+
 #include "windows.h"
+#pragma warning(pop)
 
 #include "assert.h"
 

@@ -11,7 +11,10 @@
 
 #include "profiler.c"
 #ifdef _WIN32
+#pragma warning(push, 0)
 #include "windows.h"
+#pragma warning(pop)
+
 #include "intrin.h"
 #endif
 #ifndef COMMON_C
