@@ -26,7 +26,9 @@ int main(void)
 
   Arena arena = arenaInit();
 
-  while (secondsSinceLastReset < 10.0f)
+  printf("fread:\n");
+
+  while (true)
   {
     FILE *file = fopen(JSON_PATH, "r");
 
@@ -46,6 +48,8 @@ int main(void)
       {
         perror("Read failed");
       }
+
+      fclose(file);
 
       arenaFreeAll(&arena);
 
@@ -78,6 +82,16 @@ int main(void)
 
       uint64_t ticks = __rdtsc();
       secondsSinceLastReset = ((float)(ticks - ticksSinceLastReset)) / ((float)rdtscFrequency);
+
+      if (secondsSinceLastReset > 10.0f)
+      {
+        break;
+      }
+
+      for (size_t i = 0; i < 3; i++)
+      {
+        printf("\033[F");
+      }
     }
   }
 
