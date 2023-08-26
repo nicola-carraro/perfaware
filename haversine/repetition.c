@@ -134,7 +134,7 @@ Iteration readWithFread(Arena *arena)
 Iteration readWith_read(Arena *arena)
 {
   Iteration iteration = {0};
-  int fd = _open(JSON_PATH, _O_RDONLY | _O_BINARY, _SH_DENYRW);
+  int fd = _open(JSON_PATH, _O_RDONLY | _O_BINARY);
 
   if (fd != 0)
   {
