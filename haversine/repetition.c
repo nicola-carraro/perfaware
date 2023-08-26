@@ -6,6 +6,47 @@
 #include "profiler.c"
 #include "float.h"
 
+typedef struct
+{
+  uint64_t ticksForFunction;
+  float gb;
+  bool success;
+} Iteration;
+
+Iteration readWithFread(Arena *arena)
+{
+  Iteration iteration = {0};
+  FILE *file = fopen(JSON_PATH, "rb");
+
+  if (file != NULL)
+  {
+    size_t size = getFileSize(file, JSON_PATH);
+
+    iteration.gb = (float)size / (1024.0f * 1024.0f * 1024.0f);
+
+    char *buffer = arenaAllocate(arena, size);
+
+    uint64_t start = __rdtsc();
+
+    size_t read = fread(buffer, 1, size, file);
+
+    uint64_t stop = __rdtsc();
+    fclose(file);
+
+    if (read < 1)
+    {
+      perror("Read failed");
+    }
+    else
+    {
+      iteration.success = true;
+      iteration.ticksForFunction = stop - start;
+    }
+  }
+
+  return iteration;
+}
+
 int main(void)
 {
   uint64_t rdtscFrequency = estimateRdtscFrequency();
@@ -30,33 +71,13 @@ int main(void)
 
   while (true)
   {
-    FILE *file = fopen(JSON_PATH, "rb");
 
-    if (file != NULL)
+    Iteration iteration = readWithFread(&arena);
+    arenaFreeAll(&arena);
+
+    if (iteration.success)
     {
-      size_t size = getFileSize(file, JSON_PATH);
-
-      float gb = (float)size / (1024.0f * 1024.0f * 1024.0f);
-
-      char *buffer = arenaAllocate(&arena, size);
-
-      uint64_t start = __rdtsc();
-
-      size_t read = fread(buffer, 1, size, file);
-
-      uint64_t stop = __rdtsc();
-
-      if (read < 1)
-      {
-        perror("Read failed");
-        break;
-      }
-
-      arenaFreeAll(&arena);
-
-      uint64_t ticksForFunction = stop - start;
-
-      float secondsForFunction = (float)ticksForFunction / (float)rdtscFrequency;
+      float secondsForFunction = (float)iteration.ticksForFunction / (float)rdtscFrequency;
 
       if (secondsForFunction < minSeconds)
       {
@@ -76,6 +97,8 @@ int main(void)
       sumSeconds += secondsForFunction;
 
       averageSeconds = sumSeconds / (float)executionCount;
+
+      float gb = iteration.gb;
 
       float maxGbPerSecond = gb / maxSeconds;
       float minGbPerSecond = gb / minSeconds;
@@ -98,8 +121,10 @@ int main(void)
         printf("\033[F");
       }
     }
-
-    fclose(file);
+    else
+    {
+      break;
+    }
   }
 
   return 0;
