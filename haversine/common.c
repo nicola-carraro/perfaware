@@ -151,6 +151,12 @@ Arena arenaInit()
     return arena;
 }
 
+void arenaFreeAll(Arena *arena)
+{
+    arena->currentOffset = 0;
+    arena->previousOffset = 0;
+}
+
 void *arenaAllocate(Arena *arena, size_t size)
 {
 
