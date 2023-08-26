@@ -146,9 +146,9 @@ Iteration readWith_read(Arena *arena)
 
       char *buffer = arenaAllocate(arena, size);
 
-      uint64_t start = __rdtsc();
-
       size_t remainingBytes = size;
+
+      uint64_t start = __rdtsc();
 
       while (remainingBytes > 0)
       {
@@ -168,18 +168,20 @@ Iteration readWith_read(Arena *arena)
 
         remainingBytes -= read;
 
-        uint64_t stop = __rdtsc();
-        _close(fd);
-
         if (read < size)
         {
           perror("Read failed");
+          break;
         }
-        else
-        {
-          iteration.success = true;
-          iteration.ticksForFunction = stop - start;
-        }
+      }
+      uint64_t stop = __rdtsc();
+
+      _close(fd);
+
+      if (remainingBytes == 0)
+      {
+        iteration.success = true;
+        iteration.ticksForFunction = stop - start;
       }
     }
   }
