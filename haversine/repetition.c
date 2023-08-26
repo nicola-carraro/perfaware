@@ -259,6 +259,7 @@ Iteration readWithReadFile(Arena *arena)
         result.ticksForFunction = end - start;
       }
     }
+    CloseHandle(file);
   }
 
   return result;
