@@ -218,12 +218,9 @@ Iteration readWithReadFile(Arena *arena)
 
   if (file != INVALID_HANDLE_VALUE)
   {
-    DWORD fileSizeHigh = 0;
-    DWORD fileSizeLow = GetFileSize(file, &fileSizeHigh);
 
-    LARGE_INTEGER fileSize = {.LowPart = fileSizeLow, .HighPart = fileSizeHigh};
-
-    if (fileSizeLow != INVALID_FILE_SIZE)
+    LARGE_INTEGER fileSize = {0};
+    if (GetFileSizeEx(file, &fileSize))
     {
 
       char *buffer = arenaAllocate(arena, fileSize.QuadPart);
@@ -274,6 +271,7 @@ Iteration readWithReadFile(Arena *arena)
         result.ticksForFunction = end - start;
       }
     }
+
     CloseHandle(file);
   }
 
