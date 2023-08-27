@@ -20,63 +20,71 @@ typedef struct
   bool success;
 } Iteration;
 
-void repeatTest(Iteration (*test)(Arena *), char *testName, uint64_t rdtscFrequency, Arena *arena)
+typedef struct
+{
+
+  float minSeconds;
+
+  float maxSeconds;
+
+  float sumSeconds;
+
+  float averageSeconds;
+
+  size_t executionCount;
+
+  Iteration (*function)(Arena *);
+
+  char *name;
+} Test;
+
+void repeatTest(Test *test, uint64_t rdtscFrequency, Arena *arena)
 {
 
   uint64_t ticksSinceLastReset = __rdtsc();
 
   float secondsSinceLastReset = 0.0f;
 
-  float minSeconds = FLT_MAX;
-
-  float maxSeconds = 0.0f;
-
-  float sumSeconds = 0.0f;
-
-  float averageSeconds = 0.0f;
-
-  size_t executionCount = 0;
-
-  printf("%s:\n", testName);
+  printf("%s:\n", test->name);
 
   while (true)
   {
 
-    Iteration iteration = test(arena);
+    Iteration iteration = test->function(arena);
     arenaFreeAll(arena);
 
     if (iteration.success)
     {
       float secondsForFunction = (float)iteration.ticksForFunction / (float)rdtscFrequency;
 
-      if (secondsForFunction < minSeconds)
+      if (secondsForFunction < test->minSeconds)
       {
-        minSeconds = secondsForFunction;
+        test->minSeconds = secondsForFunction;
 
         secondsSinceLastReset = 0.0f;
 
         ticksSinceLastReset = __rdtsc();
       }
 
-      if (secondsForFunction > maxSeconds)
+      if (secondsForFunction > test->maxSeconds)
       {
-        maxSeconds = secondsForFunction;
+        test->maxSeconds = secondsForFunction;
       }
 
-      executionCount++;
-      sumSeconds += secondsForFunction;
+      test->executionCount++;
+      test->sumSeconds += secondsForFunction;
 
-      averageSeconds = sumSeconds / (float)executionCount;
+      test->averageSeconds = test->sumSeconds / (float)test->executionCount;
 
       float gb = ((float)iteration.bytes) / (1024.0f * 1024.0f * 1024.0f);
 
-      float maxGbPerSecond = gb / maxSeconds;
-      float minGbPerSecond = gb / minSeconds;
-      float averageGbPerSecond = gb / averageSeconds;
+      float maxGbPerSecond = gb / test->maxSeconds;
+      float minGbPerSecond = gb / test->minSeconds;
+      float averageGbPerSecond = gb / test->averageSeconds;
 
-      printf("Min: %f s, Throughput: %f Gb/s\n", minSeconds, minGbPerSecond);
-      printf("Max: %f s, Throughput: %f Gb/s\n", maxSeconds, maxGbPerSecond);
-      printf("Avg: %f s, Throughput: %f Gb/s\n", averageSeconds, averageGbPerSecond);
+      printf("Min: %f s, Throughput: %f Gb/s\n", test->minSeconds, minGbPerSecond);
+      printf("Max: %f s, Throughput: %f Gb/s\n", test->maxSeconds, maxGbPerSecond);
+      printf("Avg: %f s, Throughput: %f Gb/s\n", test->averageSeconds, averageGbPerSecond);
 
       uint64_t ticks = __rdtsc();
       secondsSinceLastReset = ((float)(ticks - ticksSinceLastReset)) / ((float)rdtscFrequency);
@@ -278,11 +286,28 @@ int main(void)
 
   Arena arena = arenaInit();
 
-  repeatTest(readWithFread, "fread", rdtscFrequency, &arena);
+  Test tests[] = {
+      {
+          .minSeconds = FLT_MAX,
+          .function = readWithFread,
+          .name = "fread",
+      },
+      {.minSeconds = FLT_MAX,
+       .function = readWith_read,
+       .name = "_read"},
+      {.minSeconds = FLT_MAX,
+       .function = readWithReadFile,
+       .name = "ReadFile"},
+  };
 
-  repeatTest(readWith_read, "_read", rdtscFrequency, &arena);
+  while (true)
+  {
 
-  repeatTest(readWithReadFile, "ReadFile", rdtscFrequency, &arena);
+    for (size_t i = 0; i < ARRAYSIZE(tests); i++)
+    {
+      repeatTest(tests + i, rdtscFrequency, &arena);
+    }
+  }
 
   return 0;
 }
