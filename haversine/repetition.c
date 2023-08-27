@@ -16,7 +16,7 @@
 typedef struct
 {
   uint64_t ticksForFunction;
-  float gb;
+  uint64_t bytes;
   bool success;
 } Iteration;
 
@@ -68,7 +68,7 @@ void repeatTest(Iteration (*test)(Arena *), char *testName, uint64_t rdtscFreque
 
       averageSeconds = sumSeconds / (float)executionCount;
 
-      float gb = iteration.gb;
+      float gb = ((float)iteration.bytes) / (1024.0f * 1024.0f * 1024.0f);
 
       float maxGbPerSecond = gb / maxSeconds;
       float minGbPerSecond = gb / minSeconds;
@@ -109,7 +109,7 @@ Iteration readWithFread(Arena *arena)
   {
     size_t size = getFileSize(file, JSON_PATH);
 
-    iteration.gb = (float)size / (1024.0f * 1024.0f * 1024.0f);
+    iteration.bytes = size;
 
     char *buffer = arenaAllocate(arena, size);
 
@@ -145,7 +145,7 @@ Iteration readWith_read(Arena *arena)
     if (_stat64(JSON_PATH, &fileStat) == 0)
     {
       size_t size = fileStat.st_size;
-      iteration.gb = (float)size / (1024.0f * 1024.0f * 1024.0f);
+      iteration.bytes = size;
 
       char *buffer = arenaAllocate(arena, size);
 
@@ -262,7 +262,7 @@ Iteration readWithReadFile(Arena *arena)
       else
       {
         result.success = true;
-        result.gb = (float)fileSize.QuadPart / (1024.0f * 1024.0f * 1024.0f);
+        result.bytes = fileSize.QuadPart;
         result.ticksForFunction = end - start;
       }
     }
