@@ -149,6 +149,8 @@ Iteration readWith_read(Arena *arena)
 
       char *buffer = arenaAllocate(arena, size);
 
+      char *cursor = buffer;
+
       size_t remainingBytes = size;
 
       uint64_t start = __rdtsc();
@@ -167,9 +169,11 @@ Iteration readWith_read(Arena *arena)
           bytesToRead = (int)size;
         }
 
-        int read = _read(fd, buffer, bytesToRead);
+        int read = _read(fd, cursor, bytesToRead);
 
         remainingBytes -= read;
+
+        cursor += read;
 
         if (read < size)
         {
@@ -216,6 +220,8 @@ Iteration readWithReadFile(Arena *arena)
 
       char *buffer = arenaAllocate(arena, fileSize.QuadPart);
 
+      char *cursor = buffer;
+
       uint64_t remainingBytes = (uint64_t)fileSize.QuadPart;
 
       uint64_t start = __rdtsc();
@@ -231,17 +237,18 @@ Iteration readWithReadFile(Arena *arena)
           bytesToRead = (DWORD)remainingBytes;
         }
 
-        DWORD bytesRead = 0;
+        DWORD read = 0;
 
         BOOL success = ReadFile(
             file,
-            buffer,
+            cursor,
             bytesToRead,
-            &bytesRead,
+            &read,
             NULL);
 
-        remainingBytes -= bytesRead;
-        if (!success || bytesToRead != bytesRead)
+        cursor += read;
+        remainingBytes -= read;
+        if (!success || bytesToRead != read)
         {
           break;
         }
