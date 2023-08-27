@@ -5,6 +5,7 @@
 #include "stdlib.h"
 #include "profiler.c"
 #include "float.h"
+#include "intsafe.h"
 #pragma warning(push, 0)
 #include "windows.h"
 #pragma warning(pop)
@@ -233,9 +234,9 @@ Iteration readWithReadFile(Arena *arena)
       while (remainingBytes > 0)
       {
         DWORD bytesToRead = 0;
-        if (remainingBytes > ULONG_MAX)
+        if (remainingBytes > DWORD_MAX)
         {
-          bytesToRead = ULONG_MAX;
+          bytesToRead = DWORD_MAX;
         }
         else
         {
