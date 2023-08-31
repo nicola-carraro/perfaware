@@ -34,9 +34,11 @@ typedef struct
 
   size_t executionCount;
 
-  Iteration (*function)(Arena *);
+  Iteration (*function)(Arena *arena, bool useMalloc);
 
   char *name;
+
+  bool useMalloc;
 } Test;
 
 void repeatTest(Test *test, uint64_t rdtscFrequency, Arena *arena)
@@ -51,8 +53,7 @@ void repeatTest(Test *test, uint64_t rdtscFrequency, Arena *arena)
   while (true)
   {
 
-    Iteration iteration = test->function(arena);
-    arenaFreeAll(arena);
+    Iteration iteration = test->function(arena, test->useMalloc);
 
     if (iteration.success)
     {
@@ -109,8 +110,9 @@ void repeatTest(Test *test, uint64_t rdtscFrequency, Arena *arena)
   printf("\n");
 }
 
-Iteration readWithFread(Arena *arena)
+Iteration readWithFread(Arena *arena, bool useMalloc)
 {
+  useMalloc;
   Iteration iteration = {0};
   FILE *file = fopen(JSON_PATH, "rb");
 
@@ -120,7 +122,16 @@ Iteration readWithFread(Arena *arena)
 
     iteration.bytes = size;
 
-    char *buffer = arenaAllocate(arena, size);
+    char *buffer = 0;
+
+    if (useMalloc)
+    {
+      buffer = malloc(size);
+    }
+    else
+    {
+      buffer = arenaAllocate(arena, size);
+    }
 
     uint64_t start = __rdtsc();
 
@@ -128,6 +139,15 @@ Iteration readWithFread(Arena *arena)
 
     uint64_t stop = __rdtsc();
     fclose(file);
+
+    if (useMalloc)
+    {
+      free(buffer);
+    }
+    else
+    {
+      arenaFreeAll(arena);
+    }
 
     if (read < 1)
     {
@@ -143,8 +163,9 @@ Iteration readWithFread(Arena *arena)
   return iteration;
 }
 
-Iteration readWith_read(Arena *arena)
+Iteration readWith_read(Arena *arena, bool useMalloc)
 {
+  useMalloc;
   Iteration iteration = {0};
   int fd = _open(JSON_PATH, _O_RDONLY | _O_BINARY);
 
@@ -156,8 +177,15 @@ Iteration readWith_read(Arena *arena)
       size_t size = fileStat.st_size;
       iteration.bytes = size;
 
-      char *buffer = arenaAllocate(arena, size);
-
+      char *buffer = 0;
+      if (useMalloc)
+      {
+        buffer = malloc(size);
+      }
+      else
+      {
+        buffer = arenaAllocate(arena, size);
+      }
       char *cursor = buffer;
 
       size_t remainingBytes = size;
@@ -194,6 +222,15 @@ Iteration readWith_read(Arena *arena)
 
       _close(fd);
 
+      if (useMalloc)
+      {
+        free(buffer);
+      }
+      else
+      {
+        arenaFreeAll(arena);
+      }
+
       if (remainingBytes == 0)
       {
         iteration.success = true;
@@ -205,8 +242,10 @@ Iteration readWith_read(Arena *arena)
   return iteration;
 }
 
-Iteration readWithReadFile(Arena *arena)
+Iteration readWithReadFile(Arena *arena, bool useMalloc)
 {
+  useMalloc;
+
   Iteration result = {0};
   HANDLE file = CreateFile(
       JSON_PATH,
@@ -224,7 +263,16 @@ Iteration readWithReadFile(Arena *arena)
     if (GetFileSizeEx(file, &fileSize))
     {
 
-      char *buffer = arenaAllocate(arena, fileSize.QuadPart);
+      char *buffer = 0;
+
+      if (useMalloc)
+      {
+        buffer = malloc(fileSize.QuadPart);
+      }
+      else
+      {
+        buffer = arenaAllocate(arena, fileSize.QuadPart);
+      }
 
       char *cursor = buffer;
 
@@ -271,6 +319,15 @@ Iteration readWithReadFile(Arena *arena)
         result.bytes = fileSize.QuadPart;
         result.ticksForFunction = end - start;
       }
+
+      if (useMalloc)
+      {
+        free(buffer);
+      }
+      else
+      {
+        arenaFreeAll(arena);
+      }
     }
 
     CloseHandle(file);
@@ -286,17 +343,33 @@ int main(void)
   Arena arena = arenaInit();
 
   Test tests[] = {
+
+      {.minSeconds = FLT_MAX,
+       .function = readWith_read,
+       .name = "_read"},
+      {.minSeconds = FLT_MAX,
+       .function = readWith_read,
+       .name = "malloc + _read",
+       .useMalloc = true},
       {
           .minSeconds = FLT_MAX,
           .function = readWithFread,
           .name = "fread",
       },
-      {.minSeconds = FLT_MAX,
-       .function = readWith_read,
-       .name = "_read"},
+      {
+          .minSeconds = FLT_MAX,
+          .function = readWithFread,
+          .name = "malloc + fread",
+          .useMalloc = true,
+      },
+
       {.minSeconds = FLT_MAX,
        .function = readWithReadFile,
        .name = "ReadFile"},
+      {.minSeconds = FLT_MAX,
+       .function = readWithReadFile,
+       .name = "malloc + ReadFile",
+       .useMalloc = true},
   };
 
   while (true)
