@@ -48,20 +48,40 @@ typedef struct
   bool useMalloc;
 } Test;
 
+char *winErrorMessage()
+{
+
+  char *result = NULL;
+
+  DWORD error = GetLastError();
+  FormatMessage(
+      FORMAT_MESSAGE_ALLOCATE_BUFFER |
+          FORMAT_MESSAGE_FROM_SYSTEM |
+          FORMAT_MESSAGE_IGNORE_INSERTS,
+      NULL,
+      error,
+      MAKELANGID(LANG_ENGLISH, SUBLANG_DEFAULT),
+      (LPTSTR)&result,
+      0,
+      NULL);
+
+  return result;
+}
+
 uint64_t getPageFaultCount(HANDLE process)
 {
   uint64_t result = 0;
   PROCESS_MEMORY_COUNTERS memoryCounters = {0};
 
-  BOOL succeeded = GetProcessMemoryInfo(process, &memoryCounters, sizeof(memoryCounters));
-
-  if (succeeded)
+  if (GetProcessMemoryInfo(process, &memoryCounters, sizeof(memoryCounters)))
   {
     result = memoryCounters.PageFaultCount;
   }
   else
   {
-    die(__FILE__, __LINE__, errno, "Failed to get page fault count");
+    char *message = winErrorMessage();
+
+    die(__FILE__, __LINE__, 0, "Failed to get page fault count: %s\n", message);
   }
 
   return result;
@@ -362,6 +382,40 @@ void readWithReadFile(Iteration *iteration, Arena *arena, bool useMalloc, HANDLE
   }
 }
 
+void writeBuffer(Iteration *iteration, Arena *arena, bool useMalloc, HANDLE process)
+{
+  char *buffer = 0;
+
+  uint64_t size = 947115053;
+
+  if (useMalloc)
+  {
+    buffer = malloc(size);
+  }
+  else
+  {
+    buffer = arenaAllocate(arena, size);
+  }
+
+  iterationStartCounters(iteration, process, size);
+
+  for (uint64_t i = 0; i < size; i++)
+  {
+    buffer[i] = (char)i;
+  }
+
+  if (useMalloc)
+  {
+    free(buffer);
+  }
+  else
+  {
+    arenaFreeAll(arena);
+  }
+
+  iterationStopCounters(iteration, process);
+}
+
 int main(void)
 {
   uint64_t rdtscFrequency = estimateRdtscFrequency();
@@ -371,7 +425,11 @@ int main(void)
   HANDLE process = GetCurrentProcess();
 
   Test tests[] = {
-
+      {.minSeconds = FLT_MAX,
+       .minPageFaults = UINT64_MAX,
+       .function = writeBuffer,
+       .name = "malloc + writeBuffer",
+       .useMalloc = true},
       {.minSeconds = FLT_MAX,
        .minPageFaults = UINT64_MAX,
        .function = readWith_read,
@@ -403,6 +461,7 @@ int main(void)
        .function = readWithReadFile,
        .name = "malloc + ReadFile",
        .useMalloc = true},
+
   };
 
   while (true)
