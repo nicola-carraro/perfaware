@@ -15,6 +15,11 @@
 #include "sys\stat.h"
 #include "fcntl.h"
 
+#define MAKE_TEST(f, n, u)                                                                       \
+  {                                                                                              \
+    .minSeconds = FLT_MAX, .minPageFaults = UINT64_MAX, .function = f, .name = n, .useMalloc = u \
+  }
+
 typedef struct
 {
   uint64_t ticks;
@@ -425,43 +430,13 @@ int main(void)
   HANDLE process = GetCurrentProcess();
 
   Test tests[] = {
-      {.minSeconds = FLT_MAX,
-       .minPageFaults = UINT64_MAX,
-       .function = writeBuffer,
-       .name = "malloc + writeBuffer",
-       .useMalloc = true},
-      {.minSeconds = FLT_MAX,
-       .minPageFaults = UINT64_MAX,
-       .function = readWith_read,
-       .name = "_read"},
-      {.minSeconds = FLT_MAX,
-       .function = readWith_read,
-       .name = "malloc + _read",
-       .useMalloc = true},
-      {
-          .minSeconds = FLT_MAX,
-          .minPageFaults = UINT64_MAX,
-          .function = readWithFread,
-          .name = "fread",
-      },
-      {
-          .minSeconds = FLT_MAX,
-          .minPageFaults = UINT64_MAX,
-          .function = readWithFread,
-          .name = "malloc + fread",
-          .useMalloc = true,
-      },
-
-      {.minSeconds = FLT_MAX,
-       .minPageFaults = UINT64_MAX,
-       .function = readWithReadFile,
-       .name = "ReadFile"},
-      {.minSeconds = FLT_MAX,
-       .minPageFaults = UINT64_MAX,
-       .function = readWithReadFile,
-       .name = "malloc + ReadFile",
-       .useMalloc = true},
-
+      MAKE_TEST(writeBuffer, "malloc + writeBuffer", true),
+      MAKE_TEST(readWith_read, "_read", false),
+      MAKE_TEST(readWith_read, "malloc + _read", true),
+      MAKE_TEST(readWithFread, "fread", false),
+      MAKE_TEST(readWithFread, "malloc + fread", true),
+      MAKE_TEST(readWithReadFile, "ReadFile", false),
+      MAKE_TEST(readWithReadFile, "malloc + ReadFile", true),
   };
 
   while (true)
