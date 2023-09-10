@@ -9,6 +9,7 @@
 #pragma warning(push, 0)
 #include "windows.h"
 #pragma warning(pop)
+#include "psapi.h"
 #pragma
 #include "io.h"
 #include "sys\stat.h"
@@ -18,6 +19,7 @@ typedef struct
 {
   uint64_t ticksForFunction;
   uint64_t bytes;
+  uint64_t pageFaultsInFunction;
   bool success;
 } Iteration;
 
@@ -30,18 +32,41 @@ typedef struct
 
   float sumSeconds;
 
-  float averageSeconds;
+  uint64_t minPageFaults;
+
+  uint64_t maxPageFaults;
+
+  uint64_t sumPageFaults;
 
   size_t executionCount;
 
-  Iteration (*function)(Arena *arena, bool useMalloc);
+  Iteration (*function)(Arena *arena, bool useMalloc, HANDLE process);
 
   char *name;
 
   bool useMalloc;
 } Test;
 
-void repeatTest(Test *test, uint64_t rdtscFrequency, Arena *arena)
+uint64_t getPageFaultCount(HANDLE process)
+{
+  uint64_t result = 0;
+  PROCESS_MEMORY_COUNTERS memoryCounters = {0};
+
+  BOOL succeeded = GetProcessMemoryInfo(process, &memoryCounters, sizeof(memoryCounters));
+
+  if (succeeded)
+  {
+    result = memoryCounters.PageFaultCount;
+  }
+  else
+  {
+    die(__FILE__, __LINE__, errno, "Failed to get page fault count");
+  }
+
+  return result;
+}
+
+void repeatTest(Test *test, uint64_t rdtscFrequency, Arena *arena, HANDLE process)
 {
 
   uint64_t ticksSinceLastReset = __rdtsc();
@@ -53,11 +78,12 @@ void repeatTest(Test *test, uint64_t rdtscFrequency, Arena *arena)
   while (true)
   {
 
-    Iteration iteration = test->function(arena, test->useMalloc);
+    Iteration iteration = test->function(arena, test->useMalloc, process);
 
     if (iteration.success)
     {
       float secondsForFunction = (float)iteration.ticksForFunction / (float)rdtscFrequency;
+      uint64_t pageFaults = iteration.pageFaultsInFunction;
 
       if (secondsForFunction < test->minSeconds)
       {
@@ -73,20 +99,37 @@ void repeatTest(Test *test, uint64_t rdtscFrequency, Arena *arena)
         test->maxSeconds = secondsForFunction;
       }
 
+      if (pageFaults < test->minPageFaults)
+      {
+        test->minPageFaults = pageFaults;
+      }
+
+      if (pageFaults > test->maxPageFaults)
+      {
+        test->maxPageFaults = pageFaults;
+      }
+
       test->executionCount++;
       test->sumSeconds += secondsForFunction;
+      test->sumPageFaults += pageFaults;
 
-      test->averageSeconds = test->sumSeconds / (float)test->executionCount;
+      float averageSeconds = test->sumSeconds / (float)test->executionCount;
+      float averagePageFaults = (float)test->sumPageFaults / (float)test->executionCount;
 
       float gb = ((float)iteration.bytes) / (1024.0f * 1024.0f * 1024.0f);
+      float kb = ((float)iteration.bytes) / 1024.0f;
 
-      float maxGbPerSecond = gb / test->maxSeconds;
-      float minGbPerSecond = gb / test->minSeconds;
-      float averageGbPerSecond = gb / test->averageSeconds;
+      float minGbPerSecond = gb / test->maxSeconds;
+      float maxGbPerSecond = gb / test->minSeconds;
+      float averageGbPerSecond = gb / averageSeconds;
 
-      printf("Min: %f s, Throughput: %f Gb/s\n", test->minSeconds, minGbPerSecond);
-      printf("Max: %f s, Throughput: %f Gb/s\n", test->maxSeconds, maxGbPerSecond);
-      printf("Avg: %f s, Throughput: %f Gb/s\n", test->averageSeconds, averageGbPerSecond);
+      float minKbPerFault = kb / (float)test->maxPageFaults;
+      float maxKbPerFault = kb / (float)test->minPageFaults;
+      float averageKbPerFault = kb / averagePageFaults;
+
+      printf("Best : %f s, Throughput: %f Gb/s, PF: %f (%f kb/fault)\n", test->minSeconds, maxGbPerSecond, (float)test->minPageFaults, maxKbPerFault);
+      printf("Worst: %f s, Throughput: %f Gb/s, PF: %f (%f kb/fault)\n", test->maxSeconds, minGbPerSecond, (float)test->maxPageFaults, minKbPerFault);
+      printf("Avg. : %f s, Throughput: %f Gb/s, PF: %f (%f kb/fault)\n", averageSeconds, averageGbPerSecond, averagePageFaults, averageKbPerFault);
 
       uint64_t ticks = __rdtsc();
       secondsSinceLastReset = ((float)(ticks - ticksSinceLastReset)) / ((float)rdtscFrequency);
@@ -110,7 +153,7 @@ void repeatTest(Test *test, uint64_t rdtscFrequency, Arena *arena)
   printf("\n");
 }
 
-Iteration readWithFread(Arena *arena, bool useMalloc)
+Iteration readWithFread(Arena *arena, bool useMalloc, HANDLE process)
 {
   useMalloc;
   Iteration iteration = {0};
@@ -134,10 +177,13 @@ Iteration readWithFread(Arena *arena, bool useMalloc)
     }
 
     uint64_t start = __rdtsc();
+    uint64_t startPageFaults = getPageFaultCount(process);
 
     size_t read = fread(buffer, 1, size, file);
 
     uint64_t stop = __rdtsc();
+    uint64_t stopPageFaults = getPageFaultCount(process);
+
     fclose(file);
 
     if (useMalloc)
@@ -157,13 +203,14 @@ Iteration readWithFread(Arena *arena, bool useMalloc)
     {
       iteration.success = true;
       iteration.ticksForFunction = stop - start;
+      iteration.pageFaultsInFunction = stopPageFaults - startPageFaults;
     }
   }
 
   return iteration;
 }
 
-Iteration readWith_read(Arena *arena, bool useMalloc)
+Iteration readWith_read(Arena *arena, bool useMalloc, HANDLE process)
 {
   useMalloc;
   Iteration iteration = {0};
@@ -191,6 +238,7 @@ Iteration readWith_read(Arena *arena, bool useMalloc)
       size_t remainingBytes = size;
 
       uint64_t start = __rdtsc();
+      uint64_t startPageFaults = getPageFaultCount(process);
 
       while (remainingBytes > 0)
       {
@@ -219,6 +267,7 @@ Iteration readWith_read(Arena *arena, bool useMalloc)
         }
       }
       uint64_t stop = __rdtsc();
+      uint64_t stopPageFaults = getPageFaultCount(process);
 
       _close(fd);
 
@@ -235,6 +284,7 @@ Iteration readWith_read(Arena *arena, bool useMalloc)
       {
         iteration.success = true;
         iteration.ticksForFunction = stop - start;
+        iteration.pageFaultsInFunction = stopPageFaults - startPageFaults;
       }
     }
   }
@@ -242,11 +292,11 @@ Iteration readWith_read(Arena *arena, bool useMalloc)
   return iteration;
 }
 
-Iteration readWithReadFile(Arena *arena, bool useMalloc)
+Iteration readWithReadFile(Arena *arena, bool useMalloc, HANDLE process)
 {
   useMalloc;
 
-  Iteration result = {0};
+  Iteration iteration = {0};
   HANDLE file = CreateFile(
       JSON_PATH,
       GENERIC_READ,
@@ -279,6 +329,8 @@ Iteration readWithReadFile(Arena *arena, bool useMalloc)
       uint64_t remainingBytes = (uint64_t)fileSize.QuadPart;
 
       uint64_t start = __rdtsc();
+      uint64_t startPageFaults = getPageFaultCount(process);
+
       while (remainingBytes > 0)
       {
         DWORD bytesToRead = 0;
@@ -308,6 +360,7 @@ Iteration readWithReadFile(Arena *arena, bool useMalloc)
         }
       }
       uint64_t end = __rdtsc();
+      uint64_t stopPageFaults = getPageFaultCount(process);
 
       if (remainingBytes > 0)
       {
@@ -315,9 +368,10 @@ Iteration readWithReadFile(Arena *arena, bool useMalloc)
       }
       else
       {
-        result.success = true;
-        result.bytes = fileSize.QuadPart;
-        result.ticksForFunction = end - start;
+        iteration.success = true;
+        iteration.bytes = fileSize.QuadPart;
+        iteration.ticksForFunction = end - start;
+        iteration.pageFaultsInFunction = stopPageFaults - startPageFaults;
       }
 
       if (useMalloc)
@@ -333,7 +387,7 @@ Iteration readWithReadFile(Arena *arena, bool useMalloc)
     CloseHandle(file);
   }
 
-  return result;
+  return iteration;
 }
 
 int main(void)
@@ -342,9 +396,12 @@ int main(void)
 
   Arena arena = arenaInit();
 
+  HANDLE process = GetCurrentProcess();
+
   Test tests[] = {
 
       {.minSeconds = FLT_MAX,
+       .minPageFaults = UINT64_MAX,
        .function = readWith_read,
        .name = "_read"},
       {.minSeconds = FLT_MAX,
@@ -353,20 +410,24 @@ int main(void)
        .useMalloc = true},
       {
           .minSeconds = FLT_MAX,
+          .minPageFaults = UINT64_MAX,
           .function = readWithFread,
           .name = "fread",
       },
       {
           .minSeconds = FLT_MAX,
+          .minPageFaults = UINT64_MAX,
           .function = readWithFread,
           .name = "malloc + fread",
           .useMalloc = true,
       },
 
       {.minSeconds = FLT_MAX,
+       .minPageFaults = UINT64_MAX,
        .function = readWithReadFile,
        .name = "ReadFile"},
       {.minSeconds = FLT_MAX,
+       .minPageFaults = UINT64_MAX,
        .function = readWithReadFile,
        .name = "malloc + ReadFile",
        .useMalloc = true},
@@ -377,7 +438,7 @@ int main(void)
 
     for (size_t i = 0; i < ARRAYSIZE(tests); i++)
     {
-      repeatTest(tests + i, rdtscFrequency, &arena);
+      repeatTest(tests + i, rdtscFrequency, &arena, process);
     }
   }
 
