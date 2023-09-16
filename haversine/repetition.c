@@ -53,44 +53,7 @@ typedef struct
   bool useMalloc;
 } Test;
 
-char *winErrorMessage()
-{
 
-  char *result = NULL;
-
-  DWORD error = GetLastError();
-  FormatMessage(
-      FORMAT_MESSAGE_ALLOCATE_BUFFER |
-          FORMAT_MESSAGE_FROM_SYSTEM |
-          FORMAT_MESSAGE_IGNORE_INSERTS,
-      NULL,
-      error,
-      MAKELANGID(LANG_ENGLISH, SUBLANG_DEFAULT),
-      (LPTSTR)&result,
-      0,
-      NULL);
-
-  return result;
-}
-
-uint64_t getPageFaultCount(HANDLE process)
-{
-  uint64_t result = 0;
-  PROCESS_MEMORY_COUNTERS memoryCounters = {0};
-
-  if (GetProcessMemoryInfo(process, &memoryCounters, sizeof(memoryCounters)))
-  {
-    result = memoryCounters.PageFaultCount;
-  }
-  else
-  {
-    char *message = winErrorMessage();
-
-    die(__FILE__, __LINE__, 0, "Failed to get page fault count: %s\n", message);
-  }
-
-  return result;
-}
 
 void iterationStartCounters(Iteration *iteration, HANDLE process, uint64_t bytes)
 {

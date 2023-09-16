@@ -20,6 +20,7 @@ cl %common% input.c
 cl %common% test.c
 cl %common% %profile% %build_type% main.c
 cl %common% %profile% %build_type% repetition.c
+cl %common% %profile% %build_type% faults.c
 del *.obj *.ilk
 
 if not exist data mkdir data
