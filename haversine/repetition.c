@@ -15,9 +15,18 @@
 #include "sys\stat.h"
 #include "fcntl.h"
 
-#define MAKE_TEST(f, n, u)                                                                       \
-  {                                                                                              \
-    .minSeconds = FLT_MAX, .minPageFaults = UINT64_MAX, .function = f, .name = n, .useMalloc = u \
+typedef enum
+{
+  Alloc_None,
+  Alloc_Malloc,
+  Alloc_VirtualAlloc,
+  Alloc_Large
+
+} Alloc;
+
+#define MAKE_TEST(f, n, a)                                                                   \
+  {                                                                                          \
+    .minSeconds = FLT_MAX, .minPageFaults = UINT64_MAX, .function = f, .name = n, .alloc = a \
   }
 
 typedef struct
@@ -46,14 +55,74 @@ typedef struct
 
   size_t executionCount;
 
-  void (*function)(Iteration *iteration, Arena *arena, bool useMalloc, HANDLE process);
+  void (*function)(Iteration *iteration, Arena *arena, Alloc alloc, HANDLE process);
 
   char *name;
 
-  bool useMalloc;
+  Alloc alloc;
 } Test;
 
+char *allocate(Alloc alloc, Arena *arena, size_t size)
+{
 
+  char *result = 0;
+  switch (alloc)
+  {
+  case Alloc_None:
+  {
+    result = arenaAllocate(arena, size);
+  }
+  break;
+  case Alloc_Malloc:
+  {
+    result = malloc(size);
+  }
+  break;
+  case Alloc_VirtualAlloc:
+  {
+    result = VirtualAlloc(0, size, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
+  }
+  break;
+  case Alloc_Large:
+  {
+    result = VirtualAlloc(0, size, MEM_RESERVE | MEM_COMMIT | MEM_LARGE_PAGES, PAGE_READWRITE);
+  }
+  break;
+  default:
+  {
+    assert(false);
+  }
+  }
+
+  return result;
+}
+
+void freeAllocation(Alloc alloc, Arena *arena, char *buffer)
+{
+  switch (alloc)
+  {
+  case Alloc_None:
+  {
+    arenaFreeAll(arena);
+  }
+  break;
+  case Alloc_Malloc:
+  {
+    free(buffer);
+  }
+  break;
+  case Alloc_VirtualAlloc:
+  case Alloc_Large:
+  {
+    VirtualFree(buffer, 0, MEM_RELEASE);
+  }
+  break;
+  default:
+  {
+    assert(false);
+  }
+  }
+}
 
 void iterationStartCounters(Iteration *iteration, HANDLE process, uint64_t bytes)
 {
@@ -84,7 +153,7 @@ void repeatTest(Test *test, uint64_t rdtscFrequency, Arena *arena, HANDLE proces
 
     Iteration iteration = {0};
 
-    test->function(&iteration, arena, test->useMalloc, process);
+    test->function(&iteration, arena, test->alloc, process);
 
     float secondsForFunction = (float)iteration.ticks / (float)rdtscFrequency;
     uint64_t pageFaults = iteration.pageFaults;
@@ -152,9 +221,8 @@ void repeatTest(Test *test, uint64_t rdtscFrequency, Arena *arena, HANDLE proces
   printf("\n");
 }
 
-void readWithFread(Iteration *iteration, Arena *arena, bool useMalloc, HANDLE process)
+void readWithFread(Iteration *iteration, Arena *arena, Alloc alloc, HANDLE process)
 {
-  useMalloc;
   FILE *file = fopen(JSON_PATH, "rb");
 
   if (file != NULL)
@@ -163,14 +231,7 @@ void readWithFread(Iteration *iteration, Arena *arena, bool useMalloc, HANDLE pr
 
     char *buffer = 0;
 
-    if (useMalloc)
-    {
-      buffer = malloc(size);
-    }
-    else
-    {
-      buffer = arenaAllocate(arena, size);
-    }
+    buffer = allocate(alloc, arena, size);
 
     iterationStartCounters(iteration, process, size);
 
@@ -180,14 +241,7 @@ void readWithFread(Iteration *iteration, Arena *arena, bool useMalloc, HANDLE pr
 
     fclose(file);
 
-    if (useMalloc)
-    {
-      free(buffer);
-    }
-    else
-    {
-      arenaFreeAll(arena);
-    }
+    freeAllocation(alloc, arena, buffer);
 
     if (read < 1)
     {
@@ -196,9 +250,8 @@ void readWithFread(Iteration *iteration, Arena *arena, bool useMalloc, HANDLE pr
   }
 }
 
-void readWith_read(Iteration *iteration, Arena *arena, bool useMalloc, HANDLE process)
+void readWith_read(Iteration *iteration, Arena *arena, Alloc alloc, HANDLE process)
 {
-  useMalloc;
   int fd = _open(JSON_PATH, _O_RDONLY | _O_BINARY);
 
   if (fd != 0)
@@ -209,14 +262,7 @@ void readWith_read(Iteration *iteration, Arena *arena, bool useMalloc, HANDLE pr
       size_t size = fileStat.st_size;
 
       char *buffer = 0;
-      if (useMalloc)
-      {
-        buffer = malloc(size);
-      }
-      else
-      {
-        buffer = arenaAllocate(arena, size);
-      }
+      buffer = allocate(alloc, arena, size);
       char *cursor = buffer;
 
       size_t remainingBytes = size;
@@ -252,22 +298,13 @@ void readWith_read(Iteration *iteration, Arena *arena, bool useMalloc, HANDLE pr
 
       _close(fd);
 
-      if (useMalloc)
-      {
-        free(buffer);
-      }
-      else
-      {
-        arenaFreeAll(arena);
-      }
+      freeAllocation(alloc, arena, buffer);
     }
   }
 }
 
-void readWithReadFile(Iteration *iteration, Arena *arena, bool useMalloc, HANDLE process)
+void readWithReadFile(Iteration *iteration, Arena *arena, Alloc alloc, HANDLE process)
 {
-  useMalloc;
-
   HANDLE file = CreateFile(
       JSON_PATH,
       GENERIC_READ,
@@ -280,26 +317,19 @@ void readWithReadFile(Iteration *iteration, Arena *arena, bool useMalloc, HANDLE
   if (file != INVALID_HANDLE_VALUE)
   {
 
-    LARGE_INTEGER fileSize = {0};
-    if (GetFileSizeEx(file, &fileSize))
+    LARGE_INTEGER size = {0};
+    if (GetFileSizeEx(file, &size))
     {
 
       char *buffer = 0;
 
-      if (useMalloc)
-      {
-        buffer = malloc(fileSize.QuadPart);
-      }
-      else
-      {
-        buffer = arenaAllocate(arena, fileSize.QuadPart);
-      }
+      buffer = allocate(alloc, arena, size.QuadPart);
 
       char *cursor = buffer;
 
-      uint64_t remainingBytes = (uint64_t)fileSize.QuadPart;
+      uint64_t remainingBytes = (uint64_t)size.QuadPart;
 
-      iterationStartCounters(iteration, process, fileSize.QuadPart);
+      iterationStartCounters(iteration, process, size.QuadPart);
 
       while (remainingBytes > 0)
       {
@@ -336,34 +366,20 @@ void readWithReadFile(Iteration *iteration, Arena *arena, bool useMalloc, HANDLE
         die(__FILE__, __LINE__, 0, "Error while reading file");
       }
 
-      if (useMalloc)
-      {
-        free(buffer);
-      }
-      else
-      {
-        arenaFreeAll(arena);
-      }
+      freeAllocation(alloc, arena, buffer);
     }
 
     CloseHandle(file);
   }
 }
 
-void writeBuffer(Iteration *iteration, Arena *arena, bool useMalloc, HANDLE process)
+void writeBuffer(Iteration *iteration, Arena *arena, Alloc alloc, HANDLE process)
 {
   char *buffer = 0;
 
   uint64_t size = 947115053;
 
-  if (useMalloc)
-  {
-    buffer = malloc(size);
-  }
-  else
-  {
-    buffer = arenaAllocate(arena, size);
-  }
+  buffer = allocate(alloc, arena, size);
 
   iterationStartCounters(iteration, process, size);
 
@@ -372,14 +388,7 @@ void writeBuffer(Iteration *iteration, Arena *arena, bool useMalloc, HANDLE proc
     buffer[i] = (char)i;
   }
 
-  if (useMalloc)
-  {
-    free(buffer);
-  }
-  else
-  {
-    arenaFreeAll(arena);
-  }
+  freeAllocation(alloc, arena, buffer);
 
   iterationStopCounters(iteration, process);
 }
@@ -393,13 +402,13 @@ int main(void)
   HANDLE process = GetCurrentProcess();
 
   Test tests[] = {
-      MAKE_TEST(writeBuffer, "malloc + writeBuffer", true),
-      MAKE_TEST(readWith_read, "_read", false),
-      MAKE_TEST(readWith_read, "malloc + _read", true),
-      MAKE_TEST(readWithFread, "fread", false),
-      MAKE_TEST(readWithFread, "malloc + fread", true),
-      MAKE_TEST(readWithReadFile, "ReadFile", false),
-      MAKE_TEST(readWithReadFile, "malloc + ReadFile", true),
+      MAKE_TEST(writeBuffer, "malloc + writeBuffer", Alloc_Malloc),
+      MAKE_TEST(readWith_read, "_read", Alloc_None),
+      MAKE_TEST(readWith_read, "malloc + _read", Alloc_Malloc),
+      MAKE_TEST(readWithFread, "fread", Alloc_None),
+      MAKE_TEST(readWithFread, "malloc + fread", Alloc_Malloc),
+      MAKE_TEST(readWithReadFile, "ReadFile", Alloc_None),
+      MAKE_TEST(readWithReadFile, "malloc + ReadFile", Alloc_Malloc),
   };
 
   while (true)
