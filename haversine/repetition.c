@@ -59,6 +59,8 @@ typedef struct
 
   char *name;
 
+  float maxGbPerSecond;
+
   Alloc alloc;
 } Test;
 
@@ -202,6 +204,8 @@ void repeatTest(Test *test, uint64_t rdtscFrequency, Arena *arena, HANDLE proces
     float minGbPerSecond = gb / test->maxSeconds;
     float maxGbPerSecond = gb / test->minSeconds;
     float averageGbPerSecond = gb / averageSeconds;
+
+    test->maxGbPerSecond = maxGbPerSecond;
 
     float minKbPerFault = kb / (float)test->maxPageFaults;
     float maxKbPerFault = kb / (float)test->minPageFaults;
@@ -451,7 +455,7 @@ int main(void)
   uint64_t largePageMinimum = enableLargePages();
 
   Test tests[] = {
-      //MAKE_TEST(writeBuffer, "malloc + writeBuffer", Alloc_Malloc),
+      // MAKE_TEST(writeBuffer, "malloc + writeBuffer", Alloc_Malloc),
       MAKE_TEST(readWith_read, "_read", Alloc_None),
       MAKE_TEST(readWith_read, "malloc + _read", Alloc_Malloc),
       MAKE_TEST(readWith_read, "VirtualAlloc + _read", Alloc_VirtualAlloc),
@@ -470,6 +474,7 @@ int main(void)
 
   while (true)
   {
+
     for (size_t i = 0; i < ARRAYSIZE(tests); i++)
     {
       Test *test = tests + i;
@@ -479,6 +484,22 @@ int main(void)
         repeatTest(test, rdtscFrequency, &arena, process, largePageMinimum);
       }
     }
+
+    float maxGbPerSecond = 0;
+
+    char *bestTest = "";
+
+    for (size_t i = 0; i < ARRAYSIZE(tests); i++)
+    {
+      Test test = tests[i];
+      if (test.maxGbPerSecond > maxGbPerSecond)
+      {
+        maxGbPerSecond = test.maxGbPerSecond;
+        bestTest = test.name;
+      }
+    }
+
+    printf("BEST THROUGHPUT: %s, %f Gb/s\n\n", bestTest, maxGbPerSecond);
   }
 
   return 0;
