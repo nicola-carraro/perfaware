@@ -55,14 +55,14 @@ typedef struct
 
   size_t executionCount;
 
-  void (*function)(Iteration *iteration, Arena *arena, Alloc alloc, HANDLE process);
+  void (*function)(Iteration *iteration, Arena *arena, Alloc alloc, HANDLE process, uint64_t largePageMinimum);
 
   char *name;
 
   Alloc alloc;
 } Test;
 
-char *allocate(Alloc alloc, Arena *arena, size_t size)
+char *allocate(Alloc alloc, Arena *arena, size_t size, uint64_t largePageMinimum)
 {
 
   char *result = 0;
@@ -85,6 +85,13 @@ char *allocate(Alloc alloc, Arena *arena, size_t size)
   break;
   case Alloc_Large:
   {
+    size_t remainder = size % largePageMinimum;
+
+    if (remainder != 0)
+    {
+      size += (largePageMinimum - remainder);
+    }
+
     result = VirtualAlloc(0, size, MEM_RESERVE | MEM_COMMIT | MEM_LARGE_PAGES, PAGE_READWRITE);
   }
   break;
@@ -139,7 +146,7 @@ void iterationStopCounters(Iteration *iteration, HANDLE process)
   iteration->ticks = ticks - iteration->startTicks;
 }
 
-void repeatTest(Test *test, uint64_t rdtscFrequency, Arena *arena, HANDLE process)
+void repeatTest(Test *test, uint64_t rdtscFrequency, Arena *arena, HANDLE process, uint64_t largePageMinimum)
 {
 
   uint64_t ticksSinceLastReset = __rdtsc();
@@ -153,7 +160,7 @@ void repeatTest(Test *test, uint64_t rdtscFrequency, Arena *arena, HANDLE proces
 
     Iteration iteration = {0};
 
-    test->function(&iteration, arena, test->alloc, process);
+    test->function(&iteration, arena, test->alloc, process, largePageMinimum);
 
     float secondsForFunction = (float)iteration.ticks / (float)rdtscFrequency;
     uint64_t pageFaults = iteration.pageFaults;
@@ -221,7 +228,7 @@ void repeatTest(Test *test, uint64_t rdtscFrequency, Arena *arena, HANDLE proces
   printf("\n");
 }
 
-void readWithFread(Iteration *iteration, Arena *arena, Alloc alloc, HANDLE process)
+void readWithFread(Iteration *iteration, Arena *arena, Alloc alloc, HANDLE process, uint64_t largePageMinimum)
 {
   FILE *file = fopen(JSON_PATH, "rb");
 
@@ -231,7 +238,7 @@ void readWithFread(Iteration *iteration, Arena *arena, Alloc alloc, HANDLE proce
 
     char *buffer = 0;
 
-    buffer = allocate(alloc, arena, size);
+    buffer = allocate(alloc, arena, size, largePageMinimum);
 
     iterationStartCounters(iteration, process, size);
 
@@ -250,7 +257,7 @@ void readWithFread(Iteration *iteration, Arena *arena, Alloc alloc, HANDLE proce
   }
 }
 
-void readWith_read(Iteration *iteration, Arena *arena, Alloc alloc, HANDLE process)
+void readWith_read(Iteration *iteration, Arena *arena, Alloc alloc, HANDLE process, uint64_t largePageMinimum)
 {
   int fd = _open(JSON_PATH, _O_RDONLY | _O_BINARY);
 
@@ -262,7 +269,7 @@ void readWith_read(Iteration *iteration, Arena *arena, Alloc alloc, HANDLE proce
       size_t size = fileStat.st_size;
 
       char *buffer = 0;
-      buffer = allocate(alloc, arena, size);
+      buffer = allocate(alloc, arena, size, largePageMinimum);
       char *cursor = buffer;
 
       size_t remainingBytes = size;
@@ -303,7 +310,7 @@ void readWith_read(Iteration *iteration, Arena *arena, Alloc alloc, HANDLE proce
   }
 }
 
-void readWithReadFile(Iteration *iteration, Arena *arena, Alloc alloc, HANDLE process)
+void readWithReadFile(Iteration *iteration, Arena *arena, Alloc alloc, HANDLE process, uint64_t largePageMinimum)
 {
   HANDLE file = CreateFile(
       JSON_PATH,
@@ -323,7 +330,7 @@ void readWithReadFile(Iteration *iteration, Arena *arena, Alloc alloc, HANDLE pr
 
       char *buffer = 0;
 
-      buffer = allocate(alloc, arena, size.QuadPart);
+      buffer = allocate(alloc, arena, size.QuadPart, largePageMinimum);
 
       char *cursor = buffer;
 
@@ -373,13 +380,13 @@ void readWithReadFile(Iteration *iteration, Arena *arena, Alloc alloc, HANDLE pr
   }
 }
 
-void writeBuffer(Iteration *iteration, Arena *arena, Alloc alloc, HANDLE process)
+void writeBuffer(Iteration *iteration, Arena *arena, Alloc alloc, HANDLE process, uint64_t largePageMinimum)
 {
   char *buffer = 0;
 
   uint64_t size = 947115053;
 
-  buffer = allocate(alloc, arena, size);
+  buffer = allocate(alloc, arena, size, largePageMinimum);
 
   iterationStartCounters(iteration, process, size);
 
@@ -393,6 +400,46 @@ void writeBuffer(Iteration *iteration, Arena *arena, Alloc alloc, HANDLE process
   iterationStopCounters(iteration, process);
 }
 
+uint64_t enableLargePages()
+{
+  HANDLE token = INVALID_HANDLE_VALUE;
+
+  uint64_t result = 0;
+
+  if (OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES, &token))
+  {
+    TOKEN_PRIVILEGES privileges = {
+        .PrivilegeCount = 1,
+        .Privileges = {{.Attributes = SE_PRIVILEGE_ENABLED}}};
+
+    if (LookupPrivilegeValue(NULL, SE_LOCK_MEMORY_NAME, &privileges.Privileges[0].Luid))
+    {
+      AdjustTokenPrivileges(token, FALSE, &privileges, 0, NULL, NULL);
+
+      DWORD error = GetLastError();
+      if (error == ERROR_SUCCESS)
+      {
+        result = GetLargePageMinimum();
+      }
+      else
+      {
+        printf("Could not adjust privileges, error = %d\n", error);
+      }
+    }
+    else
+    {
+      printf("Could not lookup privileges\n");
+    }
+  }
+
+  else
+  {
+    printf("Could not open process token\n");
+  }
+
+  return result;
+}
+
 int main(void)
 {
   uint64_t rdtscFrequency = estimateRdtscFrequency();
@@ -401,22 +448,36 @@ int main(void)
 
   HANDLE process = GetCurrentProcess();
 
+  uint64_t largePageMinimum = enableLargePages();
+
   Test tests[] = {
-      MAKE_TEST(writeBuffer, "malloc + writeBuffer", Alloc_Malloc),
+      //MAKE_TEST(writeBuffer, "malloc + writeBuffer", Alloc_Malloc),
       MAKE_TEST(readWith_read, "_read", Alloc_None),
       MAKE_TEST(readWith_read, "malloc + _read", Alloc_Malloc),
+      MAKE_TEST(readWith_read, "VirtualAlloc + _read", Alloc_VirtualAlloc),
+      MAKE_TEST(readWith_read, "VirtualAlloc (large) + _read", Alloc_Large),
+
       MAKE_TEST(readWithFread, "fread", Alloc_None),
       MAKE_TEST(readWithFread, "malloc + fread", Alloc_Malloc),
+      MAKE_TEST(readWithFread, "VirtualAlloc + fread", Alloc_VirtualAlloc),
+      MAKE_TEST(readWithFread, "VirtualAlloc (large) + fread", Alloc_Large),
+
       MAKE_TEST(readWithReadFile, "ReadFile", Alloc_None),
       MAKE_TEST(readWithReadFile, "malloc + ReadFile", Alloc_Malloc),
+      MAKE_TEST(readWithReadFile, "VirtualAlloc + ReadFile", Alloc_VirtualAlloc),
+      MAKE_TEST(readWithReadFile, "VirtualAlloc (large) + ReadFile", Alloc_Large),
   };
 
   while (true)
   {
-
     for (size_t i = 0; i < ARRAYSIZE(tests); i++)
     {
-      repeatTest(tests + i, rdtscFrequency, &arena, process);
+      Test *test = tests + i;
+
+      if (test->alloc != Alloc_Large || largePageMinimum != 0)
+      {
+        repeatTest(test, rdtscFrequency, &arena, process, largePageMinimum);
+      }
     }
   }
 
