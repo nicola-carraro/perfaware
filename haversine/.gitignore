@@ -4,3 +4,4 @@ tmp
 *.exe
 .vscode
 .vs
+*.lib

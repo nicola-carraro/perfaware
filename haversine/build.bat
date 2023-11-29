@@ -11,17 +11,22 @@ set profile=/D PROFILE
 :argactionstart
 if -%1-==-- goto argactionend
 if "%1"=="noprofile" set profile=
-if "%1"=="release" set build_type=/O2 /Fd /D NODEBUG /D NDEBUG 
+if "%1"=="release" set build_type=/O2 /Z7
 shift
 goto argactionstart
 :argactionend
 
+nasm -f win64 nop.asm
+lib  nop.obj
+
 cl %common% input.c
 cl %common% test.c
 cl %common% %profile% %build_type% main.c
-cl %common% %profile% %build_type% Advapi32.lib repetition.c
+cl %common% %profile% %build_type% Advapi32.lib nop.lib repetition.c
 cl %common% %profile% %build_type% faults.c
+
 del *.obj *.ilk
+
 
 if not exist data mkdir data
 
