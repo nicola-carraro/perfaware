@@ -36,9 +36,7 @@ cmpAllBytes:
     ret
 
 decAllBytes:
-    xor rax, rax
 .loop:
-    dec  rcx  
-    cmp  rax, rcx  
-    jb   .loop
+    dec rcx
+    jnz .loop
     ret

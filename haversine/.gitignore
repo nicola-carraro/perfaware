@@ -5,3 +5,4 @@ tmp
 .vscode
 .vs
 *.lib
+/part2/build

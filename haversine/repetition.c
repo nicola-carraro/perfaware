@@ -23,6 +23,8 @@ void cmpAllBytes(size_t size, void* buffer);
 
 void decAllBytes(size_t size);
 
+void incAllBytes(size_t size);
+
 typedef enum
 {
 	Alloc_None,
@@ -586,36 +588,38 @@ int main(void)
 
 	Test tests[] = {
 
-		MAKE_TEST(writeBuffer, "writeBuffer", Alloc_None),
-		MAKE_TEST(movBuffer, "movBuffer", Alloc_None),
-
 
 		MAKE_TEST(dec, "dec", Alloc_None),
 
-		MAKE_TEST(cmpBuffer, "cmpBuffer", Alloc_None),
+		
+		// MAKE_TEST(writeBuffer, "writeBuffer", Alloc_None),
+		// MAKE_TEST(movBuffer, "movBuffer", Alloc_None),
 
-		MAKE_TEST(nopBuffer, "nopBuffer", Alloc_None),
+
+		// MAKE_TEST(cmpBuffer, "cmpBuffer", Alloc_None),
+
+		// MAKE_TEST(nopBuffer, "nopBuffer", Alloc_None),
 
 
 		
-		MAKE_TEST(writeBuffer, "malloc + writeBuffer", Alloc_Malloc),
-		MAKE_TEST(readWith_read, "VirtualAlloc + writeBuffer", Alloc_VirtualAlloc),
-		MAKE_TEST(readWith_read, "VirtualAlloc (large) + writeBuffer", Alloc_Large),
+		// MAKE_TEST(writeBuffer, "malloc + writeBuffer", Alloc_Malloc),
+		// MAKE_TEST(readWith_read, "VirtualAlloc + writeBuffer", Alloc_VirtualAlloc),
+		// MAKE_TEST(readWith_read, "VirtualAlloc (large) + writeBuffer", Alloc_Large),
 
-		MAKE_TEST(readWith_read, "_read", Alloc_None),
-		MAKE_TEST(readWith_read, "malloc + _read", Alloc_Malloc),
-		MAKE_TEST(readWith_read, "VirtualAlloc + _read", Alloc_VirtualAlloc),
-		MAKE_TEST(readWith_read, "VirtualAlloc (large) + _read", Alloc_Large),
+		// MAKE_TEST(readWith_read, "_read", Alloc_None),
+		// MAKE_TEST(readWith_read, "malloc + _read", Alloc_Malloc),
+		// MAKE_TEST(readWith_read, "VirtualAlloc + _read", Alloc_VirtualAlloc),
+		// MAKE_TEST(readWith_read, "VirtualAlloc (large) + _read", Alloc_Large),
 
-		MAKE_TEST(readWithFread, "fread", Alloc_None),
-		MAKE_TEST(readWithFread, "malloc + fread", Alloc_Malloc),
-		MAKE_TEST(readWithFread, "VirtualAlloc + fread", Alloc_VirtualAlloc),
-		MAKE_TEST(readWithFread, "VirtualAlloc (large) + fread", Alloc_Large),
+		// MAKE_TEST(readWithFread, "fread", Alloc_None),
+		// MAKE_TEST(readWithFread, "malloc + fread", Alloc_Malloc),
+		// MAKE_TEST(readWithFread, "VirtualAlloc + fread", Alloc_VirtualAlloc),
+		// MAKE_TEST(readWithFread, "VirtualAlloc (large) + fread", Alloc_Large),
 
-		MAKE_TEST(readWithReadFile, "ReadFile", Alloc_None),
-		MAKE_TEST(readWithReadFile, "malloc + ReadFile", Alloc_Malloc),
-		MAKE_TEST(readWithReadFile, "VirtualAlloc + ReadFile", Alloc_VirtualAlloc),
-		MAKE_TEST(readWithReadFile, "VirtualAlloc (large) + ReadFile", Alloc_Large),
+		// MAKE_TEST(readWithReadFile, "ReadFile", Alloc_None),
+		// MAKE_TEST(readWithReadFile, "malloc + ReadFile", Alloc_Malloc),
+		// MAKE_TEST(readWithReadFile, "VirtualAlloc + ReadFile", Alloc_VirtualAlloc),
+		// MAKE_TEST(readWithReadFile, "VirtualAlloc (large) + ReadFile", Alloc_Large),
 	};
 
 	while (true)
