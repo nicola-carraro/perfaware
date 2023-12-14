@@ -7,6 +7,8 @@ global cmpAllBytes
 
 global decAllBytes
 
+global decSlow
+
 section .text
 
 movAllBytes:
@@ -39,4 +41,12 @@ decAllBytes:
 .loop:
     dec rcx
     jnz .loop
+    ret
+
+decSlow:
+    xor rax, rax
+.loop:
+    dec  rcx  
+    cmp  rax, rcx  
+    jb   .loop
     ret

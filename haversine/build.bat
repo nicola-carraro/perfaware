@@ -19,11 +19,12 @@ goto argactionstart
 nasm -f win64 nop.asm
 lib  nop.obj
 
-cl %common% input.c
-cl %common% test.c
-cl %common% %profile% %build_type% main.c
-cl %common% %profile% %build_type% Advapi32.lib nop.lib repetition.c
-cl %common% %profile% %build_type% faults.c
+REM cl %common% input.c
+REM cl %common% test.c
+REM cl %common% %profile% %build_type% main.c
+REM cl %common% %profile% %build_type% Advapi32.lib nop.lib repetition.c
+cl %common% %profile% %build_type%  nop.lib asm.c
+REM cl %common% %profile% %build_type% faults.c
 
 del *.obj *.ilk
 
