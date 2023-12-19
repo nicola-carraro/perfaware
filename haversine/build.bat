@@ -22,7 +22,7 @@ lib  nop.obj
 REM cl %common% input.c
 REM cl %common% test.c
 REM cl %common% %profile% %build_type% main.c
-REM cl %common% %profile% %build_type% Advapi32.lib nop.lib repetition.c
+cl %common% %profile% %build_type% Advapi32.lib nop.lib repetition.c
 cl %common% %profile% %build_type%  nop.lib asm.c
 REM cl %common% %profile% %build_type% faults.c
 
