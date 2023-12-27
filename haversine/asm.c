@@ -6,12 +6,24 @@
 #include "profiler.c"
 #include "float.h"
 
-void cmpAllBytes(int64_t repetitions);
+void cmpAllBytes(int64_t repetitions, void *buffer);
 
-void decSlow(int64_t repetitions);
+void decSlow(int64_t repetitions, void *buffer);
 
-#define MAKE_TEST(f, n, r) {\
-    .minSeconds = FLT_MAX, .function = f, .name = n, .repetitions = r\
+void nop3x1(int64_t repetitions, void *buffer);
+
+void nop1x3(int64_t repetitions, void *buffer);
+
+void nop9(int64_t repetitions, void *buffer);
+
+void jumps(int64_t repetitions, void *buffer);
+
+#define MAKE_TEST(f, n, r, b) {\
+    .minSeconds = FLT_MAX,\
+    .function = f,\
+    .name = n,\
+    .repetitions = r,\
+    .buffer = b\
 }
 
 typedef struct {
@@ -19,10 +31,11 @@ typedef struct {
     float maxSeconds;
     float sumSeconds;
     size_t executionCount;
-    void (*function) (int64_t repetitions);
+    void (*function) (int64_t repetitions, void *buffer);
     char *name;
     float maxThroughput;
     int64_t repetitions;
+    void *buffer;
 } Test;
 
 void repeatTest(Test *test, uint64_t rdtscFrequency) {
@@ -34,7 +47,7 @@ void repeatTest(Test *test, uint64_t rdtscFrequency) {
 
     while (true) {
         uint64_t start = __rdtsc();
-        test->function(test->repetitions);
+        test->function(test->repetitions, test->buffer);
         uint64_t end = __rdtsc();
 
         uint64_t ticks = end - start;
@@ -87,9 +100,32 @@ int main(void) {
 
     int64_t repetitions = 1000000000;
 
+    char *allZeros = malloc(repetitions);
+    memset(allZeros, 1, repetitions);
+
+    char *allOnes = malloc(repetitions);
+    memset(allOnes, 1, repetitions);
+
+    char *oneEveryTwo = malloc(repetitions);
+    for (int i = 0; i < repetitions; i++) {
+        oneEveryTwo[i] = (i % 2) == 0;
+    }
+
+    char *random = malloc(repetitions);
+    for (int i = 0; i < repetitions; i++) {
+        random[i] = (rand() % 2) == 0;
+    }
+
     Test tests[] = {
-        MAKE_TEST(decSlow, "decSlow", repetitions),
-        MAKE_TEST(cmpAllBytes, "cmpAllBytes", repetitions),
+        // MAKE_TEST(decSlow, "decSlow", repetitions),
+        // MAKE_TEST(cmpAllBytes, "cmpAllBytes", repetitions),
+        MAKE_TEST(jumps, "allOnes", repetitions, allOnes),
+        MAKE_TEST(jumps, "allZeros", repetitions, allZeros),
+        MAKE_TEST(jumps, "oneEveryTwo", repetitions, oneEveryTwo),
+        MAKE_TEST(jumps, "random", repetitions, random),
+        // MAKE_TEST(nop1x3, "nop1x3", repetitions, NULL),
+        // MAKE_TEST(nop3x1, "nop3x1", repetitions, NULL),
+        // MAKE_TEST(nop9, "nop9", repetitions, NULL),
     };
 
     while (true) {
