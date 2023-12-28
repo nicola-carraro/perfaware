@@ -17,6 +17,16 @@ global nop9
 
 global jumps
 
+global align64
+
+global align1
+
+global align15
+
+global align62
+
+global align63
+
 section .text
 
 movAllBytes:
@@ -107,4 +117,59 @@ jumps:
     jnz       .otherLoop
     cmp       rax, rcx
     jb        .loop
+    ret
+
+align64:
+    xor rax, rax
+    align 64
+.loop:
+    inc  rax  
+    cmp  rax, rcx  
+    jb   .loop
+    ret
+
+align1:
+    xor rax, rax
+    align 64
+    nop
+.loop:
+    inc  rax  
+    cmp  rax, rcx  
+    jb   .loop
+    ret
+
+align15:
+    xor rax, rax
+    align 64
+    %rep 15
+    nop
+    %endrep
+.loop:
+    inc  rax  
+    cmp  rax, rcx  
+    jb   .loop
+    ret
+
+align62:
+    xor rax, rax
+    align 64
+    %rep 62
+    nop
+    %endrep
+.loop:
+    inc  rax  
+    cmp  rax, rcx  
+    jb   .loop
+    ret
+
+align63:
+    xor rax, rax
+    align 64
+    %rep 63
+    nop
+    %endrep
+.loop:
+    inc  rax  
+    cmp  rax, rcx  
+    jb   .loop
     ret

@@ -18,6 +18,16 @@ void nop9(int64_t repetitions, void *buffer);
 
 void jumps(int64_t repetitions, void *buffer);
 
+void align64(int64_t repetitions, void *buffer);
+
+void align1(int64_t repetitions, void *buffer);
+
+void align15(int64_t repetitions, void *buffer);
+
+void align62(int64_t repetitions, void *buffer);
+
+void align63(int64_t repetitions, void *buffer);
+
 #define MAKE_TEST(f, n, r, b) {\
     .minSeconds = FLT_MAX,\
     .function = f,\
@@ -100,29 +110,30 @@ int main(void) {
 
     int64_t repetitions = 1000000000;
 
-    char *allZeros = malloc(repetitions);
-    memset(allZeros, 1, repetitions);
-
-    char *allOnes = malloc(repetitions);
-    memset(allOnes, 1, repetitions);
-
-    char *oneEveryTwo = malloc(repetitions);
-    for (int i = 0; i < repetitions; i++) {
-        oneEveryTwo[i] = (i % 2) == 0;
-    }
-
-    char *random = malloc(repetitions);
-    for (int i = 0; i < repetitions; i++) {
-        random[i] = (rand() % 2) == 0;
-    }
-
+    // char *allZeros = malloc(repetitions);
+    // memset(allZeros, 1, repetitions);
+    // char *allOnes = malloc(repetitions);
+    // memset(allOnes, 1, repetitions);
+    // char *oneEveryTwo = malloc(repetitions);
+    // for (int i = 0; i < repetitions; i++) {
+    // oneEveryTwo[i] = (i % 2) == 0;
+    // }
+    // char *random = malloc(repetitions);
+    // for (int i = 0; i < repetitions; i++) {
+    // random[i] = (rand() % 2) == 0;
+    // }
     Test tests[] = {
-        // MAKE_TEST(decSlow, "decSlow", repetitions),
-        // MAKE_TEST(cmpAllBytes, "cmpAllBytes", repetitions),
-        MAKE_TEST(jumps, "allOnes", repetitions, allOnes),
-        MAKE_TEST(jumps, "allZeros", repetitions, allZeros),
-        MAKE_TEST(jumps, "oneEveryTwo", repetitions, oneEveryTwo),
-        MAKE_TEST(jumps, "random", repetitions, random),
+        // MAKE_TEST(decSlow, "decSlow", repetitions, 0),
+        // MAKE_TEST(cmpAllBytes, "cmpAllBytes", repetitions, 0),
+        MAKE_TEST(align64, "align64", repetitions, 0),
+        MAKE_TEST(align1, "align1", repetitions, 0),
+        MAKE_TEST(align15, "align15", repetitions, 0),
+        MAKE_TEST(align62, "align62", repetitions, 0),
+        MAKE_TEST(align63, "align63", repetitions, 0),
+        // MAKE_TEST(jumps, "allOnes", repetitions, allOnes),
+        // MAKE_TEST(jumps, "allZeros", repetitions, allZeros),
+        // MAKE_TEST(jumps, "oneEveryTwo", repetitions, oneEveryTwo),
+        // MAKE_TEST(jumps, "random", repetitions, random),
         // MAKE_TEST(nop1x3, "nop1x3", repetitions, NULL),
         // MAKE_TEST(nop3x1, "nop3x1", repetitions, NULL),
         // MAKE_TEST(nop9, "nop9", repetitions, NULL),

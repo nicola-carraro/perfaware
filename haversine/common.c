@@ -8,16 +8,21 @@
 #include "math.h"
 #include "stdint.h"
 #include "assert.h"
-
 #include "profiler.c"
+
 #ifdef _WIN32
+
 #pragma warning(push, 0)
+
 #include "windows.h"
 #include "psapi.h"
+
 #pragma warning(pop)
 
 #include "intrin.h"
+
 #endif
+
 #ifndef COMMON_C
 
 #define COMMON_C
@@ -26,31 +31,32 @@
 
 #define ANSWERS_PATH "data/answers"
 
-#define ARENA_SIZE 8 * 1024ll * 1024ll * 1024l
+#define ARENA_SIZE 8 *1024ll *1024ll *1024l
 
 #define EARTH_RADIUS 6371
 
-typedef struct
-{
-    union
-    {
+typedef struct {
+    union {
         char *signedData;
         uint8_t *unsignedData;
     } data;
-
     size_t size;
 } String;
 
-typedef struct
-{
+typedef struct {
     void *memory;
     size_t size;
     size_t currentOffset;
     size_t previousOffset;
 } Arena;
 
-void die(const char *file, const size_t line, int errorNumber, const char *message, ...)
-{
+void die(
+    const char *file,
+    const size_t line,
+    int errorNumber,
+    const char *message,
+    ...
+) {
     printf("ERROR (%s:%zu): ", file, line);
 
     va_list args;
@@ -58,8 +64,7 @@ void die(const char *file, const size_t line, int errorNumber, const char *messa
     vprintf(message, args);
     va_end(args);
 
-    if (errorNumber != 0)
-    {
+    if (errorNumber != 0) {
         char *cError = strerror(errorNumber);
         printf(" (%s)", cError);
     }
@@ -67,14 +72,12 @@ void die(const char *file, const size_t line, int errorNumber, const char *messa
     exit(EXIT_FAILURE);
 }
 
-void writeTextToFile(FILE *file, const char *path, const char *format, ...)
-{
+void writeTextToFile(FILE *file, const char *path, const char *format, ...) {
     va_list varargsList;
 
     va_start(varargsList, format);
 
-    if (vfprintf(file, format, varargsList) < 0)
-    {
+    if (vfprintf(file, format, varargsList) < 0) {
         int error = errno;
         fclose(file);
         die(__FILE__, __LINE__, error, "could not write to %s", path);
@@ -82,67 +85,64 @@ void writeTextToFile(FILE *file, const char *path, const char *format, ...)
     va_end(varargsList);
 }
 
-void writeBinaryToFile(FILE *file, const char *path, void *data, size_t size, size_t count)
-{
-    if (fwrite(data, size, count, file) != count)
-    {
+void writeBinaryToFile(
+    FILE *file,
+    const char *path,
+    void *data,
+    size_t size,
+    size_t count
+) {
+    if (fwrite(data, size, count, file) != count) {
         int error = errno;
         fclose(file);
         die(__FILE__, __LINE__, error, "could not write to %s", path);
     }
 }
 
-size_t getFileSize(FILE *file, char *path)
-{
-    TIME_FUNCTION
-
-    size_t result = 0;
+size_t getFileSize(FILE *file, char *path) {
+    TIME_FUNCTION size_t result = 0;
 
     const char *errorMessage = "could not query the size of %s";
 
-    if (_fseeki64(file, 0, SEEK_END) != 0)
-    {
+    if (_fseeki64(file, 0, SEEK_END) != 0) {
         int errorNumber = errno;
         fclose(file);
         die(__FILE__, __LINE__, errorNumber, errorMessage, path);
     }
-    else
-    {
+    else {
         int64_t cursorPosition = _ftelli64(file);
 
-        if (cursorPosition >= 0)
-        {
-            result = (size_t)cursorPosition;
+        if (cursorPosition >= 0) {
+            result = (size_t) cursorPosition;
 
-            if (_fseeki64(file, 0, SEEK_SET) != 0)
-            {
+            if (_fseeki64(file, 0, SEEK_SET) != 0) {
                 int errorNumber = errno;
                 fclose(file);
-                die(__FILE__, __LINE__, errorNumber, "could not restore cursor position of %s", path);
+                die(
+                    __FILE__,
+                    __LINE__,
+                    errorNumber,
+                    "could not restore cursor position of %s",
+                    path
+                );
             }
         }
-        else
-        {
+        else {
             int errorNumber = errno;
             fclose(file);
             die(__FILE__, __LINE__, errorNumber, errorMessage, path);
         }
     }
 
-    STOP_COUNTER
-
-    return result;
+    STOP_COUNTER return result;
 }
 
-Arena arenaInit()
-{
-    TIME_FUNCTION
-    Arena arena = {0};
+Arena arenaInit() {
+    TIME_FUNCTION Arena arena = {0};
 
     arena.memory = malloc(ARENA_SIZE);
 
-    if (!arena.memory)
-    {
+    if (!arena.memory) {
         die(__FILE__, __LINE__, errno, "could not initialize arena");
     }
 
@@ -150,43 +150,34 @@ Arena arenaInit()
     arena.currentOffset = 0;
     arena.previousOffset = 0;
 
-    STOP_COUNTER
-
-    return arena;
+    STOP_COUNTER return arena;
 }
 
-void arenaFreeAll(Arena *arena)
-{
+void arenaFreeAll(Arena *arena) {
     arena->currentOffset = 0;
     arena->previousOffset = 0;
 }
 
-void *arenaAllocate(Arena *arena, size_t size)
-{
-
+void *arenaAllocate(Arena *arena, size_t size) {
     assert(arena != NULL);
 
     assert(arena->currentOffset + size < arena->size);
 
-    void *result = (char *)arena->memory + arena->currentOffset;
+    void *result = (char *) arena->memory + arena->currentOffset;
     arena->previousOffset = arena->currentOffset;
     arena->currentOffset += size;
 
     return result;
 }
 
-void freeLastAllocation(Arena *arena)
-{
+void freeLastAllocation(Arena *arena) {
     arena->currentOffset = arena->previousOffset;
 }
 
-String readFileToString(char *path, Arena *arena)
-{
-    TIME_FUNCTION
-    FILE *file = fopen(path, "rb");
+String readFileToString(char *path, Arena *arena) {
+    TIME_FUNCTION FILE *file = fopen(path, "rb");
 
-    if (file == NULL)
-    {
+    if (file == NULL) {
         die(__FILE__, __LINE__, errno, "could not open %s", path);
     }
     String result = {0};
@@ -195,76 +186,74 @@ String readFileToString(char *path, Arena *arena)
 
     MEASURE_THROUGHPUT("fread", result.size);
     size_t read = fread(result.data.signedData, 1, result.size, file);
-    STOP_COUNTER
-
-    if (read < result.size)
-    {
+    STOP_COUNTER if (read < result.size) {
         die(__FILE__, __LINE__, errno, "could not read %s, read %zu", path, read);
     }
 
-    STOP_COUNTER
-
-    return result;
+    STOP_COUNTER return result;
 }
 
-char *winErrorMessage()
-{
-
+char *winErrorMessage() {
     char *result = NULL;
 
     DWORD error = GetLastError();
     FormatMessage(
-        FORMAT_MESSAGE_ALLOCATE_BUFFER |
-            FORMAT_MESSAGE_FROM_SYSTEM |
-            FORMAT_MESSAGE_IGNORE_INSERTS,
+        FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
         NULL,
         error,
         MAKELANGID(LANG_ENGLISH, SUBLANG_DEFAULT),
-        (LPTSTR)&result,
+        (LPTSTR) &result,
         0,
-        NULL);
+        NULL
+    );
 
     return result;
 }
 
-uint64_t getPageFaultCount(HANDLE process)
-{
+uint64_t getPageFaultCount(HANDLE process) {
     uint64_t result = 0;
     PROCESS_MEMORY_COUNTERS memoryCounters = {0};
 
-    if (GetProcessMemoryInfo(process, &memoryCounters, sizeof(memoryCounters)))
-    {
+    if (GetProcessMemoryInfo(process, &memoryCounters, sizeof(memoryCounters))) {
         result = memoryCounters.PageFaultCount;
     }
-    else
-    {
+    else {
         char *message = winErrorMessage();
 
-        die(__FILE__, __LINE__, 0, "Failed to get page fault count: %s\n", message);
+        die(
+            __FILE__,
+            __LINE__,
+            0,
+            "Failed to get page fault count: %s\n",
+            message
+        );
     }
 
     return result;
 }
 
-double degreesToRadians(double degrees)
-{
-    return degrees * 0.01745329251994329577;
+double degreesToRadians(double degrees) {
+    return degrees *0.01745329251994329577;
 }
 
-double square(double n)
-{
-    return n * n;
+double square(double n) {
+    return n *n;
 }
 
-double haversine(double x1Degrees, double y1Degrees, double x2Degrees, double y2Degrees, double radius)
-{
-
+double haversine(
+    double x1Degrees,
+    double y1Degrees,
+    double x2Degrees,
+    double y2Degrees,
+    double radius
+) {
     double x1Radians = degreesToRadians(x1Degrees);
     double y1Radians = degreesToRadians(y1Degrees);
     double x2Radians = degreesToRadians(x2Degrees);
     double y2Radians = degreesToRadians(y2Degrees);
 
-    double rootTerm = square(sin((y2Radians - y1Radians) / 2.0)) + cos(y1Radians) * cos(y2Radians) * square(sin((x2Radians - x1Radians) / 2.0));
+    double rootTerm = square(sin((y2Radians - y1Radians) / 2.0))
+        + cos(y1Radians) * cos(y2Radians) * square(sin((x2Radians - x1Radians) / 2.0));
 
     double result = 2.0 * radius * asin(sqrt(rootTerm));
 
