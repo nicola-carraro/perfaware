@@ -27,6 +27,14 @@ global align62
 
 global align63
 
+global read1
+
+global read2
+
+global read3
+
+global read4
+
 section .text
 
 movAllBytes:
@@ -172,4 +180,43 @@ align63:
     inc  rax  
     cmp  rax, rcx  
     jb   .loop
+    ret
+
+read1:
+    align 64
+.loop:
+    mov rax, [rdx]
+    sub rcx, 1
+    jnle .loop
+    ret
+
+read2:
+    align 64
+.loop:
+    mov rax, [rdx]
+    mov rax, [rdx]
+    sub rcx, 2
+    jnle .loop
+    ret
+
+read3:
+    align 64
+.loop:
+    mov rax, [rdx]
+    mov rax, [rdx]
+    mov rax, [rdx]
+    sub rcx, 3
+    jnle .loop
+    ret
+
+
+read4:
+    align 64
+.loop:
+    mov rax, [rdx]
+    mov rax, [rdx]
+    mov rax, [rdx]
+    mov rax, [rdx]
+    sub rcx, 4
+    jnle .loop
     ret

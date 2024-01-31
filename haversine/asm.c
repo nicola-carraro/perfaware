@@ -28,6 +28,14 @@ void align62(int64_t repetitions, void *buffer);
 
 void align63(int64_t repetitions, void *buffer);
 
+void read1(int64_t repetitions, void *buffer);
+
+void read2(int64_t repetitions, void *buffer);
+
+void read3(int64_t repetitions, void *buffer);
+
+void read4(int64_t repetitions, void *buffer);
+
 #define MAKE_TEST(f, n, r, b) {\
     .minSeconds = FLT_MAX,\
     .function = f,\
@@ -110,6 +118,8 @@ int main(void) {
 
     int64_t repetitions = 1000000000;
 
+    uint8_t buffer[1] = {0};
+
     // char *allZeros = malloc(repetitions);
     // memset(allZeros, 1, repetitions);
     // char *allOnes = malloc(repetitions);
@@ -125,11 +135,15 @@ int main(void) {
     Test tests[] = {
         // MAKE_TEST(decSlow, "decSlow", repetitions, 0),
         // MAKE_TEST(cmpAllBytes, "cmpAllBytes", repetitions, 0),
-        MAKE_TEST(align64, "align64", repetitions, 0),
-        MAKE_TEST(align1, "align1", repetitions, 0),
-        MAKE_TEST(align15, "align15", repetitions, 0),
-        MAKE_TEST(align62, "align62", repetitions, 0),
-        MAKE_TEST(align63, "align63", repetitions, 0),
+        // MAKE_TEST(align64, "align64", repetitions, 0),
+        // MAKE_TEST(align1, "align1", repetitions, 0),
+        // MAKE_TEST(align15, "align15", repetitions, 0),
+        // MAKE_TEST(align62, "align62", repetitions, 0),
+        // MAKE_TEST(align63, "align63", repetitions, 0),
+        MAKE_TEST(read1, "read1", repetitions, buffer),
+        MAKE_TEST(read2, "read2", repetitions, buffer),
+        MAKE_TEST(read3, "read3", repetitions, buffer),
+        MAKE_TEST(read4, "read4", repetitions, buffer),
         // MAKE_TEST(jumps, "allOnes", repetitions, allOnes),
         // MAKE_TEST(jumps, "allZeros", repetitions, allZeros),
         // MAKE_TEST(jumps, "oneEveryTwo", repetitions, oneEveryTwo),
