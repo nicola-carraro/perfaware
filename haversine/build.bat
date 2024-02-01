@@ -16,17 +16,19 @@ shift
 goto argactionstart
 :argactionend
 
-nasm -f win64 nop.asm
-lib  nop.obj
+del *.pdb
+
+nasm -f win64 asm.asm
+lib /nologo  asm.obj
 
 REM cl %common% input.c
 REM cl %common% test.c
 REM cl %common% %profile% %build_type% main.c
-cl %common% %profile% %build_type% Advapi32.lib nop.lib repetition.c
-cl %common% %profile% %build_type%  nop.lib asm.c
+cl %common% %profile% %build_type% Advapi32.lib asm.lib repetition.c
+cl %common% %profile% %build_type%  asm.lib asm.c
 REM cl %common% %profile% %build_type% faults.c
 
-del *.obj *.ilk
+del *.obj *.ilk *.lib
 
 
 if not exist data mkdir data

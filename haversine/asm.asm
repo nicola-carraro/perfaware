@@ -35,6 +35,14 @@ global read3
 
 global read4
 
+global write1
+
+global write2
+
+global write3
+
+global write4
+
 section .text
 
 movAllBytes:
@@ -217,6 +225,45 @@ read4:
     mov rax, [rdx]
     mov rax, [rdx]
     mov rax, [rdx]
+    sub rcx, 4
+    jnle .loop
+    ret
+
+write1:
+    align 64
+.loop:
+    mov [rdx], rax
+    sub rcx, 1
+    jnle .loop
+    ret
+
+write2:
+    align 64
+.loop:
+    mov [rdx], rax
+    mov [rdx], rax
+    sub rcx, 2
+    jnle .loop
+    ret
+
+write3:
+    align 64
+.loop:
+    mov [rdx], rax
+    mov [rdx], rax
+    mov [rdx], rax
+    sub rcx, 3
+    jnle .loop
+    ret
+
+
+write4:
+    align 64
+.loop:
+    mov [rdx], rax
+    mov [rdx], rax
+    mov [rdx], rax
+    mov [rdx], rax
     sub rcx, 4
     jnle .loop
     ret

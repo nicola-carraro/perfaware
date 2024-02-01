@@ -36,6 +36,14 @@ void read3(int64_t repetitions, void *buffer);
 
 void read4(int64_t repetitions, void *buffer);
 
+void write1(int64_t repetitions, void *buffer);
+
+void write2(int64_t repetitions, void *buffer);
+
+void write3(int64_t repetitions, void *buffer);
+
+void write4(int64_t repetitions, void *buffer);
+
 #define MAKE_TEST(f, n, r, b) {\
     .minSeconds = FLT_MAX,\
     .function = f,\
@@ -118,7 +126,7 @@ int main(void) {
 
     int64_t repetitions = 1000000000;
 
-    uint8_t buffer[1] = {0};
+    uint64_t buffer[1] = {0};
 
     // char *allZeros = malloc(repetitions);
     // memset(allZeros, 1, repetitions);
@@ -144,6 +152,10 @@ int main(void) {
         MAKE_TEST(read2, "read2", repetitions, buffer),
         MAKE_TEST(read3, "read3", repetitions, buffer),
         MAKE_TEST(read4, "read4", repetitions, buffer),
+        MAKE_TEST(write1, "write1", repetitions, buffer),
+        MAKE_TEST(write2, "write2", repetitions, buffer),
+        MAKE_TEST(write3, "write3", repetitions, buffer),
+        MAKE_TEST(write4, "write4", repetitions, buffer),
         // MAKE_TEST(jumps, "allOnes", repetitions, allOnes),
         // MAKE_TEST(jumps, "allZeros", repetitions, allZeros),
         // MAKE_TEST(jumps, "oneEveryTwo", repetitions, oneEveryTwo),
