@@ -6,49 +6,60 @@
 #include "profiler.c"
 #include "float.h"
 
-void cmpAllBytes(int64_t repetitions, void *buffer);
+void cmpAllBytes(uint64_t counter, void *buffer);
 
-void decSlow(int64_t repetitions, void *buffer);
+void decSlow(uint64_t counter, void *buffer);
 
-void nop3x1(int64_t repetitions, void *buffer);
+void nop3x1(uint64_t counter, void *buffer);
 
-void nop1x3(int64_t repetitions, void *buffer);
+void nop1x3(uint64_t counter, void *buffer);
 
-void nop9(int64_t repetitions, void *buffer);
+void nop9(uint64_t counter, void *buffer);
 
-void jumps(int64_t repetitions, void *buffer);
+void jumps(uint64_t counter, void *buffer);
 
-void align64(int64_t repetitions, void *buffer);
+void align64(uint64_t counter, void *buffer);
 
-void align1(int64_t repetitions, void *buffer);
+void align1(uint64_t counter, void *buffer);
 
-void align15(int64_t repetitions, void *buffer);
+void align15(uint64_t counter, void *buffer);
 
-void align62(int64_t repetitions, void *buffer);
+void align62(uint64_t counter, void *buffer);
 
-void align63(int64_t repetitions, void *buffer);
+void align63(uint64_t counter, void *buffer);
 
-void read1(int64_t repetitions, void *buffer);
+void read1(uint64_t counter, void *buffer);
 
-void read2(int64_t repetitions, void *buffer);
+void read2(uint64_t counter, void *buffer);
 
-void read3(int64_t repetitions, void *buffer);
+void read3(uint64_t counter, void *buffer);
 
-void read4(int64_t repetitions, void *buffer);
+void read4(uint64_t counter, void *buffer);
 
-void write1(int64_t repetitions, void *buffer);
+void write1(uint64_t counter, void *buffer);
 
-void write2(int64_t repetitions, void *buffer);
+void write2(uint64_t counter, void *buffer);
 
-void write3(int64_t repetitions, void *buffer);
+void write3(uint64_t counter, void *buffer);
 
-void write4(int64_t repetitions, void *buffer);
+void write4(uint64_t counter, void *buffer);
+
+void read2x4(uint64_t counter, void *buffer);
+
+void read2x8(uint64_t counter, void *buffer);
+
+void read2x16(uint64_t counter, void *buffer);
+
+void read2x32(uint64_t counter, void *buffer);
+
+void read2x64(uint64_t counter, void *buffer);
+
 
 #define MAKE_TEST(f, n, r, b) {\
     .minSeconds = FLT_MAX,\
     .function = f,\
     .name = n,\
-    .repetitions = r,\
+    .counter = r,\
     .buffer = b\
 }
 
@@ -57,10 +68,10 @@ typedef struct {
     float maxSeconds;
     float sumSeconds;
     size_t executionCount;
-    void (*function) (int64_t repetitions, void *buffer);
+    void (*function) (uint64_t counter, void *buffer);
     char *name;
     float maxThroughput;
-    int64_t repetitions;
+    uint64_t counter;
     void *buffer;
 } Test;
 
@@ -73,7 +84,7 @@ void repeatTest(Test *test, uint64_t rdtscFrequency) {
 
     while (true) {
         uint64_t start = __rdtsc();
-        test->function(test->repetitions, test->buffer);
+        test->function(test->counter, test->buffer);
         uint64_t end = __rdtsc();
 
         uint64_t ticks = end - start;
@@ -96,9 +107,9 @@ void repeatTest(Test *test, uint64_t rdtscFrequency) {
         test->sumSeconds += secondsForFunction;
 
         float averageSeconds = test->sumSeconds / (float) test->executionCount;
-        float minThroughput = (float) test->repetitions / test->maxSeconds;
-        float maxThroughput = (float) test->repetitions / test->minSeconds;
-        float avgThroughput = (float) test->repetitions / averageSeconds;
+        float minThroughput = (float) test->counter / test->maxSeconds;
+        float maxThroughput = (float) test->counter / test->minSeconds;
+        float avgThroughput = (float) test->counter / averageSeconds;
 
         test->maxThroughput = maxThroughput;
 
@@ -124,45 +135,50 @@ void repeatTest(Test *test, uint64_t rdtscFrequency) {
 int main(void) {
     uint64_t rdtscFrequency = estimateRdtscFrequency();
 
-    int64_t repetitions = 1000000000;
+    uint64_t counter = 4LL * 1024LL * 1024LL * 1024LL;
 
-    uint64_t buffer[1] = {0};
+    char buffer[64] = {0};
 
-    // char *allZeros = malloc(repetitions);
-    // memset(allZeros, 1, repetitions);
-    // char *allOnes = malloc(repetitions);
-    // memset(allOnes, 1, repetitions);
-    // char *oneEveryTwo = malloc(repetitions);
-    // for (int i = 0; i < repetitions; i++) {
+    // char *allZeros = malloc(counter);
+    // memset(allZeros, 1, counter);
+    // char *allOnes = malloc(counter);
+    // memset(allOnes, 1, counter);
+    // char *oneEveryTwo = malloc(counter);
+    // for (int i = 0; i < counter; i++) {
     // oneEveryTwo[i] = (i % 2) == 0;
     // }
-    // char *random = malloc(repetitions);
-    // for (int i = 0; i < repetitions; i++) {
+    // char *random = malloc(counter);
+    // for (int i = 0; i < counter; i++) {
     // random[i] = (rand() % 2) == 0;
     // }
     Test tests[] = {
-        // MAKE_TEST(decSlow, "decSlow", repetitions, 0),
-        // MAKE_TEST(cmpAllBytes, "cmpAllBytes", repetitions, 0),
-        // MAKE_TEST(align64, "align64", repetitions, 0),
-        // MAKE_TEST(align1, "align1", repetitions, 0),
-        // MAKE_TEST(align15, "align15", repetitions, 0),
-        // MAKE_TEST(align62, "align62", repetitions, 0),
-        // MAKE_TEST(align63, "align63", repetitions, 0),
-        MAKE_TEST(read1, "read1", repetitions, buffer),
-        MAKE_TEST(read2, "read2", repetitions, buffer),
-        MAKE_TEST(read3, "read3", repetitions, buffer),
-        MAKE_TEST(read4, "read4", repetitions, buffer),
-        MAKE_TEST(write1, "write1", repetitions, buffer),
-        MAKE_TEST(write2, "write2", repetitions, buffer),
-        MAKE_TEST(write3, "write3", repetitions, buffer),
-        MAKE_TEST(write4, "write4", repetitions, buffer),
-        // MAKE_TEST(jumps, "allOnes", repetitions, allOnes),
-        // MAKE_TEST(jumps, "allZeros", repetitions, allZeros),
-        // MAKE_TEST(jumps, "oneEveryTwo", repetitions, oneEveryTwo),
-        // MAKE_TEST(jumps, "random", repetitions, random),
-        // MAKE_TEST(nop1x3, "nop1x3", repetitions, NULL),
-        // MAKE_TEST(nop3x1, "nop3x1", repetitions, NULL),
-        // MAKE_TEST(nop9, "nop9", repetitions, NULL),
+        // MAKE_TEST(decSlow, "decSlow", counter, 0),
+        // MAKE_TEST(cmpAllBytes, "cmpAllBytes", counter, 0),
+        // MAKE_TEST(align64, "align64", counter, 0),
+        // MAKE_TEST(align1, "align1", counter, 0),
+        // MAKE_TEST(align15, "align15", counter, 0),
+        // MAKE_TEST(align62, "align62", counter, 0),
+        // MAKE_TEST(align63, "align63", counter, 0),
+        // MAKE_TEST(read1, "read1", counter, buffer),
+        // MAKE_TEST(read2, "read2", counter, buffer),
+        // MAKE_TEST(read3, "read3", counter, buffer),
+        // MAKE_TEST(read4, "read4", counter, buffer),
+        // MAKE_TEST(write1, "write1", counter, buffer),
+        // MAKE_TEST(write2, "write2", counter, buffer),
+        // MAKE_TEST(write3, "write3", counter, buffer),
+        // MAKE_TEST(write4, "write4", counter, buffer),
+        // MAKE_TEST(jumps, "allOnes", counter, allOnes),
+        // MAKE_TEST(jumps, "allZeros", counter, allZeros),
+        // MAKE_TEST(jumps, "oneEveryTwo", counter, oneEveryTwo),
+        // MAKE_TEST(jumps, "random", counter, random),
+        // MAKE_TEST(nop1x3, "nop1x3", counter, NULL),
+        // MAKE_TEST(nop3x1, "nop3x1", counter, NULL),
+        // MAKE_TEST(nop9, "nop9", counter, NULL),
+        MAKE_TEST(read2x4, "read2x4", counter, buffer),
+        MAKE_TEST(read2x8, "read2x8", counter, buffer),
+        MAKE_TEST(read2x16, "read2x16", counter, buffer),
+        MAKE_TEST(read2x32, "read2x32", counter, buffer),
+    MAKE_TEST(read2x32, "read2x64", counter, buffer),
     };
 
     while (true) {
