@@ -6,54 +6,53 @@
 #include "profiler.c"
 #include "float.h"
 
-void cmpAllBytes(uint64_t counter, void *buffer);
+void cmpAllBytes(int64_t counter, void *buffer);
 
-void decSlow(uint64_t counter, void *buffer);
+void decSlow(int64_t counter, void *buffer);
 
-void nop3x1(uint64_t counter, void *buffer);
+void nop3x1(int64_t counter, void *buffer);
 
-void nop1x3(uint64_t counter, void *buffer);
+void nop1x3(int64_t counter, void *buffer);
 
-void nop9(uint64_t counter, void *buffer);
+void nop9(int64_t counter, void *buffer);
 
-void jumps(uint64_t counter, void *buffer);
+void jumps(int64_t counter, void *buffer);
 
-void align64(uint64_t counter, void *buffer);
+void align64(int64_t counter, void *buffer);
 
-void align1(uint64_t counter, void *buffer);
+void align1(int64_t counter, void *buffer);
 
-void align15(uint64_t counter, void *buffer);
+void align15(int64_t counter, void *buffer);
 
-void align62(uint64_t counter, void *buffer);
+void align62(int64_t counter, void *buffer);
 
-void align63(uint64_t counter, void *buffer);
+void align63(int64_t counter, void *buffer);
 
-void read1(uint64_t counter, void *buffer);
+void read1(int64_t counter, void *buffer);
 
-void read2(uint64_t counter, void *buffer);
+void read2(int64_t counter, void *buffer);
 
-void read3(uint64_t counter, void *buffer);
+void read3(int64_t counter, void *buffer);
 
-void read4(uint64_t counter, void *buffer);
+void read4(int64_t counter, void *buffer);
 
-void write1(uint64_t counter, void *buffer);
+void write1(int64_t counter, void *buffer);
 
-void write2(uint64_t counter, void *buffer);
+void write2(int64_t counter, void *buffer);
 
-void write3(uint64_t counter, void *buffer);
+void write3(int64_t counter, void *buffer);
 
-void write4(uint64_t counter, void *buffer);
+void write4(int64_t counter, void *buffer);
 
-void read2x4(uint64_t counter, void *buffer);
+void read2x4(int64_t counter, void *buffer);
 
-void read2x8(uint64_t counter, void *buffer);
+void read2x8(int64_t counter, void *buffer);
 
-void read2x16(uint64_t counter, void *buffer);
+void read2x16(int64_t counter, void *buffer);
 
-void read2x32(uint64_t counter, void *buffer);
+void read2x32(int64_t counter, void *buffer);
 
-void read2x64(uint64_t counter, void *buffer);
-
+void read2x64(int64_t counter, void *buffer);
 
 #define MAKE_TEST(f, n, r, b) {\
     .minSeconds = FLT_MAX,\
@@ -68,10 +67,10 @@ typedef struct {
     float maxSeconds;
     float sumSeconds;
     size_t executionCount;
-    void (*function) (uint64_t counter, void *buffer);
+    void (*function) (int64_t counter, void *buffer);
     char *name;
     float maxThroughput;
-    uint64_t counter;
+    int64_t counter;
     void *buffer;
 } Test;
 
@@ -135,7 +134,7 @@ void repeatTest(Test *test, uint64_t rdtscFrequency) {
 int main(void) {
     uint64_t rdtscFrequency = estimateRdtscFrequency();
 
-    uint64_t counter = 4LL * 1024LL * 1024LL * 1024LL;
+    int64_t counter = 4LL * 1024LL * 1024LL * 1024LL;
 
     char buffer[64] = {0};
 
@@ -178,7 +177,6 @@ int main(void) {
         MAKE_TEST(read2x8, "read2x8", counter, buffer),
         MAKE_TEST(read2x16, "read2x16", counter, buffer),
         MAKE_TEST(read2x32, "read2x32", counter, buffer),
-    MAKE_TEST(read2x32, "read2x64", counter, buffer),
     };
 
     while (true) {

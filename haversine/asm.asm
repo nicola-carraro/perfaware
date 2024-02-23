@@ -53,6 +53,8 @@ global read2x32
 
 global read2x64
 
+global avx512_zmm
+
 section .text
 
 movAllBytes:
@@ -323,3 +325,13 @@ read2x64:
     sub rcx, 128
     jnle .loop
     ret
+
+avx512_zmm:
+   align 64
+   vmovdqu64 zmm0, [rcx]
+
+avx512_ymm:
+   vmovdqu64 ymm0, [rcx]
+
+avx512_xmm:
+   vmovdqu64 xmm0, [rcx]
