@@ -1,5 +1,7 @@
 #ifndef PARSER_C
+
 #define PARSER_C
+
 #include "common.c"
 #include "stdbool.h"
 #include "stdint.h"
@@ -31,10 +33,9 @@
 
 #define MANDATORY_ESCAPES_COUNT 7
 
-typedef struct
-{
-   char characterToEscape;
-   char escape;
+typedef struct {
+    char characterToEscape;
+    char escape;
 } JsonEscape;
 
 JsonEscape mandatoryEscapes[MANDATORY_ESCAPES_COUNT] = {
@@ -44,7 +45,6 @@ JsonEscape mandatoryEscapes[MANDATORY_ESCAPES_COUNT] = {
     {'\n', 'n'},
     {'\r', 'r'},
     {'\t', 't'},
-
 };
 
 const String nullLiteral = {NULL_LITERAL, sizeof(NULL_LITERAL) - 1};
@@ -53,61 +53,51 @@ const String trueLiteral = {TRUE_LITERAL, sizeof(TRUE_LITERAL) - 1};
 
 const String falseLiteral = {FALSE_LITERAL, sizeof(FALSE_LITERAL) - 1};
 
-typedef struct
-{
-   String text;
-   size_t offset;
-   size_t line;
-   size_t column;
-   Arena *arena;
+typedef struct {
+    String text;
+    size_t offset;
+    size_t line;
+    size_t column;
+    Arena *arena;
 } Parser;
 
-typedef enum
-{
-   ValueType_Object,
-   ValueType_Array,
-   ValueType_String,
-   ValueType_Number,
-   ValueType_True,
-   ValueType_False,
-   ValueType_Null
+typedef enum {
+    ValueType_Object, ValueType_Array, ValueType_String, ValueType_Number, ValueType_True, ValueType_False, ValueType_Null
 } ValueType;
 
 typedef struct _Value Value;
+
 typedef struct _Member Member;
+
 typedef struct _Members Members;
 
 #define MEMBERS_CAPACITY 4
-typedef struct _Members
-{
-   size_t capacity;
-   size_t count;
-   Member *members;
+
+typedef struct _Members {
+    size_t capacity;
+    size_t count;
+    Member *members;
 } Members;
 
-typedef struct
-{
-   size_t capacity;
-   size_t count;
-   Value **elements;
+typedef struct {
+    size_t capacity;
+    size_t count;
+    Value **elements;
 } Elements;
 
-typedef struct _Value
-{
-   ValueType type;
-   union
-   {
-      String string;
-      double number;
-      Members *object;
-      Elements *array;
-   } payload;
+typedef struct _Value {
+    ValueType type;
+    union {
+        String string;
+        double number;
+        Members *object;
+        Elements *array;
+    } payload;
 } Value;
 
-typedef struct _Member
-{
-   String key;
-   Value *value;
+typedef struct _Member {
+    String key;
+    Value *value;
 } Member;
 
 uint8_t peekByte(Parser *parser);
@@ -140,912 +130,743 @@ void skipChars(Parser *parser, size_t count);
 
 void printString(String string);
 
-Parser initParser(String text, Arena *arena)
-{
-   TIME_FUNCTION
-   Parser parser = {0};
-   parser.arena = arena;
-   parser.text = text;
+Parser initParser(String text, Arena *arena) {
+    TIME_FUNCTION Parser parser = {0};
+    parser.arena = arena;
+    parser.text = text;
 
-   STOP_COUNTER
-
-   return parser;
+    STOP_COUNTER return parser;
 }
 
-uint32_t codePointFromSurrogatePair(uint16_t highSurrogate, uint16_t lowSurrogate)
-{
-   uint32_t highSurrogateTerm = (highSurrogate - 0xd800) * 0X400;
-   uint32_t lowSurrogateTerm = lowSurrogate - 0xdc00;
-   uint32_t result = (highSurrogateTerm + lowSurrogateTerm) + 0x10000;
+uint32_t codePointFromSurrogatePair(uint16_t highSurrogate, uint16_t lowSurrogate) {
+    uint32_t highSurrogateTerm = (highSurrogate - 0xd800) * 0X400;
+    uint32_t lowSurrogateTerm = lowSurrogate - 0xdc00;
+    uint32_t result = (highSurrogateTerm + lowSurrogateTerm) + 0x10000;
 
-   return result;
+    return result;
 }
 
-bool isWhitespace(Parser *parser)
-{
-   if (!hasNext(parser))
-   {
-      return false;
-   }
+bool isWhitespace(Parser *parser) {
+    if (!hasNext(parser)) {
+        return false;
+    }
 
-   uint8_t byte = parser->text.data.unsignedData[parser->offset];
-   return byte == 0x20 || byte == 0x0a || byte == 0x0d || byte == 0x09;
+    uint8_t byte = parser->text.data.unsignedData[parser->offset];
+    return byte == 0x20 || byte == 0x0a || byte == 0x0d || byte == 0x09;
 }
 
-bool isLiteral(Parser *parser, String literal)
-{
-   if (parser->text.size - parser->offset < literal.size)
-   {
-      return false;
-   }
+bool isLiteral(Parser *parser, String literal) {
+    if (parser->text.size - parser->offset < literal.size) {
+        return false;
+    }
 
-   for (size_t byteIndex = 0; byteIndex < literal.size; byteIndex++)
-   {
-      uint8_t byte = parser->text.data.unsignedData[parser->offset + byteIndex];
+    for (size_t byteIndex = 0; byteIndex < literal.size; byteIndex++) {
+        uint8_t byte = parser->text.data.unsignedData[parser->offset + byteIndex];
 
-      if (byte != literal.data.unsignedData[byteIndex])
-      {
-         return false;
-      }
-   }
+        if (byte != literal.data.unsignedData[byteIndex]) {
+            return false;
+        }
+    }
 
-   return true;
+    return true;
 }
 
-bool isTrueLiteral(Parser *parser)
-{
-   return isLiteral(parser, trueLiteral);
+bool isTrueLiteral(Parser *parser) {
+    return isLiteral(parser, trueLiteral);
 }
 
-bool isFalseLiteral(Parser *parser)
-{
-   return isLiteral(parser, falseLiteral);
+bool isFalseLiteral(Parser *parser) {
+    return isLiteral(parser, falseLiteral);
 }
 
-bool isNullLiteral(Parser *parser)
-{
-   return isLiteral(parser, nullLiteral);
+bool isNullLiteral(Parser *parser) {
+    return isLiteral(parser, nullLiteral);
 }
 
-bool hasNext(Parser *parser)
-{
-
-   return parser->offset < parser->text.size;
+bool hasNext(Parser *parser) {
+    return parser->offset < parser->text.size;
 }
 
-void nextLine(Parser *parser)
-{
-   parser->line++;
-   parser->column = 0;
+void nextLine(Parser *parser) {
+    parser->line++;
+    parser->column = 0;
 }
 
-uint32_t decodeUtf8Unchecked(String codepoint)
-{
-   assert(codepoint.data.unsignedData != NULL);
-   assert(codepoint.size > 0 && codepoint.size < 5);
+uint32_t decodeUtf8Unchecked(String codepoint) {
+    assert(codepoint.data.unsignedData != NULL);
+    assert(codepoint.size > 0 && codepoint.size < 5);
 
-   uint8_t firstByte = codepoint.data.unsignedData[0];
+    uint8_t firstByte = codepoint.data.unsignedData[0];
 
-   uint8_t fistBytePayload;
+    uint8_t fistBytePayload;
 
-   switch (codepoint.size)
-   {
-   case 1:
-   {
-      fistBytePayload = firstByte;
-   }
-   break;
-   case 2:
-   {
-      fistBytePayload = firstByte & 0x1f;
-   }
-   break;
-   case 3:
-   {
-      fistBytePayload = firstByte & 0x0f;
-   }
-   break;
-   default:
-   {
-      fistBytePayload = firstByte & 0x07;
-   }
-   break;
-   }
+    switch (codepoint.size) {
+        case 1: {
+            fistBytePayload = firstByte;
+        }
+        break;
+        case 2: {
+            fistBytePayload = firstByte & 0x1f;
+        }
+        break;
+        case 3: {
+            fistBytePayload = firstByte & 0x0f;
+        }
+        break;
+        default: {
+            fistBytePayload = firstByte & 0x07;
+        }
+        break;
+    }
 
-   uint32_t result = fistBytePayload;
+    uint32_t result = fistBytePayload;
 
-   for (size_t byteIndex = 1; byteIndex < codepoint.size; byteIndex++)
-   {
-      result = result << 6;
-      uint8_t continuationByte = codepoint.data.unsignedData[byteIndex];
-      uint8_t continuationBytePayload = continuationByte & 0x3f;
-      result |= continuationBytePayload;
-   }
+    for (size_t byteIndex = 1; byteIndex < codepoint.size; byteIndex++) {
+        result = result << 6;
+        uint8_t continuationByte = codepoint.data.unsignedData[byteIndex];
+        uint8_t continuationBytePayload = continuationByte & 0x3f;
+        result |= continuationBytePayload;
+    }
 
-   return result;
+    return result;
 }
 
-char next(Parser *parser)
-{
+char next(Parser *parser) {
+    assert(hasNext(parser));
+    char result = (parser->text.data.signedData + parser->offset)[0];
 
-   assert(hasNext(parser));
-   char result = (parser->text.data.signedData + parser->offset)[0];
+    bool isNewLine = result == '\n';
 
-   bool isNewLine = result == '\n';
+    if (isNewLine) {
+        nextLine(parser);
+    }
+    else {
+        parser->column++;
+    }
 
-   if (isNewLine)
-   {
-      nextLine(parser);
-   }
-   else
-   {
-      parser->column++;
-   }
+    parser->offset++;
 
-   parser->offset++;
-
-   return result;
+    return result;
 }
 
-uint8_t peekByte(Parser *parser)
-{
-   uint8_t result = parser->text.data.unsignedData[parser->offset];
+uint8_t peekByte(Parser *parser) {
+    uint8_t result = parser->text.data.unsignedData[parser->offset];
 
-   return result;
+    return result;
 }
 
-uint8_t peekBytePlusN(Parser *parser, size_t n)
-{
-   uint8_t result = (parser->text.data.unsignedData + n)[parser->offset];
+uint8_t peekBytePlusN(Parser *parser, size_t n) {
+    uint8_t result = (parser->text.data.unsignedData + n)[parser->offset];
 
-   return result;
+    return result;
 }
 
-void skipWhitespace(Parser *parser)
-{
-   char byte = peekByte(parser);
-   while (isWhitespace(parser))
-   {
-      next(parser);
-      byte = peekByte(parser);
-   }
+void skipWhitespace(Parser *parser) {
+    char byte = peekByte(parser);
+    while (isWhitespace(parser)) {
+        next(parser);
+        byte = peekByte(parser);
+    }
 }
 
-bool isDoubleQuotes(Parser *parser)
-{
-   return isCharacter(parser, DOUBLE_QUOTES);
+bool isDoubleQuotes(Parser *parser) {
+    return isCharacter(parser, DOUBLE_QUOTES);
 }
 
-bool isLeftBracket(Parser *parser)
-{
-   return isCharacter(parser, LEFT_BRACKET);
+bool isLeftBracket(Parser *parser) {
+    return isCharacter(parser, LEFT_BRACKET);
 }
 
-bool isRightBracket(Parser *parser)
-{
-   return isCharacter(parser, RIGHT_BRACKET);
+bool isRightBracket(Parser *parser) {
+    return isCharacter(parser, RIGHT_BRACKET);
 }
 
-bool isReverseSolidus(Parser *parser)
-{
-   return isCharacter(parser, REVERSE_SOLIDUS);
+bool isReverseSolidus(Parser *parser) {
+    return isCharacter(parser, REVERSE_SOLIDUS);
 }
 
-String parseString(Parser *parser)
-{
+String parseString(Parser *parser) {
+    TIME_FUNCTION assert(parser != NULL);
+    assert(parser->text.data.unsignedData != NULL);
+    assert(hasNext(parser));
 
-   TIME_FUNCTION
+    String result = {0};
 
-   assert(parser != NULL);
-   assert(parser->text.data.unsignedData != NULL);
-   assert(hasNext(parser));
+    next(parser);
 
-   String result = {0};
+    result.data.unsignedData = parser->text.data.unsignedData + parser->offset;
 
-   next(parser);
+    while (!isDoubleQuotes(parser)) {
+        next(parser);
 
-   result.data.unsignedData = parser->text.data.unsignedData + parser->offset;
+        result.size++;
+    }
 
-   while (!isDoubleQuotes(parser))
-   {
-      next(parser);
+    next(parser);
 
-      result.size++;
-   }
-
-   next(parser);
-
-   STOP_COUNTER
-
-   return result;
+    STOP_COUNTER return result;
 }
 
-bool isMinusSign(Parser *parser)
-{
-   return isCharacter(parser, '-');
+bool isMinusSign(Parser *parser) {
+    return isCharacter(parser, '-');
 }
 
-bool isZero(Parser *parser)
-{
-   return isCharacter(parser, '0');
+bool isZero(Parser *parser) {
+    return isCharacter(parser, '0');
 }
 
-bool isDot(Parser *parser)
-{
-   return isCharacter(parser, '.');
+bool isDot(Parser *parser) {
+    return isCharacter(parser, '.');
 }
 
-bool isExponentStart(Parser *parser)
-{
-   return isCharacter(parser, 'e') || isCharacter(parser, 'E');
+bool isExponentStart(Parser *parser) {
+    return isCharacter(parser, 'e') || isCharacter(parser, 'E');
 }
 
-bool isOneNine(Parser *parser)
-{
-   if (!hasNext(parser))
-   {
-      return false;
-   }
-   char byte = peekByte(parser);
+bool isOneNine(Parser *parser) {
+    if (!hasNext(parser)) {
+        return false;
+    }
+    char byte = peekByte(parser);
 
-   return byte >= '1' && byte <= '9';
+    return byte >= '1' && byte <= '9';
 }
 
-bool isHexDigit(Parser *parser)
-{
-   if (!hasNext(parser))
-   {
-      return false;
-   }
-   char byte = peekByte(parser);
+bool isHexDigit(Parser *parser) {
+    if (!hasNext(parser)) {
+        return false;
+    }
+    char byte = peekByte(parser);
 
-   return (byte >= '0' && byte <= '9') || (byte >= 'A' && byte <= 'F') || (byte >= 'a' && byte <= 'f');
+    return (byte >= '0' && byte <= '9') || (byte >= 'A' && byte <= 'F') || (byte >= 'a' && byte <= 'f');
 }
 
-bool isDigit(Parser *parser)
-{
-   if (!hasNext(parser))
-   {
-      return false;
-   }
+bool isDigit(Parser *parser) {
+    if (!hasNext(parser)) {
+        return false;
+    }
 
-   return isZero(parser) || isOneNine(parser);
+    return isZero(parser) || isOneNine(parser);
 }
 
-bool isNumberStart(Parser *parser)
-{
-   if (!hasNext(parser))
-   {
-      return false;
-   }
+bool isNumberStart(Parser *parser) {
+    if (!hasNext(parser)) {
+        return false;
+    }
 
-   return isDigit(parser) || isMinusSign(parser);
+    return isDigit(parser) || isMinusSign(parser);
 }
 
-bool isLeftBrace(Parser *parser)
-{
-   return isCharacter(parser, LEFT_BRACE);
+bool isLeftBrace(Parser *parser) {
+    return isCharacter(parser, LEFT_BRACE);
 }
 
-bool isRightBrace(Parser *parser)
-{
-   return isCharacter(parser, RIGHT_BRACE);
+bool isRightBrace(Parser *parser) {
+    return isCharacter(parser, RIGHT_BRACE);
 }
 
-bool isColon(Parser *parser)
-{
-   return isCharacter(parser, COLON);
+bool isColon(Parser *parser) {
+    return isCharacter(parser, COLON);
 }
 
-bool isCharacter(Parser *parser, char character)
-{
-   if (!hasNext(parser))
-   {
-      return false;
-   }
+bool isCharacter(Parser *parser, char character) {
+    if (!hasNext(parser)) {
+        return false;
+    }
 
-   uint8_t byte = peekByte(parser);
+    uint8_t byte = peekByte(parser);
 
-   return byte == character;
+    return byte == character;
 }
 
-size_t countDigits(Parser *parser)
-{
-   size_t result = 0;
-   while (isDigit(parser))
-   {
-      next(parser);
-      result++;
-   }
+size_t countDigits(Parser *parser) {
+    size_t result = 0;
+    while (isDigit(parser)) {
+        next(parser);
+        result++;
+    }
 
-   return result;
+    return result;
 }
 
-size_t countIntegerDigits(Parser *parser)
-{
-   size_t result = 0;
+size_t countIntegerDigits(Parser *parser) {
+    size_t result = 0;
 
-   if (isOneNine(parser))
-   {
-      result += countDigits(parser);
-   }
-   else if (isDigit(parser))
-   {
+    if (isOneNine(parser)) {
+        result += countDigits(parser);
+    }
+    else if (isDigit(parser)) {
+        next(parser);
+        result++;
+    }
 
-      next(parser);
-      result++;
-   }
-
-   return result;
+    return result;
 }
 
-double parseNumberWithStrtod(Parser *parser)
-{
-   char *numberStart = parser->text.data.signedData + parser->offset;
+double parseNumberWithStrtod(Parser *parser) {
+    char *numberStart = parser->text.data.signedData + parser->offset;
 
-   char *numberEnd;
+    char *numberEnd;
 
-   TIME_BLOCK("strtod");
-   double result = strtod(numberStart, &numberEnd);
-   STOP_COUNTER
+    TIME_BLOCK("strtod");
+    double result = strtod(numberStart, &numberEnd);
+    STOP_COUNTER skipChars(parser, numberEnd - numberStart);
 
-   skipChars(parser, numberEnd - numberStart);
-
-   return result;
+    return result;
 }
 
-double parseDigit(Parser *parser)
-{
-   char digit = next(parser);
+double parseDigit(Parser *parser) {
+    char digit = next(parser);
 
-   double result = (double)(digit - '0');
+    double result = (double) (digit - '0');
 
-   return result;
+    return result;
 }
 
-double parseNumberByHand(Parser *parser)
-{
-   // TIME_FUNCTION
-   bool isNegative = false;
+double parseNumberByHand(Parser *parser) {
+    // TIME_FUNCTION
+    bool isNegative = false;
 
-   if (isMinusSign(parser))
-   {
-      isNegative = true;
-      next(parser);
-   }
+    if (isMinusSign(parser)) {
+        isNegative = true;
+        next(parser);
+    }
 
-   double integerValue = parseDigit(parser);
+    double integerValue = parseDigit(parser);
 
-   while (!isDot(parser))
-   {
-      integerValue *= 10.0;
-      double digitValue = parseDigit(parser);
-      integerValue += digitValue;
-   }
+    while (!isDot(parser)) {
+        integerValue *= 10.0;
+        double digitValue = parseDigit(parser);
+        integerValue += digitValue;
+    }
 
-   next(parser);
+    next(parser);
 
-   double multiplier = 0.1;
-   double fractionValue = 0.0;
-   while (isDigit(parser))
-   {
-      double digitValue = parseDigit(parser);
-      fractionValue += digitValue * multiplier;
-      multiplier /= 10.0;
-   }
+    double multiplier = 0.1;
+    double fractionValue = 0.0;
+    while (isDigit(parser)) {
+        double digitValue = parseDigit(parser);
+        fractionValue += digitValue * multiplier;
+        multiplier /= 10.0;
+    }
 
-   double result = integerValue + fractionValue;
+    double result = integerValue + fractionValue;
 
-   if (isNegative)
-   {
-      result = -result;
-   }
+    if (isNegative) {
+        result = -result;
+    }
 
-   // STOP_COUNTER;
-
-   return result;
+    // STOP_COUNTER;
+    return result;
 }
 
-double parseNumber(Parser *parser)
-{
-   assert(parser != NULL);
-   assert(parser->text.data.unsignedData != NULL);
-   assert(hasNext(parser));
-   assert(isNumberStart(parser));
+double parseNumber(Parser *parser) {
+    assert(parser != NULL);
+    assert(parser->text.data.unsignedData != NULL);
+    assert(hasNext(parser));
+    assert(isNumberStart(parser));
 
 #if 0
-   double result = parseNumberWithStrtod(parser);
+    double result = parseNumberWithStrtod(parser);
 #else
-   double result = parseNumberByHand(parser);
+    double result = parseNumberByHand(parser);
 #endif
-   return result;
+    return result;
 }
 
-Member parseMember(Parser *parser)
-{
+Member parseMember(Parser *parser) {
+    skipWhitespace(parser);
 
-   skipWhitespace(parser);
+    Member result = {0};
 
-   Member result = {0};
+    result.key = parseString(parser);
 
-   result.key = parseString(parser);
+    skipWhitespace(parser);
 
-   skipWhitespace(parser);
+    next(parser);
 
-   next(parser);
+    result.value = parseElement(parser);
 
-   result.value = parseElement(parser);
-
-   return result;
+    return result;
 }
 
-Members *parseObject(Parser *parser)
-{
-   assert(parser != NULL);
-   assert(isLeftBrace(parser));
+Members *parseObject(Parser *parser) {
+    assert(parser != NULL);
+    assert(isLeftBrace(parser));
 
-   Members *result = initMembers(parser->arena);
+    Members *result = initMembers(parser->arena);
 
-   next(parser);
+    next(parser);
 
-   skipWhitespace(parser);
+    skipWhitespace(parser);
 
-   if (!isRightBrace(parser))
-   {
-      Member member = parseMember(parser);
-      addMember(result, member);
-   }
+    if (!isRightBrace(parser)) {
+        Member member = parseMember(parser);
+        addMember(result, member);
+    }
 
-   while (!isRightBrace(parser))
-   {
-      next(parser);
-      Member member = parseMember(parser);
-      addMember(result, member);
-   }
+    while (!isRightBrace(parser)) {
+        next(parser);
+        Member member = parseMember(parser);
+        addMember(result, member);
+    }
 
-   next(parser);
+    next(parser);
 
-   return result;
+    return result;
 }
 
-Elements *parseArray(Parser *parser)
-{
-   TIME_FUNCTION
-   assert(parser != NULL);
-   assert(isLeftBracket(parser));
-   next(parser);
+Elements *parseArray(Parser *parser) {
+    TIME_FUNCTION assert(parser != NULL);
+    assert(isLeftBracket(parser));
+    next(parser);
 
-   const size_t pairMaxSize = 14 * 4;
+    const size_t pairMaxSize = 14 * 4;
 
-   size_t maxPairs = parser->text.size / pairMaxSize;
+    size_t maxPairs = parser->text.size / pairMaxSize;
 
-   Elements *result = initElements(parser->arena, maxPairs);
+    Elements *result = initElements(parser->arena, maxPairs);
 
-   if (!isRightBracket(parser))
-   {
-      Value *element = parseElement(parser);
-      addElement(result, element);
-   }
+    if (!isRightBracket(parser)) {
+        Value *element = parseElement(parser);
+        addElement(result, element);
+    }
 
-   while (!isRightBracket(parser))
-   {
-      next(parser);
-      Value *element = parseElement(parser);
-      addElement(result, element);
-   }
+    while (!isRightBracket(parser)) {
+        next(parser);
+        Value *element = parseElement(parser);
+        addElement(result, element);
+    }
 
-   next(parser);
+    next(parser);
 
-   STOP_COUNTER
-   return result;
+    STOP_COUNTER return result;
 }
 
-void printString(String string)
-{
-
-   int bytesToPrint;
-   if (string.size > INT_MAX)
-   {
-      bytesToPrint = INT_MAX;
-   }
-   else
-   {
-      bytesToPrint = (int)string.size;
-   }
-   printf("\"%.*s\"", bytesToPrint, string.data.signedData);
+void printString(String string) {
+    int bytesToPrint;
+    if (string.size > INT_MAX) {
+        bytesToPrint = INT_MAX;
+    }
+    else {
+        bytesToPrint = (int) string.size;
+    }
+    printf("\"%.*s\"", bytesToPrint, string.data.signedData);
 }
 
-void printIndentation(size_t indentation, size_t indentationLevel)
-{
-   for (size_t space = 0; space < indentation * indentationLevel; space++)
-   {
-      printSpace();
-   }
+void printIndentation(size_t indentation, size_t indentationLevel) {
+    for (size_t space = 0; space < indentation *indentationLevel; space++) {
+        printSpace();
+    }
 }
 
-void printSpace()
-{
-   printf(" ");
+void printSpace() {
+    printf(" ");
 }
 
-void printNumber(double number)
-{
-   printf("%1.12f", number);
+void printNumber(double number) {
+    printf("%1.12f", number);
 }
 
-void printMember(Member member, size_t indentation, size_t indentationLevel)
-{
-   printIndentation(indentation, indentationLevel + 1);
-   printString(member.key);
-   printf(" : ");
-   printValue(member.value, indentation, indentationLevel + 1);
+void printMember(Member member, size_t indentation, size_t indentationLevel) {
+    printIndentation(indentation, indentationLevel + 1);
+    printString(member.key);
+    printf(" : ");
+    printValue(member.value, indentation, indentationLevel + 1);
 }
 
-void printObject(Members *object, size_t indentation, size_t indentationLevel)
-{
-   printf("{\n");
-   for (size_t memberIndex = 0; memberIndex < object->count - 1; memberIndex++)
-   {
+void printObject(Members *object, size_t indentation, size_t indentationLevel) {
+    printf("{\n");
+    for (size_t memberIndex = 0; memberIndex < object->count - 1; memberIndex++) {
+        Member member = object->members[memberIndex];
+        printMember(member, indentation, indentationLevel);
+        printf(",\n");
+    }
 
-      Member member = object->members[memberIndex];
-      printMember(member, indentation, indentationLevel);
-      printf(",\n");
-   }
-
-   if (object->count > 0)
-   {
-      Member member = object->members[object->count - 1];
-      printMember(member, indentation, indentationLevel);
-      printf("\n");
-   }
-   printIndentation(indentation, indentationLevel);
-   printf("}");
+    if (object->count > 0) {
+        Member member = object->members[object->count - 1];
+        printMember(member, indentation, indentationLevel);
+        printf("\n");
+    }
+    printIndentation(indentation, indentationLevel);
+    printf("}");
 }
 
-void printElement(Value *element, size_t indentation, size_t indentationLevel)
-{
-   printIndentation(indentation, indentationLevel + 1);
-   printValue(element, indentation, indentationLevel + 1);
+void printElement(Value *element, size_t indentation, size_t indentationLevel) {
+    printIndentation(indentation, indentationLevel + 1);
+    printValue(element, indentation, indentationLevel + 1);
 }
 
-void printArray(Elements *array, size_t indentation, size_t indentationLevel)
-{
-   printf("[\n");
-   for (size_t elementIndex = 0; elementIndex < array->count - 1; elementIndex++)
-   {
+void printArray(Elements *array, size_t indentation, size_t indentationLevel) {
+    printf("[\n");
+    for (size_t elementIndex = 0; elementIndex < array->count - 1; elementIndex++) {
+        Value *element = array->elements[elementIndex];
+        printElement(element, indentation, indentationLevel);
+        printf(",\n");
+    }
 
-      Value *element = array->elements[elementIndex];
-      printElement(element, indentation, indentationLevel);
-      printf(",\n");
-   }
-
-   if (array->count > 0)
-   {
-      Value *element = array->elements[array->count - 1];
-      printElement(element, indentation, indentationLevel);
-      printf("\n");
-   }
-   printIndentation(indentation, indentationLevel);
-   printf("]");
+    if (array->count > 0) {
+        Value *element = array->elements[array->count - 1];
+        printElement(element, indentation, indentationLevel);
+        printf("\n");
+    }
+    printIndentation(indentation, indentationLevel);
+    printf("]");
 }
 
-void printValue(Value *value, size_t indentation, size_t indentationLevel)
-{
-
-   switch (value->type)
-   {
-   case ValueType_String:
-   {
-      printString(value->payload.string);
-   }
-   break;
-   case ValueType_Number:
-   {
-      printNumber(value->payload.number);
-   }
-   break;
-   case ValueType_Object:
-   {
-      printObject(value->payload.object, indentation, indentationLevel);
-   }
-   break;
-   case ValueType_Array:
-   {
-      printArray(value->payload.array, indentation, indentationLevel);
-   }
-   break;
-   case ValueType_True:
-   {
-      printf(TRUE_LITERAL);
-   }
-   break;
-   case ValueType_False:
-   {
-      printf(FALSE_LITERAL);
-   }
-   break;
-   case ValueType_Null:
-   {
-      printf(NULL_LITERAL);
-   }
-   break;
-   default:
-   {
-      assert(false);
-   }
-   }
+void printValue(Value *value, size_t indentation, size_t indentationLevel) {
+    switch (value->type) {
+        case ValueType_String: {
+            printString(value->payload.string);
+        }
+        break;
+        case ValueType_Number: {
+            printNumber(value->payload.number);
+        }
+        break;
+        case ValueType_Object: {
+            printObject(value->payload.object, indentation, indentationLevel);
+        }
+        break;
+        case ValueType_Array: {
+            printArray(value->payload.array, indentation, indentationLevel);
+        }
+        break;
+        case ValueType_True: {
+            printf(TRUE_LITERAL);
+        }
+        break;
+        case ValueType_False: {
+            printf(FALSE_LITERAL);
+        }
+        break;
+        case ValueType_Null: {
+            printf(NULL_LITERAL);
+        }
+        break;
+        default: {
+            assert(false);
+        }
+    }
 }
 
-Members *initMembers(Arena *arena)
-{
+Members *initMembers(Arena *arena) {
+    Members *result = arenaAllocate(arena, sizeof(Members));
 
-   Members *result = arenaAllocate(arena, sizeof(Members));
+    result->capacity = MEMBERS_CAPACITY;
 
-   result->capacity = MEMBERS_CAPACITY;
+    result->members = arenaAllocate(arena, result->capacity *sizeof(Member));
 
-   result->members = arenaAllocate(arena, result->capacity * sizeof(Member));
+    result->count = 0;
 
-   result->count = 0;
-
-   return result;
+    return result;
 }
 
-Elements *initElements(Arena *arena, size_t maxPairs)
-{
+Elements *initElements(Arena *arena, size_t maxPairs) {
+    Elements *result = arenaAllocate(arena, sizeof(Elements));
 
-   Elements *result = arenaAllocate(arena, sizeof(Elements));
+    result->capacity = maxPairs;
 
-   result->capacity = maxPairs;
+    result->elements = arenaAllocate(arena, result->capacity *sizeof(*result->elements));
 
-   result->elements = arenaAllocate(arena, result->capacity * sizeof(*result->elements));
+    result->count = 0;
 
-   result->count = 0;
-
-   return result;
+    return result;
 }
 
-bool stringsEqual(String left, String right)
-{
-   if (left.size != right.size)
-   {
-      return false;
-   }
+bool stringsEqual(String left, String right) {
+    if (left.size != right.size) {
+        return false;
+    }
 
-   size_t size = left.size;
+    size_t size = left.size;
 
-   for (size_t byteIndex = 0; byteIndex < size; byteIndex++)
-   {
+    for (size_t byteIndex = 0; byteIndex < size; byteIndex++) {
+        if (left.data.unsignedData[byteIndex] != right.data.unsignedData[byteIndex]) {
+            return false;
+        }
+    }
 
-      if (left.data.unsignedData[byteIndex] != right.data.unsignedData[byteIndex])
-      {
-         return false;
-      }
-   }
-
-   return true;
+    return true;
 }
 
-bool stringEqualsCstring(String string, char *cString)
-{
+bool stringEqualsCstring(String string, char *cString) {
+    assert(cString != NULL);
+    assert(string.data.unsignedData != NULL);
+    for (size_t byteIndex = 0; byteIndex < string.size; byteIndex++) {
+        char byte = cString[byteIndex];
+        if (byte == '\0' || byte != string.data.unsignedData[byteIndex]) {
+            return false;
+        }
+    }
 
-   assert(cString != NULL);
-   assert(string.data.unsignedData != NULL);
-   for (size_t byteIndex = 0; byteIndex < string.size; byteIndex++)
-   {
+    char byte = cString[string.size];
 
-      char byte = cString[byteIndex];
-      if (byte == '\0' || byte != string.data.unsignedData[byteIndex])
-      {
-         return false;
-      }
-   }
-
-   char byte = cString[string.size];
-
-   if (byte != '\0')
-   {
-      return false;
-   }
-   else
-   {
-      return true;
-   }
+    if (byte != '\0') {
+        return false;
+    }
+    else {
+        return true;
+    }
 }
 
-Value *getMemberValueOfMembers(Members *members, String key)
-{
-   for (size_t memberIndex = 0; memberIndex < members->count; memberIndex++)
-   {
-      Member member = members->members[memberIndex];
+Value *getMemberValueOfMembers(Members *members, String key) {
+    for (size_t memberIndex = 0; memberIndex < members->count; memberIndex++) {
+        Member member = members->members[memberIndex];
 
-      if (stringsEqual(member.key, key))
-      {
-         return member.value;
-      }
-   }
+        if (stringsEqual(member.key, key)) {
+            return member.value;
+        }
+    }
 
-   return NULL;
+    return NULL;
 }
 
-bool hasKey(Members *members, String key)
-{
-   return getMemberValueOfMembers(members, key) != NULL;
+bool hasKey(Members *members, String key) {
+    return getMemberValueOfMembers(members, key) != NULL;
 }
 
-void addMember(Members *members, Member member)
-{
+void addMember(Members *members, Member member) {
+    assert(members != NULL);
 
-   assert(members != NULL);
+    assert(members->count < members->capacity);
 
-   assert(members->count < members->capacity);
-
-   members->members[members->count] = member;
-   members->count++;
+    members->members[members->count] = member;
+    members->count++;
 }
 
-void addElement(Elements *elements, Value *element)
-{
+void addElement(Elements *elements, Value *element) {
+    assert(elements != NULL);
 
-   assert(elements != NULL);
+    assert(elements->count < elements->capacity);
 
-   assert(elements->count < elements->capacity);
-
-   elements->elements[elements->count] = element;
-   elements->count++;
+    elements->elements[elements->count] = element;
+    elements->count++;
 }
 
-void skipChars(Parser *parser, size_t count)
-{
-   for (size_t codepointIndex = 0; codepointIndex < count; codepointIndex++)
-   {
-      next(parser);
-   }
+void skipChars(Parser *parser, size_t count) {
+    for (size_t codepointIndex = 0; codepointIndex < count; codepointIndex++) {
+        next(parser);
+    }
 }
 
-void escapeMandatory(char *source, char *dest)
-{
-   size_t readOffset = 0;
-   size_t writeOffset = 0;
+void escapeMandatory(char *source, char *dest) {
+    size_t readOffset = 0;
+    size_t writeOffset = 0;
 
-   char byte = source[readOffset];
-   while (byte != '\0')
-   {
-      bool isEscape = false;
+    char byte = source[readOffset];
+    while (byte != '\0') {
+        bool isEscape = false;
 
-      for (size_t escapeIndex = 0; escapeIndex < MANDATORY_ESCAPES_COUNT; escapeIndex++)
-      {
-         JsonEscape escape = mandatoryEscapes[escapeIndex];
-         if (escape.characterToEscape == byte)
-         {
-            dest[writeOffset] = REVERSE_SOLIDUS;
-            dest[writeOffset + 1] = escape.escape;
-            writeOffset += 2;
-            isEscape = true;
-         }
-      }
+        for (size_t escapeIndex = 0; escapeIndex < MANDATORY_ESCAPES_COUNT; escapeIndex++) {
+            JsonEscape escape = mandatoryEscapes[escapeIndex];
+            if (escape.characterToEscape == byte) {
+                dest[writeOffset] = REVERSE_SOLIDUS;
+                dest[writeOffset + 1] = escape.escape;
+                writeOffset += 2;
+                isEscape = true;
+            }
+        }
 
-      if (!isEscape)
-      {
-         dest[writeOffset] = source[readOffset];
-         writeOffset++;
-      }
+        if (!isEscape) {
+            dest[writeOffset] = source[readOffset];
+            writeOffset++;
+        }
 
-      readOffset++;
+        readOffset++;
 
-      byte = source[readOffset];
-   }
+        byte = source[readOffset];
+    }
 
-   dest[writeOffset] = '\0';
+    dest[writeOffset] = '\0';
 }
 
-Value *getMemberValueOfObject(Value *object, char *key)
-{
+Value *getMemberValueOfObject(Value *object, char *key) {
+    Value *result = NULL;
 
-   Value *result = NULL;
+    for (size_t memberIndex = 0; memberIndex < object->payload.object->count; memberIndex++) {
+        Member member = object->payload.object->members[memberIndex];
 
-   for (size_t memberIndex = 0; memberIndex < object->payload.object->count; memberIndex++)
-   {
-      Member member = object->payload.object->members[memberIndex];
+        if (stringEqualsCstring(member.key, key)) {
+            result = member.value;
+            break;
+        }
+    }
 
-      if (stringEqualsCstring(member.key, key))
-      {
-
-         result = member.value;
-         break;
-      }
-   }
-
-   return result;
+    return result;
 }
 
-double getAsNumber(Value *number)
-{
+double getAsNumber(Value *number) {
+    assert(number->type == ValueType_Number);
 
-   assert(number->type == ValueType_Number);
-
-   return number->payload.number;
+    return number->payload.number;
 }
 
-Value *getElementOfArray(Value *array, size_t index)
-{
-   Value *result = NULL;
-   assert(array->type == ValueType_Array);
+Value *getElementOfArray(Value *array, size_t index) {
+    Value *result = NULL;
+    assert(array->type == ValueType_Array);
 
-   assert(array->payload.array->count > index);
+    assert(array->payload.array->count > index);
 
-   result = array->payload.array->elements[index];
+    result = array->payload.array->elements[index];
 
-   return result;
+    return result;
 }
 
-size_t getElementCount(Value *array)
-{
-   assert(array->type == ValueType_Array);
+size_t getElementCount(Value *array) {
+    assert(array->type == ValueType_Array);
 
-   return array->payload.array->count;
+    return array->payload.array->count;
 }
 
-Value *parseElement(Parser *parser)
-{
-   assert(parser != NULL);
-   Value *result = (Value *)arenaAllocate(parser->arena, sizeof(Value));
-   skipWhitespace(parser);
+Value *parseElement(Parser *parser) {
+    assert(parser != NULL);
+    Value *result = (Value *) arenaAllocate(parser->arena, sizeof(Value));
+    skipWhitespace(parser);
 
-   if (isDoubleQuotes(parser))
-   {
-      result->payload.string = parseString(parser);
-      result->type = ValueType_String;
-      // printString(result.payload.string);
-   }
-   else if (isNumberStart(parser))
-   {
-      result->payload.number = parseNumber(parser);
-      result->type = ValueType_Number;
-      // printf("%f", result->payload.number);
-   }
-   else if (isLeftBrace(parser))
-   {
-      result->payload.object = parseObject(parser);
-      result->type = ValueType_Object;
-   }
-   else if (isLeftBracket(parser))
-   {
-      result->payload.array = parseArray(parser);
-      result->type = ValueType_Array;
-   }
-   else if (isTrueLiteral(parser))
-   {
-      skipChars(parser, trueLiteral.size);
-      result->type = ValueType_True;
-   }
-   else if (isFalseLiteral(parser))
-   {
-      skipChars(parser, falseLiteral.size);
-      result->type = ValueType_False;
-   }
-   else if (isNullLiteral(parser))
-   {
-      skipChars(parser, nullLiteral.size);
-      result->type = ValueType_Null;
-   }
-   else
-   {
-      assert(false);
-   }
+    if (isDoubleQuotes(parser)) {
+        result->payload.string = parseString(parser);
+        result->type = ValueType_String;
+        // printString(result.payload.string);
+    }
+    else if (isNumberStart(parser)) {
+        result->payload.number = parseNumber(parser);
+        result->type = ValueType_Number;
+        // printf("%f", result->payload.number);
+    }
+    else if (isLeftBrace(parser)) {
+        result->payload.object = parseObject(parser);
+        result->type = ValueType_Object;
+    }
+    else if (isLeftBracket(parser)) {
+        result->payload.array = parseArray(parser);
+        result->type = ValueType_Array;
+    }
+    else if (isTrueLiteral(parser)) {
+        skipChars(parser, trueLiteral.size);
+        result->type = ValueType_True;
+    }
+    else if (isFalseLiteral(parser)) {
+        skipChars(parser, falseLiteral.size);
+        result->type = ValueType_False;
+    }
+    else if (isNullLiteral(parser)) {
+        skipChars(parser, nullLiteral.size);
+        result->type = ValueType_Null;
+    }
+    else {
+        assert(false);
+    }
 
-   skipWhitespace(parser);
+    skipWhitespace(parser);
 
-   return result;
+    return result;
 }
 
-Value *parseJson(Parser *parser)
-{
-   TIME_FUNCTION
-   Value *json = parseElement(parser);
+Value *parseJson(Parser *parser) {
+    TIME_FUNCTION Value *json = parseElement(parser);
 
-   STOP_COUNTER
-
-   return json;
+    STOP_COUNTER return json;
 }
 
 #endif

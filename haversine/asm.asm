@@ -49,11 +49,17 @@ global read2x8
 
 global read2x16
 
+global read1x32
+
 global read2x32
 
 global read2x64
 
+global read1x64
+
 global avx512_zmm
+
+global testCache
 
 section .text
 
@@ -308,6 +314,14 @@ read2x16:
     jnle .loop
     ret
 
+read1x32:
+    align 64
+.loop:
+    vmovdqu ymm0, [rdx]
+    sub rcx, 32
+    jnle .loop
+    ret
+
 read2x32:
     align 64
 .loop:
@@ -326,6 +340,14 @@ read2x64:
     jnle .loop
     ret
 
+read1x64:
+    align 64
+.loop:
+    vmovdqu64 zmm0, [rdx]
+    sub rcx, 64
+    jnle .loop
+    ret
+
 avx512_zmm:
    align 64
    vmovdqu64 zmm0, [rcx]
@@ -335,3 +357,20 @@ avx512_ymm:
 
 avx512_xmm:
    vmovdqu64 xmm0, [rcx]
+
+testCache:    
+    align 64
+    xor rax, rax
+.loop:  
+    vmovdqu ymm0, [rdx + rax]
+    sub rcx, 32
+    add rax, 32
+    cmp rax, r8
+    jb .loop
+    xor rax, rax
+    cmp rcx, rax
+    jg .loop
+    ret
+
+
+

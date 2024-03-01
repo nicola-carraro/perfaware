@@ -50,13 +50,7 @@ typedef struct {
     size_t previousOffset;
 } Arena;
 
-void die(
-    const char *file,
-    const size_t line,
-    int errorNumber,
-    const char *message,
-    ...
-) {
+void die(const char *file, const size_t line, int errorNumber, const char *message, ...) {
     printf("ERROR (%s:%zu): ", file, line);
 
     va_list args;
@@ -85,13 +79,7 @@ void writeTextToFile(FILE *file, const char *path, const char *format, ...) {
     va_end(varargsList);
 }
 
-void writeBinaryToFile(
-    FILE *file,
-    const char *path,
-    void *data,
-    size_t size,
-    size_t count
-) {
+void writeBinaryToFile(FILE *file, const char *path, void *data, size_t size, size_t count) {
     if (fwrite(data, size, count, file) != count) {
         int error = errno;
         fclose(file);
@@ -118,13 +106,7 @@ size_t getFileSize(FILE *file, char *path) {
             if (_fseeki64(file, 0, SEEK_SET) != 0) {
                 int errorNumber = errno;
                 fclose(file);
-                die(
-                    __FILE__,
-                    __LINE__,
-                    errorNumber,
-                    "could not restore cursor position of %s",
-                    path
-                );
+                die(__FILE__, __LINE__, errorNumber, "could not restore cursor position of %s", path);
             }
         }
         else {
@@ -220,13 +202,7 @@ uint64_t getPageFaultCount(HANDLE process) {
     else {
         char *message = winErrorMessage();
 
-        die(
-            __FILE__,
-            __LINE__,
-            0,
-            "Failed to get page fault count: %s\n",
-            message
-        );
+        die(__FILE__, __LINE__, 0, "Failed to get page fault count: %s\n", message);
     }
 
     return result;
@@ -240,13 +216,7 @@ double square(double n) {
     return n *n;
 }
 
-double haversine(
-    double x1Degrees,
-    double y1Degrees,
-    double x2Degrees,
-    double y2Degrees,
-    double radius
-) {
+double haversine(double x1Degrees, double y1Degrees, double x2Degrees, double y2Degrees, double radius) {
     double x1Radians = degreesToRadians(x1Degrees);
     double y1Radians = degreesToRadians(y1Degrees);
     double x2Radians = degreesToRadians(x2Degrees);

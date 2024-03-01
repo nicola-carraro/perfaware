@@ -67,39 +67,29 @@ typedef struct {
 char *allocate(Alloc alloc, Arena *arena, size_t size, uint64_t largePageMinimum) {
     char *result = 0;
     switch (alloc) {
-        case Alloc_None : {
+        case Alloc_None: {
             result = arenaAllocate(arena, size);
         }
         break;
-        case Alloc_Malloc : {
+        case Alloc_Malloc: {
             result = malloc(size);
         }
         break;
-        case Alloc_VirtualAlloc : {
-            result = VirtualAlloc(
-                0,
-                size,
-                MEM_RESERVE | MEM_COMMIT,
-                PAGE_READWRITE
-            );
+        case Alloc_VirtualAlloc: {
+            result = VirtualAlloc(0, size, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
         }
         break;
-        case Alloc_Large : {
+        case Alloc_Large: {
             size_t remainder = size % largePageMinimum;
 
             if (remainder != 0) {
                 size += (largePageMinimum - remainder);
             }
 
-            result = VirtualAlloc(
-                0,
-                size,
-                MEM_RESERVE | MEM_COMMIT | MEM_LARGE_PAGES,
-                PAGE_READWRITE
-            );
+            result = VirtualAlloc(0, size, MEM_RESERVE | MEM_COMMIT | MEM_LARGE_PAGES, PAGE_READWRITE);
         }
         break;
-        default : {
+        default: {
             assert(false);
         }
     }
@@ -109,19 +99,19 @@ char *allocate(Alloc alloc, Arena *arena, size_t size, uint64_t largePageMinimum
 
 void freeAllocation(Alloc alloc, Arena *arena, char *buffer) {
     switch (alloc) {
-        case Alloc_None : {
+        case Alloc_None: {
             arenaFreeAll(arena);
         }
         break;
-        case Alloc_Malloc : {
+        case Alloc_Malloc: {
             free(buffer);
         }
         break;
-        case Alloc_VirtualAlloc : case Alloc_Large : {
+        case Alloc_VirtualAlloc: case Alloc_Large: {
             VirtualFree(buffer, 0, MEM_RELEASE);
         }
         break;
-        default : {
+        default: {
             assert(false);
         }
     }
@@ -292,14 +282,18 @@ void readWith_read(
                 int bytesToRead = 0;
                 if (size > INT_MAX) {
                     bytesToRead = INT_MAX;
-                } else {
+                }
+                else {
                     bytesToRead = (int) size;
-                } int read = _read(fd, cursor, bytesToRead);
+                }
+                int read = _read(fd, cursor, bytesToRead);
                 remainingBytes -= read;
                 cursor += read;
                 if (read < size) {
                     die(__FILE__, __LINE__, errno, "Read failed");
-                } } iterationStopCounters(iteration, process);
+                }
+            }
+            iterationStopCounters(iteration, process);
             _close(fd);
             freeAllocation(alloc, arena, buffer);
         }
@@ -313,15 +307,7 @@ void readWithReadFile(
     HANDLE process,
     uint64_t largePageMinimum
 ) {
-    HANDLE file = CreateFile(
-        JSON_PATH,
-        GENERIC_READ,
-        0,
-        0,
-        OPEN_EXISTING,
-        FILE_ATTRIBUTE_NORMAL,
-        NULL
-    );
+    HANDLE file = CreateFile(JSON_PATH, GENERIC_READ, 0, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 
     if (file != INVALID_HANDLE_VALUE) {
         LARGE_INTEGER size = {0};
@@ -368,13 +354,7 @@ void readWithReadFile(
     }
 }
 
-void movBuffer(
-    Iteration *iteration,
-    Arena *arena,
-    Alloc alloc,
-    HANDLE process,
-    uint64_t largePageMinimum
-) {
+void movBuffer(Iteration *iteration, Arena *arena, Alloc alloc, HANDLE process, uint64_t largePageMinimum) {
     FILE *file = fopen(JSON_PATH, "rb");
 
     if (file != NULL) {
@@ -395,13 +375,7 @@ void movBuffer(
     }
 }
 
-void nopBuffer(
-    Iteration *iteration,
-    Arena *arena,
-    Alloc alloc,
-    HANDLE process,
-    uint64_t largePageMinimum
-) {
+void nopBuffer(Iteration *iteration, Arena *arena, Alloc alloc, HANDLE process, uint64_t largePageMinimum) {
     FILE *file = fopen(JSON_PATH, "rb");
 
     if (file != NULL) {
@@ -422,13 +396,7 @@ void nopBuffer(
     }
 }
 
-void cmpBuffer(
-    Iteration *iteration,
-    Arena *arena,
-    Alloc alloc,
-    HANDLE process,
-    uint64_t largePageMinimum
-) {
+void cmpBuffer(Iteration *iteration, Arena *arena, Alloc alloc, HANDLE process, uint64_t largePageMinimum) {
     FILE *file = fopen(JSON_PATH, "rb");
 
     if (file != NULL) {
@@ -449,13 +417,7 @@ void cmpBuffer(
     }
 }
 
-void dec(
-    Iteration *iteration,
-    Arena *arena,
-    Alloc alloc,
-    HANDLE process,
-    uint64_t largePageMinimum
-) {
+void dec(Iteration *iteration, Arena *arena, Alloc alloc, HANDLE process, uint64_t largePageMinimum) {
     UNREFERENCED_PARAMETER(arena);
     UNREFERENCED_PARAMETER(alloc);
     UNREFERENCED_PARAMETER(arena);
@@ -476,13 +438,7 @@ void dec(
     }
 }
 
-void writeBuffer(
-    Iteration *iteration,
-    Arena *arena,
-    Alloc alloc,
-    HANDLE process,
-    uint64_t largePageMinimum
-) {
+void writeBuffer(Iteration *iteration, Arena *arena, Alloc alloc, HANDLE process, uint64_t largePageMinimum) {
     FILE *file = fopen(JSON_PATH, "rb");
 
     if (file != NULL) {
@@ -513,18 +469,10 @@ uint64_t enableLargePages() {
     if (OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES, &token)) {
         TOKEN_PRIVILEGES privileges = {
             .PrivilegeCount = 1,
-            .Privileges = {
-                {
-                    .Attributes = SE_PRIVILEGE_ENABLED
-                }
-            }
+            .Privileges = {{.Attributes = SE_PRIVILEGE_ENABLED}}
         };
 
-        if (LookupPrivilegeValue(
-            NULL,
-            SE_LOCK_MEMORY_NAME,
-            &privileges.Privileges[0] .Luid
-        )) {
+        if (LookupPrivilegeValue(NULL, SE_LOCK_MEMORY_NAME, &privileges.Privileges[0] .Luid)) {
             AdjustTokenPrivileges(token, FALSE, &privileges, 0, NULL, NULL);
 
             DWORD error = GetLastError();
@@ -583,15 +531,8 @@ int main(void) {
         for (size_t i = 0; i < ARRAYSIZE(tests); i++) {
             Test *test = tests + i;
 
-
             if (test->alloc != Alloc_Large || largePageMinimum != 0) {
-                repeatTest(
-                    test,
-                    rdtscFrequency,
-                    &arena,
-                    process,
-                    largePageMinimum
-                );
+                repeatTest(test, rdtscFrequency, &arena, process, largePageMinimum);
             }
         }
 

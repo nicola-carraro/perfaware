@@ -8,35 +8,36 @@
 #include "stdarg.h"
 #include "string.h"
 #include "math.h"
-
 #include "common.c"
 
 #define UNIFORM_METHOD "uniform"
+
 #define CLUSTER_METHOD "cluster"
 
 #define CLUSTER_COUNT 8
+
 #define CLUSTER_WIDTH 5.0
+
 #define CLUSTER_HEIGHT 5.0
-#define MIN_X -180.0
+
+#define MIN_X - 180.0
+
 #define MAX_X 180.0
-#define MIN_Y -90.0
+
+#define MIN_Y - 90.0
+
 #define MAX_Y 90.0
 
-typedef struct
-{
+typedef struct {
     double minX;
     double minY;
     double width;
     double height;
 } Cluster;
 
-bool isDigits(char *cString)
-{
-
-    while (*cString != '\0')
-    {
-        if (!isdigit(*cString))
-        {
+bool isDigits(char *cString) {
+    while (*cString != '\0') {
+        if (!isdigit(*cString)) {
             return false;
         }
         cString++;
@@ -45,49 +46,42 @@ bool isDigits(char *cString)
     return true;
 }
 
-double randomDouble(double min, double max)
-{
+double randomDouble(double min, double max) {
     assert(min <= max);
     double range = max - min;
     int randomInt = rand();
 
-    double result = min + ((range / (double)RAND_MAX) * randomInt);
+    double result = min + ((range / (double) RAND_MAX) * randomInt);
 
     return result;
 }
 
-double randomX()
-{
+double randomX() {
     double result = randomDouble(MIN_X, MAX_X);
 
     return result;
 }
 
-double randomY()
-{
+double randomY() {
     double result = randomDouble(MIN_Y, MAX_Y);
 
     return result;
 }
 
-double wrap(double value, double min, double max)
-{
+double wrap(double value, double min, double max) {
     double result = value;
 
-    if (result > max)
-    {
+    if (result > max) {
         result = min + (result - max);
     }
-    else if (result < min)
-    {
+    else if (result < min) {
         result = max - (min - result);
     }
 
     return result;
 }
 
-Cluster initializeCluster(double width, double height)
-{
+Cluster initializeCluster(double width, double height) {
     Cluster cluster;
 
     cluster.minX = randomX();
@@ -99,44 +93,37 @@ Cluster initializeCluster(double width, double height)
     return cluster;
 }
 
-bool cStringsEqual(char *left, char *right)
-{
+bool cStringsEqual(char *left, char *right) {
     return strcmp(left, right) == 0;
 }
 
-int main(int argc, char *argv[])
-{
-    if (argc < 4)
-    {
+int main(int argc, char *argv[]) {
+    if (argc < 4) {
         printf("Usage: %s method pairs seed", argv[0]);
         return;
     }
 
     bool clustered = false;
 
-    if (cStringsEqual(argv[1], CLUSTER_METHOD))
-    {
+    if (cStringsEqual(argv[1], CLUSTER_METHOD)) {
         clustered = true;
     }
-    else if (!cStringsEqual(argv[1], UNIFORM_METHOD))
-    {
+    else if (!cStringsEqual(argv[1], UNIFORM_METHOD)) {
         printf("Invalid method (allowed : %s, %s): %s", UNIFORM_METHOD, CLUSTER_METHOD, argv[1]);
         return;
     }
 
-    if (!isDigits(argv[2]))
-    {
+    if (!isDigits(argv[2])) {
         printf("Error: pairs should be numeric, found: %s", argv[2]);
         return;
     }
 
-    if (!isDigits(argv[3]))
-    {
+    if (!isDigits(argv[3])) {
         printf("Error: seed should be numeric, found: %s", argv[3]);
         return;
     }
 
-    size_t pairs = (size_t)atoi(argv[2]);
+    size_t pairs = (size_t) atoi(argv[2]);
 
     int seed = atoi(argv[3]);
 
@@ -148,13 +135,11 @@ int main(int argc, char *argv[])
     FILE *jsonFile = fopen(JSON_PATH, "w");
     FILE *answersFile = fopen(ANSWERS_PATH, "wb");
 
-    if (!jsonFile)
-    {
+    if (!jsonFile) {
         die(__FILE__, __LINE__, errno, "could not open %s", JSON_PATH);
     }
 
-    if (!answersFile)
-    {
+    if (!answersFile) {
         die(__FILE__, __LINE__, errno, "could not open %s", ANSWERS_PATH);
     }
 
@@ -162,26 +147,21 @@ int main(int argc, char *argv[])
 
     Cluster clusters[CLUSTER_COUNT];
 
-    if (clustered)
-    {
-        for (size_t clusterIndex = 0; clusterIndex < CLUSTER_COUNT; clusterIndex++)
-        {
+    if (clustered) {
+        for (size_t clusterIndex = 0; clusterIndex < CLUSTER_COUNT; clusterIndex++) {
             clusters[clusterIndex] = initializeCluster(CLUSTER_WIDTH, CLUSTER_HEIGHT);
         }
     }
 
     double sum = 0.0;
 
-    for (size_t pair = 0; pair < pairs; pair++)
-    {
-
+    for (size_t pair = 0; pair < pairs; pair++) {
         double x1;
         double y1;
         double x2;
         double y2;
 
-        if (clustered)
-        {
+        if (clustered) {
             int cluster1Index = rand() % CLUSTER_COUNT;
             int cluster2Index = rand() % CLUSTER_COUNT;
             Cluster cluster1 = clusters[cluster1Index];
@@ -194,7 +174,6 @@ int main(int argc, char *argv[])
 
             // printf("Cluster1 index=%d, minX=%f, minY=%f, Xoffset=%f, yOffset=%f\n", cluster1Index, cluster1.minX, cluster1.minY, x1Offset, y1Offset);
             // printf("Cluster2 index=%d, minX=%f, minY=%f, Xoffset=%f, yOffset=%f\n", cluster2Index, cluster2.minX, cluster2.minY, x2Offset, y2Offset);
-
             x1 = cluster1.minX + x1Offset;
             y1 = cluster1.minY + y1Offset;
             x2 = cluster2.minX + x2Offset;
@@ -214,8 +193,7 @@ int main(int argc, char *argv[])
             assert(y2 <= MAX_Y);
             assert(y2 >= MIN_Y);
         }
-        else
-        {
+        else {
             x1 = randomX();
             y1 = randomY();
             x2 = randomX();
@@ -227,9 +205,8 @@ int main(int argc, char *argv[])
         sum += distance;
 
         // printf("x1 : %f, y1 : %f, x2 : %f, y2 : %f\n", x1, y1, x2, y2);
-        //  printf("\n");
-        //   printf("distance : %f,\n", distance);
-
+        // printf("\n");
+        // printf("distance : %f,\n", distance);
         writeTextToFile(
             jsonFile,
             JSON_PATH,
@@ -237,22 +214,17 @@ int main(int argc, char *argv[])
             x1,
             y1,
             x2,
-            y2);
+            y2
+        );
 
-        writeBinaryToFile(
-            answersFile,
-            ANSWERS_PATH,
-            &distance,
-            sizeof(double),
-            1);
+        writeBinaryToFile(answersFile, ANSWERS_PATH, &distance, sizeof(double), 1);
 
-        if (pair < pairs - 1)
-        {
+        if (pair < pairs - 1) {
             writeTextToFile(jsonFile, JSON_PATH, ",\n");
         }
     }
 
-    double average = sum / (double)pairs;
+    double average = sum / (double) pairs;
     printf("Sum: %1.12f\n", sum);
     printf("Average: %1.12f\n", average);
 

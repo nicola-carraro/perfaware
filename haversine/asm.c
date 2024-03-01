@@ -52,6 +52,8 @@ void read2x16(int64_t counter, void *buffer);
 
 void read2x32(int64_t counter, void *buffer);
 
+void read1x32(int64_t counter, void *buffer);
+
 void read2x64(int64_t counter, void *buffer);
 
 #define MAKE_TEST(f, n, r, b) {\
@@ -136,8 +138,9 @@ int main(void) {
 
     int64_t counter = 4LL * 1024LL * 1024LL * 1024LL;
 
-    char buffer[64] = {0};
-
+    char *buffer = malloc(counter);
+    assert(buffer);
+    // char buffer[64] = {0};
     // char *allZeros = malloc(counter);
     // memset(allZeros, 1, counter);
     // char *allOnes = malloc(counter);
@@ -173,7 +176,7 @@ int main(void) {
         // MAKE_TEST(nop1x3, "nop1x3", counter, NULL),
         // MAKE_TEST(nop3x1, "nop3x1", counter, NULL),
         // MAKE_TEST(nop9, "nop9", counter, NULL),
-        MAKE_TEST(read2x4, "read2x4", counter, buffer),
+        // MAKE_TEST(read2x4, "read2x4", counter, buffer),
         MAKE_TEST(read2x8, "read2x8", counter, buffer),
         MAKE_TEST(read2x16, "read2x16", counter, buffer),
         MAKE_TEST(read2x32, "read2x32", counter, buffer),
