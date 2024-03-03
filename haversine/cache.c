@@ -10,9 +10,9 @@
     .minSeconds = FLT_MAX,\
     .function = f,\
     .name = n,\
-    .counter = r,\
+    .bytes = r,\
     .buffer = b,\
-    .cacheSize = s\
+    .cacheSizeOrMask = s\
 }
 
 #define KB(b) (1024LL *b)
@@ -26,15 +26,17 @@ typedef struct {
     float maxSeconds;
     float sumSeconds;
     size_t executionCount;
-    void (*function) (int64_t counter, void *buffer, int64_t cacheSize);
+    void (*function) (int64_t bytes, void *buffer, int64_t cacheSize);
     char *name;
     float maxThroughput;
-    int64_t counter;
-    int64_t cacheSize;
+    int64_t bytes;
+    int64_t cacheSizeOrMask;
     void *buffer;
 } Test;
 
-void testCache(int64_t counter, void *buffer, int64_t cacheSize);
+void testCache(int64_t bytes, void *buffer, int64_t cacheSize);
+
+void testCacheAnd(int64_t bytes, void *buffer, int64_t cacheSize);
 
 void repeatTest(Test *test, uint64_t rdtscFrequency) {
     uint64_t ticksSinceLastReset = __rdtsc();
@@ -45,7 +47,7 @@ void repeatTest(Test *test, uint64_t rdtscFrequency) {
 
     while (true) {
         uint64_t start = __rdtsc();
-        test->function(test->counter, test->buffer, test->cacheSize);
+        test->function(test->bytes, test->buffer, test->cacheSizeOrMask);
         uint64_t end = __rdtsc();
 
         uint64_t ticks = end - start;
@@ -68,15 +70,27 @@ void repeatTest(Test *test, uint64_t rdtscFrequency) {
         test->sumSeconds += secondsForFunction;
 
         float averageSeconds = test->sumSeconds / (float) test->executionCount;
-        float minThroughput = (float) test->counter / test->maxSeconds;
-        float maxThroughput = (float) test->counter / test->minSeconds;
-        float avgThroughput = (float) test->counter / averageSeconds;
+        float minThroughput = (float) test->bytes / test->maxSeconds;
+        float maxThroughput = (float) test->bytes / test->minSeconds;
+        float avgThroughput = (float) test->bytes / averageSeconds;
 
         test->maxThroughput = maxThroughput;
 
-        printf("Best : %f s, Throughput: %f,\n", test->minSeconds, maxThroughput);
-        printf("Worst: %f s, Throughput: %f\n", test->maxSeconds, minThroughput);
-        printf("Avg. : %f s, Throughput: %f\n", averageSeconds, avgThroughput);
+        printf(
+            "Best : %f s, Throughput: %f gb/s,\n",
+            test->minSeconds,
+            maxThroughput / (1024.0f *1024.0f *1024.0f)
+        );
+        printf(
+            "Worst: %f s, Throughput: %f gb/s\n",
+            test->maxSeconds,
+            minThroughput / (1024.0f *1024.0f *1024.0f)
+        );
+        printf(
+            "Avg. : %f s, Throughput: %f gb/s\n",
+            averageSeconds,
+            avgThroughput / (1024.0f *1024.0f *1024.0f)
+        );
 
         ticks = __rdtsc();
         secondsSinceLastReset = ((float) (ticks - ticksSinceLastReset)) / ((float) rdtscFrequency);
@@ -96,20 +110,24 @@ void repeatTest(Test *test, uint64_t rdtscFrequency) {
 int main(void) {
     uint64_t rdtscFrequency = estimateRdtscFrequency();
 
-    int64_t counter = GB(4);
+    int64_t bytes = GB(4);
 
     const int32_t l1size = KB(32);
     const int32_t l2size = KB(512);
     const int32_t l3size = MB(4);
 
-    char *buffer = malloc(counter);
+    char *buffer = malloc(bytes);
     assert(buffer);
 
     Test tests[] = {
-        MAKE_TEST(testCache, "L1", counter, buffer, l1size),
-        MAKE_TEST(testCache, "L2", counter, buffer, l2size),
-        MAKE_TEST(testCache, "L3", counter, buffer, l3size),
-        MAKE_TEST(testCache, "main", counter, buffer, counter)
+        MAKE_TEST(testCache, "L1", bytes, buffer, l1size),
+        MAKE_TEST(testCache, "L2", bytes, buffer, l2size),
+        MAKE_TEST(testCache, "L3", bytes, buffer, l3size),
+        MAKE_TEST(testCache, "main", bytes, buffer, bytes),
+        MAKE_TEST(testCacheAnd, "L1 and", bytes, buffer, 0x7fff),
+        MAKE_TEST(testCacheAnd, "L2 and", bytes, buffer, 0x3ffff),
+        MAKE_TEST(testCacheAnd, "L3 and", bytes, buffer, 0x3fffff),
+        MAKE_TEST(testCacheAnd, "main and", bytes, buffer, INT64_MAX),
     };
 
     while (true) {
@@ -131,7 +149,7 @@ int main(void) {
             }
         }
 
-        printf("BEST THROUGHPUT: %s, %f\n\n", bestTest, maxThroughput);
+        printf("BEST THROUGHPUT: %s, %f g/s\n\n", bestTest, maxThroughput / (1024.0f *1024.0f *1024.0f));
     }
 
     return 0;

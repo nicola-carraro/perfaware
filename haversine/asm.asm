@@ -61,6 +61,8 @@ global avx512_zmm
 
 global testCache
 
+global testCacheAnd
+
 section .text
 
 movAllBytes:
@@ -363,8 +365,11 @@ testCache:
     xor rax, rax
 .loop:  
     vmovdqu ymm0, [rdx + rax]
-    sub rcx, 32
-    add rax, 32
+    vmovdqu ymm0, [rdx + rax + 32]
+    vmovdqu ymm0, [rdx + rax + 64]
+    vmovdqu ymm0, [rdx + rax + 96]
+    sub rcx, 128
+    add rax, 128
     cmp rax, r8
     jb .loop
     xor rax, rax
@@ -372,5 +377,21 @@ testCache:
     jg .loop
     ret
 
-
-
+testCacheAnd:    
+    align 64
+    xor rax, rax
+.loop:  
+    vmovdqu ymm0, [rdx + rax]
+    vmovdqu ymm0, [rdx + rax + 32]
+    vmovdqu ymm0, [rdx + rax + 64]
+    vmovdqu ymm0, [rdx + rax + 96]
+    vmovdqu ymm0, [rdx + rax + 128]
+    vmovdqu ymm0, [rdx + rax + 160]
+    vmovdqu ymm0, [rdx + rax + 192]
+    vmovdqu ymm0, [rdx + rax + 224]
+    sub rcx, 256
+    add rax, 256
+    and rax, r8
+    cmp rcx, 0
+    jg .loop
+    ret
