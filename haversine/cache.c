@@ -15,7 +15,7 @@
     .cacheSizeOrMask = s\
 }
 
-#define KB(b) (1024LL *b)
+#define KB(b) (1024LL * b)
 
 #define MB(b) (KB(KB(b)))
 
@@ -36,7 +36,7 @@ typedef struct {
 
 void testCache(int64_t bytes, void *buffer, int64_t cacheSize);
 
-void testCacheAnd(int64_t bytes, void *buffer, int64_t cacheSize);
+void testCacheAnd(int64_t bytes, void *buffer, int64_t mask);
 
 void repeatTest(Test *test, uint64_t rdtscFrequency) {
     uint64_t ticksSinceLastReset = __rdtsc();
@@ -79,17 +79,17 @@ void repeatTest(Test *test, uint64_t rdtscFrequency) {
         printf(
             "Best : %f s, Throughput: %f gb/s,\n",
             test->minSeconds,
-            maxThroughput / (1024.0f *1024.0f *1024.0f)
+            maxThroughput / (1024.0f * 1024.0f * 1024.0f)
         );
         printf(
             "Worst: %f s, Throughput: %f gb/s\n",
             test->maxSeconds,
-            minThroughput / (1024.0f *1024.0f *1024.0f)
+            minThroughput / (1024.0f * 1024.0f * 1024.0f)
         );
         printf(
             "Avg. : %f s, Throughput: %f gb/s\n",
             averageSeconds,
-            avgThroughput / (1024.0f *1024.0f *1024.0f)
+            avgThroughput / (1024.0f * 1024.0f * 1024.0f)
         );
 
         ticks = __rdtsc();
@@ -107,27 +107,49 @@ void repeatTest(Test *test, uint64_t rdtscFrequency) {
     printf("\n");
 }
 
+int32_t mask(uint8_t bitsToKeep) {
+    int32_t result = 0;
+    for (int i = 0; i < bitsToKeep; i++) {
+        result |= (1 << i);
+    }
+
+    return result;
+}
+
 int main(void) {
     uint64_t rdtscFrequency = estimateRdtscFrequency();
 
     int64_t bytes = GB(4);
 
-    const int32_t l1size = KB(32);
-    const int32_t l2size = KB(512);
-    const int32_t l3size = MB(4);
-
+    // const int32_t l1size = KB(32);
+    // const int32_t l2size = KB(512);
+    // const int32_t l3size = MB(4);
     char *buffer = malloc(bytes);
     assert(buffer);
 
     Test tests[] = {
-        MAKE_TEST(testCache, "L1", bytes, buffer, l1size),
-        MAKE_TEST(testCache, "L2", bytes, buffer, l2size),
-        MAKE_TEST(testCache, "L3", bytes, buffer, l3size),
-        MAKE_TEST(testCache, "main", bytes, buffer, bytes),
-        MAKE_TEST(testCacheAnd, "L1 and", bytes, buffer, 0x7fff),
-        MAKE_TEST(testCacheAnd, "L2 and", bytes, buffer, 0x3ffff),
-        MAKE_TEST(testCacheAnd, "L3 and", bytes, buffer, 0x3fffff),
-        MAKE_TEST(testCacheAnd, "main and", bytes, buffer, INT64_MAX),
+        MAKE_TEST(testCacheAnd, "10", bytes, buffer, mask(10)),
+        MAKE_TEST(testCacheAnd, "11", bytes, buffer, mask(11)),
+        MAKE_TEST(testCacheAnd, "12", bytes, buffer, mask(12)),
+        MAKE_TEST(testCacheAnd, "13", bytes, buffer, mask(13)),
+        MAKE_TEST(testCacheAnd, "14", bytes, buffer, mask(14)),
+        MAKE_TEST(testCacheAnd, "15", bytes, buffer, mask(15)),
+        MAKE_TEST(testCacheAnd, "16", bytes, buffer, mask(16)),
+        MAKE_TEST(testCacheAnd, "17", bytes, buffer, mask(17)),
+        MAKE_TEST(testCacheAnd, "18", bytes, buffer, mask(18)),
+        MAKE_TEST(testCacheAnd, "19", bytes, buffer, mask(19)),
+        MAKE_TEST(testCacheAnd, "20", bytes, buffer, mask(20)),
+        MAKE_TEST(testCacheAnd, "21", bytes, buffer, mask(21)),
+        MAKE_TEST(testCacheAnd, "22", bytes, buffer, mask(22)),
+        MAKE_TEST(testCacheAnd, "23", bytes, buffer, mask(23)),
+        MAKE_TEST(testCacheAnd, "24", bytes, buffer, mask(24)),
+        MAKE_TEST(testCacheAnd, "25", bytes, buffer, mask(25)),
+        MAKE_TEST(testCacheAnd, "26", bytes, buffer, mask(26)),
+        MAKE_TEST(testCacheAnd, "27", bytes, buffer, mask(27)),
+        MAKE_TEST(testCacheAnd, "28", bytes, buffer, mask(28)),
+        MAKE_TEST(testCacheAnd, "29", bytes, buffer, mask(29)),
+        MAKE_TEST(testCacheAnd, "30", bytes, buffer, mask(30)),
+        MAKE_TEST(testCacheAnd, "31", bytes, buffer, mask(31)),
     };
 
     while (true) {
@@ -149,7 +171,7 @@ int main(void) {
             }
         }
 
-        printf("BEST THROUGHPUT: %s, %f g/s\n\n", bestTest, maxThroughput / (1024.0f *1024.0f *1024.0f));
+        printf("BEST THROUGHPUT: %s, %f g/s\n\n", bestTest, maxThroughput / (1024.0f * 1024.0f * 1024.0f));
     }
 
     return 0;
