@@ -368,8 +368,12 @@ testCache:
     vmovdqu ymm0, [rdx + rax + 32]
     vmovdqu ymm0, [rdx + rax + 64]
     vmovdqu ymm0, [rdx + rax + 96]
-    sub rcx, 128
-    add rax, 128
+    vmovdqu ymm0, [rdx + rax + 128]
+    vmovdqu ymm0, [rdx + rax + 160]
+    vmovdqu ymm0, [rdx + rax + 192]
+    vmovdqu ymm0, [rdx + rax + 224]
+    sub rcx, 256
+    add rax, 256
     cmp rax, r8
     jb .loop
     xor rax, rax
