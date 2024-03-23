@@ -1,0 +1,4 @@
+L1 104 gb/s
+L2 96 gb/s
+L3 68 gb/s
+main 18 gb/s

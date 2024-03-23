@@ -63,6 +63,8 @@ global testCache
 
 global testCacheAnd
 
+global testCacheUnaligned
+
 section .text
 
 movAllBytes:
@@ -397,5 +399,27 @@ testCacheAnd:
     add rax, 256
     and rax, r8
     cmp rcx, 0
+    jg .loop
+    ret
+
+
+testCacheUnaligned:    
+    align 64
+    mov rax, r9
+.loop:  
+    vmovdqu ymm0, [rdx + rax]
+    vmovdqu ymm0, [rdx + rax + 32]
+    vmovdqu ymm0, [rdx + rax + 64]
+    vmovdqu ymm0, [rdx + rax + 96]
+    vmovdqu ymm0, [rdx + rax + 128]
+    vmovdqu ymm0, [rdx + rax + 160]
+    vmovdqu ymm0, [rdx + rax + 192]
+    vmovdqu ymm0, [rdx + rax + 224]
+    sub rcx, 256
+    add rax, 256
+    cmp rax, r8
+    jb .loop
+    mov rax, r9
+    cmp rcx, rax
     jg .loop
     ret
