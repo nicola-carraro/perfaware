@@ -65,6 +65,8 @@ global testCacheAnd
 
 global testCacheUnaligned
 
+global testCacheUnalignedNonContiguous
+
 section .text
 
 movAllBytes:
@@ -417,6 +419,28 @@ testCacheUnaligned:
     vmovdqu ymm0, [rdx + rax + 224]
     sub rcx, 256
     add rax, 256
+    cmp rax, r8
+    jb .loop
+    mov rax, r9
+    cmp rcx, rax
+    jg .loop
+    ret
+
+
+testCacheUnalignedNonContiguous:    
+    align 64
+    mov rax, r9
+.loop:  
+    vmovdqu ymm0, [rdx + rax]
+    vmovdqu ymm0, [rdx + rax + 64]
+    vmovdqu ymm0, [rdx + rax + 128]
+    vmovdqu ymm0, [rdx + rax + 192]
+    vmovdqu ymm0, [rdx + rax + 256]
+    vmovdqu ymm0, [rdx + rax + 320]
+    vmovdqu ymm0, [rdx + rax + 384]
+    vmovdqu ymm0, [rdx + rax + 448]
+    sub rcx, 256
+    add rax, 512
     cmp rax, r8
     jb .loop
     mov rax, r9

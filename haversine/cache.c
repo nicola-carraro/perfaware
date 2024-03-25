@@ -41,6 +41,9 @@ void testCacheAnd(int64_t bytes, void *buffer, int64_t mask);
 
 void testCacheUnaligned(int64_t bytes, void *buffer, int64_t mask, int64_t offset);
 
+void testCacheUnalignedNonContiguous(int64_t bytes, void *buffer, int64_t mask, int64_t offset);
+
+
 void repeatTest(Test *test, uint64_t rdtscFrequency) {
     uint64_t ticksSinceLastReset = __rdtsc();
 
@@ -154,20 +157,19 @@ int main(void) {
     // MAKE_TEST(testCacheAnd, "30", bytes, buffer, mask(30)),
     // MAKE_TEST(testCacheAnd, "31", bytes, buffer, mask(31)),
     // };
-    const int32_t sizesCount = 25;
-    const int32_t offsetsPerSize = 8;
+
+    int32_t sizes[] = {4096};
+    const int32_t sizesCount = ARRAYSIZE(sizes);
+    const int32_t offsetsPerSize = 64;
     const int32_t numTests = sizesCount * offsetsPerSize;
 
     const int32_t testsSize = sizeof(Test) * numTests;
     Test *tests = malloc(testsSize);
     memset(tests, 0, testsSize);
-    int32_t increment = 4096;
-    int32_t size = 4096;
+    int32_t size = 0;
     for (int32_t i = 0; i < sizesCount; i++) {
-        if (i % 20 == 0) {
-            increment *= 2;
-        }
-
+        
+        size = sizes[i];
         int64_t testBytes = (bytes / size) * size;
 
         for (int32_t j = 0; j < offsetsPerSize; j++) {
@@ -187,7 +189,6 @@ int main(void) {
             test->rangeSizeOrMask = size;
         }
 
-        size += increment;
     }
 
     while (true) {
