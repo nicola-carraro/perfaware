@@ -26,12 +26,13 @@ typedef struct {
     float maxSeconds;
     float sumSeconds;
     size_t executionCount;
-    void (*function) (int64_t bytes, void *buffer, int64_t rangeSize);
+    void (*function) (int64_t bytes, void *buffer);
     char name[256];
     float maxThroughput;
     int64_t bytes;
     int64_t rangeSizeOrMask;
-    int64_t offset;
+    int64_t cacheLineBits;
+    int64_t cacheSetBits;
     void *buffer;
 } Test;
 
@@ -43,7 +44,9 @@ void testCacheUnaligned(int64_t bytes, void *buffer, int64_t mask, int64_t offse
 
 void testCacheUnalignedNonContiguous(int64_t bytes, void *buffer, int64_t mask, int64_t offset);
 
-void testCacheSet(int64_t bytes, void *buffer, int64_t mask);
+void testCacheSet(int64_t bytes, void *buffer);
+
+void cacheSetComparison(int64_t bytes, void *buffer);
 
 void repeatTest(Test *test, uint64_t rdtscFrequency) {
     uint64_t ticksSinceLastReset = __rdtsc();
@@ -54,7 +57,7 @@ void repeatTest(Test *test, uint64_t rdtscFrequency) {
 
     while (true) {
         uint64_t start = __rdtsc();
-        test->function(test->bytes, test->buffer, test->rangeSizeOrMask, test->offset);
+        test->function(test->bytes, test->buffer);
         uint64_t end = __rdtsc();
 
         uint64_t ticks = end - start;
@@ -158,85 +161,90 @@ int main(void) {
     // MAKE_TEST(testCacheAnd, "30", bytes, buffer, mask(30)),
     // MAKE_TEST(testCacheAnd, "31", bytes, buffer, mask(31)),
     // };
-    int32_t sizes[] = {KB(1), KB(512), MB(1), GB(1)};
-    const int32_t sizesCount = ARRAYSIZE(sizes);
-    const int32_t offsetsPerSize = 64;
-    const int32_t numTests = sizesCount * offsetsPerSize;
+    int32_t sizes[] = {4096};
 
-    const int32_t testsSize = sizeof(Test) * numTests;
-    Test *tests = malloc(testsSize);
-    memset(tests, 0, testsSize);
-    int32_t size = 0;
-    for (int32_t i = 0; i < sizesCount; i++) {
-        size = sizes[i];
-        int64_t testBytes = (bytes / size) * size;
+    const int32_t numTests = ARRAYSIZE(sizes) * 2;
+
+    Test tests[ARRAYSIZE(sizes) * 2] = {0};
+    for (int32_t i = 0; i < ARRAYSIZE(sizes); i++) {
+        int32_t size = sizes[i];
+        int64_t testBytes = GB(1);
 
         char name[256] = {0};
 
-        int32_t testIndex = j;
+        int32_t testIndex = i * 2;
 
-        sprintf(name, "%d/%d (%d)", testIndex, numTests, size);
-        Test *test = &tests[testIndex];
+        sprintf(name, "%d/%d (%d: %s)", testIndex, numTests, size, "cacheSetComparison");
+        Test *test = tests + testIndex;
+        test->minSeconds = FLT_MAX;
+        test->function = cacheSetComparison;
+        strncpy(test->name, name, sizeof(test->name));
+        test->name[ARRAYSIZE(test->name) - 1] = '\0';
+        test->bytes = testBytes;
+        test->buffer = buffer;
+
+        testIndex = i * 2 + 1;
+
+        sprintf(name, "%d/%d (%d: %s)", testIndex, numTests, size, "testCacheSet");
+        test = tests + testIndex;
         test->minSeconds = FLT_MAX;
         test->function = testCacheSet;
         strncpy(test->name, name, sizeof(test->name));
         test->name[ARRAYSIZE(test->name) - 1] = '\0';
-        test->offset = j;
         test->bytes = testBytes;
         test->buffer = buffer;
-        test->rangeSizeOrMask = size;
-    }
-}
-
-while (true) {
-    for (size_t i = 0; i < numTests; i++) {
-        Test *test = tests + i;
-
-        repeatTest(test, rdtscFrequency);
     }
 
-    float maxThroughput = 0;
+    while (true) {
+        for (size_t i = 0; i < numTests; i++) {
+            Test *test = tests + i;
 
-    char bestTest[256] = "";
-
-    for (size_t i = 0; i < numTests; i++) {
-        Test test = tests[i];
-        if (test.maxThroughput > maxThroughput) {
-            maxThroughput = test.maxThroughput;
-            strncpy(bestTest, test.name, sizeof(bestTest));
-        }
-    }
-
-    printf("BEST THROUGHPUT: %s, %f g/s\n\n", bestTest, maxThroughput / (1024.0f * 1024.0f * 1024.0f));
-
-    FILE *f = fopen("cache.csv", "wb");
-
-    assert(f);
-
-    fprintf(f, "Size;");
-
-    for (int32_t i = 0; i < offsetsPerSize; i++) {
-        fprintf(f, "Offset %d; ", i);
-    }
-
-    fprintf(f, "\n");
-
-    for (int32_t i = 0; i < sizesCount; i++) {
-        Test test = tests[i * sizesCount];
-
-        fprintf(f, "%lld; ", test.rangeSizeOrMask);
-
-        for (int32_t j = 0; j < offsetsPerSize; j++) {
-            test = tests[i * sizesCount + j];
-            fprintf(f, "%f; ", test.maxThroughput / (1024.0f * 1024.0f * 1024.0f));
+            repeatTest(test, rdtscFrequency);
         }
 
-        fprintf(f, "\n");
+        float maxThroughput = 0;
+
+        char bestTest[256] = "";
+
+        for (size_t i = 0; i < numTests; i++) {
+            Test test = tests[i];
+            if (test.maxThroughput > maxThroughput) {
+                maxThroughput = test.maxThroughput;
+                strncpy(bestTest, test.name, sizeof(bestTest));
+            }
+        }
+
+        printf("BEST THROUGHPUT: %s, %f g/s\n\n", bestTest, maxThroughput / (1024.0f * 1024.0f * 1024.0f));
+
+        /*
+       FILE *f = fopen("cache.csv", "wb");
+    
+       assert(f);
+    
+       fprintf(f, "Size;");
+    
+       for (int32_t i = 0; i < offsetsPerSize; i++) {
+       fprintf(f, "Offset %d; ", i);
+       }
+    
+       fprintf(f, "\n");
+    
+       for (int32_t i = 0; i < sizesCount; i++) {
+       Test test = tests[i * sizesCount];
+    
+       fprintf(f, "%lld; ", test.rangeSizeOrMask);
+    
+       for (int32_t j = 0; j < offsetsPerSize; j++) {
+       test = tests[i * sizesCount + j];
+       fprintf(f, "%f; ", test.maxThroughput / (1024.0f * 1024.0f * 1024.0f));
+       }
+    
+       fprintf(f, "\n");
+       }
+    
+       fclose(f);
+    */
     }
 
-    fclose(f);
-}
-
-return 0;
-
+    return 0;
 }

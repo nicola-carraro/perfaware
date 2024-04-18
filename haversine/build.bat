@@ -24,9 +24,11 @@ lib /nologo  asm.obj
 REM cl %common% input.c
 REM cl %common% test.c
 REM cl %common% %profile% %build_type% main.c
-cl %common% %profile% %build_type% Advapi32.lib asm.lib repetition.c
-cl %common% %profile% %build_type%  asm.lib asm.c
-cl %common% %profile% %build_type%  asm.lib cache.c
+REM cl %common% %profile% %build_type% Advapi32.lib asm.lib repetition.c
+REM cl %common% %profile% %build_type%  asm.lib asm.c
+REM cl %common% %profile% %build_type%  asm.lib cache.c
+cl %common% %profile% %build_type%  asm.lib sets.c
+
 REM cl %common% %profile% %build_type% faults.c
 
 del *.obj *.ilk *.lib

@@ -67,6 +67,10 @@ global testCacheUnaligned
 
 global testCacheUnalignedNonContiguous
 
+global testCacheSet
+
+global cacheSetComparison
+
 section .text
 
 movAllBytes:
@@ -405,6 +409,7 @@ testCacheAnd:
     ret
 
 
+
 testCacheUnaligned:    
     align 64
     mov rax, r9
@@ -431,6 +436,7 @@ testCacheUnalignedNonContiguous:
     align 64
     mov rax, r9
 .loop:  
+
     vmovdqu ymm0, [rdx + rax]
     vmovdqu ymm0, [rdx + rax + 64]
     vmovdqu ymm0, [rdx + rax + 128]
@@ -445,5 +451,44 @@ testCacheUnalignedNonContiguous:
     jb .loop
     mov rax, r9
     cmp rcx, rax
+    jg .loop
+    ret
+
+
+cacheSetComparison:    
+    align 64
+    mov rax, 0
+.loop:  
+    vmovdqu ymm0, [rdx + rax ]
+    vmovdqu ymm0, [rdx + rax + 0b0000_000001_000000]
+    vmovdqu ymm0, [rdx + rax + 0b0000_000010_000000]
+    vmovdqu ymm0, [rdx + rax + 0b0000_000011_000000]
+    vmovdqu ymm0, [rdx + rax + 0b0000_000100_000000]
+    vmovdqu ymm0, [rdx + rax + 0b0000_000101_000000]
+    vmovdqu ymm0, [rdx + rax + 0b0000_000110_000000]
+    vmovdqu ymm0, [rdx + rax + 0b0000_000111_000000]
+    sub rcx, 256
+    add rax, 0b0000_001000_000000
+    and rax, 0b0000_001111_111111
+    cmp rcx, 0
+    jg .loop
+    ret
+
+testCacheSet:    
+    align 64
+    mov rax, 0
+.loop:  
+    vmovdqu ymm0, [rdx + rax]
+    vmovdqu ymm0, [rdx + rax + 0b0001_000000_000000]
+    vmovdqu ymm0, [rdx + rax + 0b0010_000000_000000]
+    vmovdqu ymm0, [rdx + rax + 0b0011_000000_000000]
+    vmovdqu ymm0, [rdx + rax + 0b0100_000000_000000]
+    vmovdqu ymm0, [rdx + rax + 0b0101_000000_000000]
+    vmovdqu ymm0, [rdx + rax + 0b0110_000000_000000]
+    vmovdqu ymm0, [rdx + rax + 0b0111_000000_000000]
+    sub rcx, 256
+    add rax, 0b1000_000000_000000
+    and rax, 0b1111_111111_111111
+    cmp rcx, 0
     jg .loop
     ret
