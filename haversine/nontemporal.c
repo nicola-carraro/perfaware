@@ -26,14 +26,14 @@ typedef struct {
     float maxSeconds;
     float sumSeconds;
     size_t executionCount;
-    void (*function) (int64_t bytes, void *buffer);
+    void (*function) (int64_t bytes, void *source, void *destination);
     char name[256];
     float maxThroughput;
     int64_t bytes;
-    int64_t rangeSizeOrMask;
     int64_t cacheLineBits;
     int64_t cacheSetBits;
-    void *buffer;
+    void *source;
+    void *destination;
 } Test;
 
 void testCache(int64_t bytes, void *buffer, int64_t rangeSize);
@@ -48,9 +48,9 @@ void testCacheSet(int64_t bytes, void *buffer);
 
 void cacheSetComparison(int64_t bytes, void *buffer);
 
-void  testTemporal(int64_t bytes, void *buffer, int64_t rangeSize);
+void testTemporal(int64_t bytes, void *source, void *destination);
 
-void  testNonTemporal(int64_t bytes, void *buffer, int64_t rangeSize);
+void testNonTemporal(int64_t bytes, void *source, void *destination);
 
 void repeatTest(Test *test, uint64_t rdtscFrequency) {
     uint64_t ticksSinceLastReset = __rdtsc();
@@ -61,7 +61,7 @@ void repeatTest(Test *test, uint64_t rdtscFrequency) {
 
     while (true) {
         uint64_t start = __rdtsc();
-        test->function(test->bytes, test->buffer);
+        test->function(test->bytes, test->source, test->destination);
         uint64_t end = __rdtsc();
 
         uint64_t ticks = end - start;
@@ -138,8 +138,13 @@ int main(void) {
     // const int32_t l1size = KB(32);
     // const int32_t l2size = KB(512);
     // const int32_t l3size = MB(4);
-    char *buffer = malloc(bytes);
-    assert(buffer);
+    char *destination = malloc(bytes * 2);
+    assert(destination);
+
+    int64_t rangeSize = KB(1);
+
+    char *source = malloc(rangeSize);
+    assert(source);
 
     // Test tests[] = {
     // MAKE_TEST(testCacheAnd, "10", bytes, buffer, mask(10)),
@@ -165,32 +170,34 @@ int main(void) {
     // MAKE_TEST(testCacheAnd, "30", bytes, buffer, mask(30)),
     // MAKE_TEST(testCacheAnd, "31", bytes, buffer, mask(31)),
     // };
-    int32_t sizes[] = {GB(4)};
+    int32_t numTests = 2;
+    Test tests[2] = {0};
 
-    const int32_t numTests = ARRAYSIZE(sizes) * 2;
+    char name[256] = {0};
 
-    Test tests[ARRAYSIZE(sizes) * 2] = {0};
-    for (int32_t i = 0; i < ARRAYSIZE(sizes); i++) {
-        int32_t size = sizes[i];
-        int64_t testBytes = GB(1);
+    sprintf(name, "%d/%d (%lld: %s)", 0, numTests, rangeSize, "testTemporal");
+    Test *test = tests;
+    test->minSeconds = FLT_MAX;
+    test->function = testTemporal;
+    strncpy(test->name, name, sizeof(test->name));
+    test->name[ARRAYSIZE(test->name) - 1] = '\0';
+    test->bytes = bytes;
+    test->source = source;
+    test->destination = destination;
 
-        char name[256] = {0};
-
-        int32_t testIndex = i * 2;
-
-        sprintf(name, "%d/%d (%d: %s)", testIndex, numTests, size, "cacheSetComparison");
-        Test *test = tests + testIndex;
-        test->minSeconds = FLT_MAX;
-        test->function = cacheSetComparison;
-        strncpy(test->name, name, sizeof(test->name));
-        test->name[ARRAYSIZE(test->name) - 1] = '\0';
-        test->bytes = testBytes;
-        test->buffer = buffer;
-    }
+    sprintf(name, "%d/%d (%lld: %s)", 1, numTests, rangeSize, "testNonTemporal");
+    test = tests + 1;
+    test->minSeconds = FLT_MAX;
+    test->function = testNonTemporal;
+    strncpy(test->name, name, sizeof(test->name));
+    test->name[ARRAYSIZE(test->name) - 1] = '\0';
+    test->bytes = bytes;
+    test->source = source;
+    test->destination = destination;
 
     while (true) {
         for (size_t i = 0; i < numTests; i++) {
-            Test *test = tests + i;
+            test = tests + i;
 
             repeatTest(test, rdtscFrequency);
         }
@@ -200,10 +207,10 @@ int main(void) {
         char bestTest[256] = "";
 
         for (size_t i = 0; i < numTests; i++) {
-            Test test = tests[i];
-            if (test.maxThroughput > maxThroughput) {
-                maxThroughput = test.maxThroughput;
-                strncpy(bestTest, test.name, sizeof(bestTest));
+            test = tests + i;
+            if (test->maxThroughput > maxThroughput) {
+                maxThroughput = test->maxThroughput;
+                strncpy(bestTest, test->name, sizeof(bestTest));
             }
         }
 

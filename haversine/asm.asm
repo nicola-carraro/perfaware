@@ -71,6 +71,10 @@ global testCacheSet
 
 global cacheSetComparison
 
+global testTemporal
+
+global testNonTemporal
+
 section .text
 
 movAllBytes:
@@ -491,4 +495,70 @@ testCacheSet:
     and rax, 0b1111_111111_111111
     cmp rcx, 0
     jg .loop
+    ret
+
+testTemporal:    
+    align 64
+    xor rax, rax
+.loop:  
+    vmovdqu ymm0, [rdx]
+    vmovdqu [r8 + rax], ymm0
+    
+    vmovdqu ymm0, [rdx  + 32]
+    vmovdqu [r8 + rax + 32], ymm0
+    
+    vmovdqu ymm0, [rdx  + 64]
+    vmovdqu [r8 + rax + 64], ymm0
+  
+    vmovdqu ymm0, [rdx  + 96]
+    vmovdqu [r8 + rax + 96], ymm0
+ 
+    vmovdqu ymm0, [rdx  + 128]
+    vmovdqu [r8 + rax + 128], ymm0
+    
+    vmovdqu ymm0, [rdx  + 160]
+    vmovdqu [r8 + rax + 160], ymm0
+
+    vmovdqu ymm0, [rdx  + 192]
+    vmovdqu [r8 + rax + 192], ymm0
+
+    vmovdqu ymm0, [rdx  + 224]
+    vmovdqu [r8 + rax + 224], ymm0
+
+    add rax, 256
+    cmp rax, rcx
+    jb .loop
+    ret
+
+testNonTemporal:    
+    align 64
+    xor rax, rax
+.loop:  
+    vmovdqu ymm0, [rdx]
+    vmovntdq [r8 + rax], ymm0
+    
+    vmovdqu ymm0, [rdx  + 32]
+    vmovntdq [r8 + rax + 32], ymm0
+    
+    vmovdqu ymm0, [rdx  + 64]
+    vmovntdq [r8 + rax + 64], ymm0
+  
+    vmovdqu ymm0, [rdx  + 96]
+    vmovntdq [r8 + rax + 96], ymm0
+ 
+    vmovdqu ymm0, [rdx  + 128]
+    vmovntdq [r8 + rax + 128], ymm0
+    
+    vmovdqu ymm0, [rdx  + 160]
+    vmovntdq [r8 + rax + 160], ymm0
+
+    vmovdqu ymm0, [rdx  + 192]
+    vmovntdq [r8 + rax + 192], ymm0
+
+    vmovdqu ymm0, [rdx  + 224]
+    vmovntdq [r8 + rax + 224], ymm0
+
+    add rax, 256
+    cmp rax, rcx
+    jb .loop
     ret

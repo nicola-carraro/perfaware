@@ -27,8 +27,8 @@ REM cl %common% %profile% %build_type% main.c
 REM cl %common% %profile% %build_type% Advapi32.lib asm.lib repetition.c
 REM cl %common% %profile% %build_type%  asm.lib asm.c
 REM cl %common% %profile% %build_type%  asm.lib cache.c
-cl %common% %profile% %build_type%  asm.lib sets.c
-
+REM cl %common% %profile% %build_type%  asm.lib sets.c
+cl %common% %profile% %build_type%  asm.lib nontemporal.c
 REM cl %common% %profile% %build_type% faults.c
 
 del *.obj *.ilk *.lib
