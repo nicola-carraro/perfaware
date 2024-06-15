@@ -9,6 +9,7 @@
 #include "stdint.h"
 #include "assert.h"
 #include "profiler.c"
+#include "windows.h"
 
 #ifdef _WIN32
 
@@ -31,7 +32,7 @@
 
 #define ANSWERS_PATH "data/answers"
 
-#define ARENA_SIZE 8 *1024ll *1024ll *1024l
+#define ARENA_SIZE 8 * 1024ll * 1024ll * 1024l
 
 #define EARTH_RADIUS 6371
 
@@ -87,42 +88,26 @@ void writeBinaryToFile(FILE *file, const char *path, void *data, size_t size, si
     }
 }
 
-size_t getFileSize(FILE *file, char *path) {
-    TIME_FUNCTION size_t result = 0;
+size_t getFileSize(HANDLE *file, char *path) {
+    TIME_FUNCTION;
 
-    const char *errorMessage = "could not query the size of %s";
+    DWORD high = 0;
+    DWORD low = GetFileSize(file, &high);
 
-    if (_fseeki64(file, 0, SEEK_END) != 0) {
-        int errorNumber = errno;
-        fclose(file);
-        die(__FILE__, __LINE__, errorNumber, errorMessage, path);
-    }
-    else {
-        int64_t cursorPosition = _ftelli64(file);
-
-        if (cursorPosition >= 0) {
-            result = (size_t) cursorPosition;
-
-            if (_fseeki64(file, 0, SEEK_SET) != 0) {
-                int errorNumber = errno;
-                fclose(file);
-                die(__FILE__, __LINE__, errorNumber, "could not restore cursor position of %s", path);
-            }
-        }
-        else {
-            int errorNumber = errno;
-            fclose(file);
-            die(__FILE__, __LINE__, errorNumber, errorMessage, path);
-        }
+    if (low == INVALID_FILE_SIZE) {
+        die(__FILE__, __LINE__, 0, "could not query the size of %s", path);
     }
 
-    STOP_COUNTER return result;
+    LARGE_INTEGER result = {.LowPart = low, .HighPart = high};
+
+    STOP_COUNTER;
+    return result.QuadPart;
 }
 
 Arena arenaInit() {
     TIME_FUNCTION Arena arena = {0};
 
-    arena.memory = malloc(ARENA_SIZE);
+    arena.memory = VirtualAlloc(0, ARENA_SIZE, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
 
     if (!arena.memory) {
         die(__FILE__, __LINE__, errno, "could not initialize arena");
@@ -157,9 +142,9 @@ void freeLastAllocation(Arena *arena) {
 }
 
 String readFileToString(char *path, Arena *arena) {
-    TIME_FUNCTION FILE *file = fopen(path, "rb");
+    HANDLE file = CreateFile(path, GENERIC_READ, 0, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0);
 
-    if (file == NULL) {
+    if (file == INVALID_HANDLE_VALUE) {
         die(__FILE__, __LINE__, errno, "could not open %s", path);
     }
     String result = {0};
@@ -167,12 +152,36 @@ String readFileToString(char *path, Arena *arena) {
     result.data.signedData = arenaAllocate(arena, result.size);
 
     MEASURE_THROUGHPUT("fread", result.size);
-    size_t read = fread(result.data.signedData, 1, result.size, file);
-    STOP_COUNTER if (read < result.size) {
-        die(__FILE__, __LINE__, errno, "could not read %s, read %zu", path, read);
+
+    size_t totalBytesRead = 0;
+
+    char *buffer = result.data.signedData;
+
+    BOOL ok = TRUE;
+
+    while (totalBytesRead < result.size) {
+        DWORD bytesToRead = result.size <= MAXDWORD ? (DWORD) result.size : MAXDWORD;
+
+        DWORD bytesRead = 0;
+
+        ok = ReadFile(file, buffer, bytesToRead, &bytesRead, 0);
+        totalBytesRead += bytesRead;
+        buffer += bytesRead;
     }
 
-    STOP_COUNTER return result;
+    if (!ok) {
+        die(__FILE__, __LINE__, errno, "could not read %s", path);
+    }
+
+    ok = CloseHandle(file);
+
+    if (!ok) {
+        die(__FILE__, __LINE__, errno, "could not close %s", path);
+    }
+
+    STOP_COUNTER;
+
+    return result;
 }
 
 char *winErrorMessage() {
@@ -209,7 +218,7 @@ uint64_t getPageFaultCount(HANDLE process) {
 }
 
 double degreesToRadians(double degrees) {
-    return degrees *0.01745329251994329577;
+    return degrees * 0.01745329251994329577;
 }
 
 double square(double n) {
