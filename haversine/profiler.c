@@ -186,9 +186,7 @@ void printTimedBlocksStats(Counters *counters, size_t totalCount) {
 
 #else
 
-#define TIME_BLOCK\
-{\
-}
+#define TIME_BLOCK {}
 
 #define MEASURE_THROUGHPUT(NAME, BYTES)\
 {\
@@ -198,13 +196,9 @@ void printTimedBlocksStats(Counters *counters, size_t totalCount) {
 {\
 }
 
-#define TIME_FUNCTION\
-{\
-}
+#define TIME_FUNCTION {}
 
-#define STOP_COUNTER\
-{\
-}
+#define STOP_COUNTER {}
 
 #endif
 

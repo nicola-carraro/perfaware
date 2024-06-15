@@ -43,7 +43,7 @@ double getAverageDistance(Value *json) {
 
         sum += distance;
     }
-    STOP_COUNTER double average = sum / (double) count;
+    double average = sum / (double) count;
 
     STOP_COUNTER return average;
 }
