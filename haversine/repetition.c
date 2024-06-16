@@ -228,77 +228,77 @@ void repeatTest(
     printf("\n");
 }
 
-void readWithFread(
-    Iteration *iteration,
-    Arena *arena,
-    Alloc alloc,
-    HANDLE process,
-    uint64_t largePageMinimum
-) {
-    FILE *file = fopen(JSON_PATH, "rb");
+// void readWithFread(
+//     Iteration *iteration,
+//     Arena *arena,
+//     Alloc alloc,
+//     HANDLE process,
+//     uint64_t largePageMinimum
+// ) {
+//     FILE *file = fopen(JSON_PATH, "rb");
 
-    if (file != NULL) {
-        size_t size = getFileSize(file, JSON_PATH);
+//     if (file != NULL) {
+//         size_t size = getFileSize(file, JSON_PATH);
 
-        char *buffer = 0;
+//         char *buffer = 0;
 
-        buffer = allocate(alloc, arena, size, largePageMinimum);
+//         buffer = allocate(alloc, arena, size, largePageMinimum);
 
-        iterationStartCounters(iteration, process, size);
+//         iterationStartCounters(iteration, process, size);
 
-        size_t read = fread(buffer, 1, size, file);
+//         size_t read = fread(buffer, 1, size, file);
 
-        iterationStopCounters(iteration, process);
+//         iterationStopCounters(iteration, process);
 
-        fclose(file);
+//         fclose(file);
 
-        freeAllocation(alloc, arena, buffer);
+//         freeAllocation(alloc, arena, buffer);
 
-        if (read < 1) {
-            die(__FILE__, __LINE__, errno, "Read failed");
-        }
-    }
-}
+//         if (read < 1) {
+//             die(__FILE__, __LINE__, errno, "Read failed");
+//         }
+//     }
+// }
 
-void readWith_read(
-    Iteration *iteration,
-    Arena *arena,
-    Alloc alloc,
-    HANDLE process,
-    uint64_t largePageMinimum
-) {
-    int fd = _open(JSON_PATH, _O_RDONLY | _O_BINARY);
+// void readWith_read(
+//     Iteration *iteration,
+//     Arena *arena,
+//     Alloc alloc,
+//     HANDLE process,
+//     uint64_t largePageMinimum
+// ) {
+//     int fd = _open(JSON_PATH, _O_RDONLY | _O_BINARY);
 
-    if (fd != 0) {
-        struct __stat64 fileStat = {0};
-        if (_stat64(JSON_PATH, &fileStat) == 0) {
-            size_t size = fileStat.st_size;
-            char *buffer = 0;
-            buffer = allocate(alloc, arena, size, largePageMinimum);
-            char *cursor = buffer;
-            size_t remainingBytes = size;
-            iterationStartCounters(iteration, process, size);
-            while (remainingBytes > 0) {
-                int bytesToRead = 0;
-                if (size > INT_MAX) {
-                    bytesToRead = INT_MAX;
-                }
-                else {
-                    bytesToRead = (int) size;
-                }
-                int read = _read(fd, cursor, bytesToRead);
-                remainingBytes -= read;
-                cursor += read;
-                if (read < size) {
-                    die(__FILE__, __LINE__, errno, "Read failed");
-                }
-            }
-            iterationStopCounters(iteration, process);
-            _close(fd);
-            freeAllocation(alloc, arena, buffer);
-        }
-    }
-}
+//     if (fd != 0) {
+//         struct __stat64 fileStat = {0};
+//         if (_stat64(JSON_PATH, &fileStat) == 0) {
+//             size_t size = fileStat.st_size;
+//             char *buffer = 0;
+//             buffer = allocate(alloc, arena, size, largePageMinimum);
+//             char *cursor = buffer;
+//             size_t remainingBytes = size;
+//             iterationStartCounters(iteration, process, size);
+//             while (remainingBytes > 0) {
+//                 int bytesToRead = 0;
+//                 if (size > INT_MAX) {
+//                     bytesToRead = INT_MAX;
+//                 }
+//                 else {
+//                     bytesToRead = (int) size;
+//                 }
+//                 int read = _read(fd, cursor, bytesToRead);
+//                 remainingBytes -= read;
+//                 cursor += read;
+//                 if (read < size) {
+//                     die(__FILE__, __LINE__, errno, "Read failed");
+//                 }
+//             }
+//             iterationStopCounters(iteration, process);
+//             _close(fd);
+//             freeAllocation(alloc, arena, buffer);
+//         }
+//     }
+// }
 
 void readWithReadFile(
     Iteration *iteration,
@@ -354,112 +354,112 @@ void readWithReadFile(
     }
 }
 
-void movBuffer(Iteration *iteration, Arena *arena, Alloc alloc, HANDLE process, uint64_t largePageMinimum) {
-    FILE *file = fopen(JSON_PATH, "rb");
+// void movBuffer(Iteration *iteration, Arena *arena, Alloc alloc, HANDLE process, uint64_t largePageMinimum) {
+//     FILE *file = fopen(JSON_PATH, "rb");
 
-    if (file != NULL) {
-        size_t size = getFileSize(file, JSON_PATH);
-        char *buffer = 0;
+//     if (file != NULL) {
+//         size_t size = getFileSize(file, JSON_PATH);
+//         char *buffer = 0;
 
-        buffer = allocate(alloc, arena, size, largePageMinimum);
+//         buffer = allocate(alloc, arena, size, largePageMinimum);
 
-        iterationStartCounters(iteration, process, size);
+//         iterationStartCounters(iteration, process, size);
 
-        movAllBytes(size, buffer);
+//         movAllBytes(size, buffer);
 
-        iterationStopCounters(iteration, process);
+//         iterationStopCounters(iteration, process);
 
-        freeAllocation(alloc, arena, buffer);
+//         freeAllocation(alloc, arena, buffer);
 
-        fclose(file);
-    }
-}
+//         fclose(file);
+//     }
+// }
 
-void nopBuffer(Iteration *iteration, Arena *arena, Alloc alloc, HANDLE process, uint64_t largePageMinimum) {
-    FILE *file = fopen(JSON_PATH, "rb");
+// void nopBuffer(Iteration *iteration, Arena *arena, Alloc alloc, HANDLE process, uint64_t largePageMinimum) {
+//     FILE *file = fopen(JSON_PATH, "rb");
 
-    if (file != NULL) {
-        size_t size = getFileSize(file, JSON_PATH);
-        char *buffer = 0;
+//     if (file != NULL) {
+//         size_t size = getFileSize(file, JSON_PATH);
+//         char *buffer = 0;
 
-        buffer = allocate(alloc, arena, size, largePageMinimum);
+//         buffer = allocate(alloc, arena, size, largePageMinimum);
 
-        iterationStartCounters(iteration, process, size);
+//         iterationStartCounters(iteration, process, size);
 
-        nopAllBytes(size, buffer);
+//         nopAllBytes(size, buffer);
 
-        iterationStopCounters(iteration, process);
+//         iterationStopCounters(iteration, process);
 
-        freeAllocation(alloc, arena, buffer);
+//         freeAllocation(alloc, arena, buffer);
 
-        fclose(file);
-    }
-}
+//         fclose(file);
+//     }
+// }
 
-void cmpBuffer(Iteration *iteration, Arena *arena, Alloc alloc, HANDLE process, uint64_t largePageMinimum) {
-    FILE *file = fopen(JSON_PATH, "rb");
+// void cmpBuffer(Iteration *iteration, Arena *arena, Alloc alloc, HANDLE process, uint64_t largePageMinimum) {
+//     FILE *file = fopen(JSON_PATH, "rb");
 
-    if (file != NULL) {
-        size_t size = getFileSize(file, JSON_PATH);
-        char *buffer = 0;
+//     if (file != NULL) {
+//         size_t size = getFileSize(file, JSON_PATH);
+//         char *buffer = 0;
 
-        buffer = allocate(alloc, arena, size, largePageMinimum);
+//         buffer = allocate(alloc, arena, size, largePageMinimum);
 
-        iterationStartCounters(iteration, process, size);
+//         iterationStartCounters(iteration, process, size);
 
-        cmpAllBytes(size, buffer);
+//         cmpAllBytes(size, buffer);
 
-        iterationStopCounters(iteration, process);
+//         iterationStopCounters(iteration, process);
 
-        freeAllocation(alloc, arena, buffer);
+//         freeAllocation(alloc, arena, buffer);
 
-        fclose(file);
-    }
-}
+//         fclose(file);
+//     }
+// }
 
-void dec(Iteration *iteration, Arena *arena, Alloc alloc, HANDLE process, uint64_t largePageMinimum) {
-    UNREFERENCED_PARAMETER(arena);
-    UNREFERENCED_PARAMETER(alloc);
-    UNREFERENCED_PARAMETER(arena);
-    UNREFERENCED_PARAMETER(largePageMinimum);
+// void dec(Iteration *iteration, Arena *arena, Alloc alloc, HANDLE process, uint64_t largePageMinimum) {
+//     UNREFERENCED_PARAMETER(arena);
+//     UNREFERENCED_PARAMETER(alloc);
+//     UNREFERENCED_PARAMETER(arena);
+//     UNREFERENCED_PARAMETER(largePageMinimum);
 
-    FILE *file = fopen(JSON_PATH, "rb");
+//     FILE *file = fopen(JSON_PATH, "rb");
 
-    if (file != NULL) {
-        size_t size = getFileSize(file, JSON_PATH);
+//     if (file != NULL) {
+//         size_t size = getFileSize(file, JSON_PATH);
 
-        iterationStartCounters(iteration, process, size);
+//         iterationStartCounters(iteration, process, size);
 
-        decAllBytes(size);
+//         decAllBytes(size);
 
-        iterationStopCounters(iteration, process);
+//         iterationStopCounters(iteration, process);
 
-        fclose(file);
-    }
-}
+//         fclose(file);
+//     }
+// }
 
-void writeBuffer(Iteration *iteration, Arena *arena, Alloc alloc, HANDLE process, uint64_t largePageMinimum) {
-    FILE *file = fopen(JSON_PATH, "rb");
+// void writeBuffer(Iteration *iteration, Arena *arena, Alloc alloc, HANDLE process, uint64_t largePageMinimum) {
+//     FILE *file = fopen(JSON_PATH, "rb");
 
-    if (file != NULL) {
-        size_t size = getFileSize(file, JSON_PATH);
-        char *buffer = 0;
+//     if (file != NULL) {
+//         size_t size = getFileSize(file, JSON_PATH);
+//         char *buffer = 0;
 
-        buffer = allocate(alloc, arena, size, largePageMinimum);
+//         buffer = allocate(alloc, arena, size, largePageMinimum);
 
-        iterationStartCounters(iteration, process, size);
+//         iterationStartCounters(iteration, process, size);
 
-        for (uint64_t i = 0; i < size; i++) {
-            buffer[i] = (char) i;
-        }
+//         for (uint64_t i = 0; i < size; i++) {
+//             buffer[i] = (char) i;
+//         }
 
-        iterationStopCounters(iteration, process);
+//         iterationStopCounters(iteration, process);
 
-        freeAllocation(alloc, arena, buffer);
+//         freeAllocation(alloc, arena, buffer);
 
-        fclose(file);
-    }
-}
+//         fclose(file);
+//     }
+// }
 
 uint64_t enableLargePages() {
     HANDLE token = INVALID_HANDLE_VALUE;
@@ -505,7 +505,7 @@ int main(void) {
     uint64_t largePageMinimum = enableLargePages();
 
     Test tests[] = {
-        MAKE_TEST(dec, "dec", Alloc_None),
+        //MAKE_TEST(dec, "dec", Alloc_None),
         // MAKE_TEST(writeBuffer, "writeBuffer", Alloc_None),
         // MAKE_TEST(movBuffer, "movBuffer", Alloc_None),
         // MAKE_TEST(cmpBuffer, "cmpBuffer", Alloc_None),
@@ -523,8 +523,8 @@ int main(void) {
         // MAKE_TEST(readWithFread, "VirtualAlloc (large) + fread", Alloc_Large),
         // MAKE_TEST(readWithReadFile, "ReadFile", Alloc_None),
         // MAKE_TEST(readWithReadFile, "malloc + ReadFile", Alloc_Malloc),
-        // MAKE_TEST(readWithReadFile, "VirtualAlloc + ReadFile", Alloc_VirtualAlloc),
-        // MAKE_TEST(readWithReadFile, "VirtualAlloc (large) + ReadFile", Alloc_Large),
+        MAKE_TEST(readWithReadFile, "VirtualAlloc + ReadFile", Alloc_VirtualAlloc),
+         //MAKE_TEST(readWithReadFile, "VirtualAlloc (large) + ReadFile", Alloc_Large),
     };
 
     while (true) {

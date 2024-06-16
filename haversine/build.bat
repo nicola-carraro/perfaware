@@ -21,14 +21,14 @@ del *.pdb
 nasm -f win64 asm.asm
 lib /nologo  asm.obj
 
-cl %common% input.c
+REM cl %common% input.c
 REM cl %common% test.c
-cl %common% %profile% %build_type% main.c
-REM cl %common% %profile% %build_type% Advapi32.lib asm.lib repetition.c
+REM cl %common% %profile% %build_type% main.c
+cl %common% %profile% %build_type% Advapi32.lib asm.lib repetition.c
 REM cl %common% %profile% %build_type%  asm.lib asm.c
 REM cl %common% %profile% %build_type%  asm.lib cache.c
 REM cl %common% %profile% %build_type%  asm.lib sets.c
-cl %common% %profile% %build_type%  asm.lib nontemporal.c
+REM cl %common% %profile% %build_type%  asm.lib nontemporal.c
 REM cl %common% %profile% %build_type% faults.c
 
 del *.obj *.ilk *.lib

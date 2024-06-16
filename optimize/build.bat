@@ -18,7 +18,7 @@ goto argactionstart
 
 del *.pdb
 
-cl %common% %profile% %build_type% haversine0.c
+cl %common% %profile% %build_type% haversine1.c
 
 del *.obj *.ilk *.lib
 
