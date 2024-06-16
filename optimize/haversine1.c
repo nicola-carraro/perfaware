@@ -30,7 +30,7 @@ typedef struct {
 
 #define MAX_COUNTERS 4096
 
-#define READ_SIZE (4 * 1024 * 1024)
+#define READ_SIZE ((size_t) 1024 * 1024 * 1024)
 
 typedef struct {
     uint64_t totalTicks;
@@ -272,7 +272,6 @@ uint64_t estimateRdtscFrequency() {
     return cpuTicks;
 }
 
-
 #define JSON_PATH "data/pairs.json"
 
 #define ANSWERS_PATH "data/answers"
@@ -388,6 +387,7 @@ void freeLastAllocation(Arena *arena) {
 
 void readFileToString(HANDLE file, size_t size, char* buffer) {
 
+    TIME_FUNCTION;
 
     size_t totalBytesRead = 0;
 
@@ -399,13 +399,17 @@ void readFileToString(HANDLE file, size_t size, char* buffer) {
         DWORD bytesRead = 0;
 
         ok = ReadFile(file, buffer, bytesToRead, &bytesRead, 0);
+
+        if (!ok) {
+            DWORD error = GetLastError();
+            die(__FILE__, __LINE__, error, "could not read file");
+        }
+
         totalBytesRead += bytesRead;
         buffer += bytesRead;
     }
 
-    if (!ok) {
-        die(__FILE__, __LINE__, errno, "could not read file");
-    }
+    STOP_COUNTER;
 
 }
 
@@ -644,15 +648,6 @@ bool isNullLiteral(Parser *parser) {
 }
 
 bool hasNext(Parser *parser) {
-
-  
-
-    if(parser->offset >= parser->bytesRead){
-        size_t remaining =  parser->text.size - parser->offset;
-        size_t readSize = (READ_SIZE > remaining) ? remaining : READ_SIZE;
-        readFileToString(parser->file, readSize, parser->text.data.signedData + parser->offset);
-        parser->bytesRead += readSize;
-    }
 
     return parser->offset < parser->text.size;
 
@@ -1293,6 +1288,14 @@ size_t getElementCount(Value *array) {
 
 Value *parseElement(Parser *parser) {
     assert(parser != NULL);
+
+    if(parser->bytesRead - parser->offset < 1024){
+        size_t remaining =  parser->text.size - parser->bytesRead;
+        size_t readSize = ((size_t)READ_SIZE >(size_t) remaining) ? (size_t) remaining : (size_t) READ_SIZE;
+        readFileToString(parser->file, readSize, parser->text.data.signedData + parser->bytesRead);
+        parser->bytesRead += readSize;
+    }
+
     Value *result = (Value *) arenaAllocate(parser->arena, sizeof(Value));
     skipWhitespace(parser);
 
@@ -1422,12 +1425,9 @@ int main(void) {
 
     size_t size = getFileSize(file);
 
-
     if (file == INVALID_HANDLE_VALUE) {
         die(__FILE__, __LINE__, errno, "could not open %s", JSON_PATH);
     }
-
-
 
     // printf("Json: %.*s", (int)text.size, text.data);
     // printf("hi");
@@ -1436,7 +1436,6 @@ int main(void) {
     Value *json = parseJson(&parser);
 
     bool  ok = CloseHandle(file);
-
 
     if (!ok) {
         die(__FILE__, __LINE__, errno, "could not close %s", JSON_PATH);

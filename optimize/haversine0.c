@@ -385,6 +385,8 @@ void freeLastAllocation(Arena *arena) {
 }
 
 String readFileToString(char *path, Arena *arena) {
+
+    TIME_FUNCTION;
     HANDLE file = CreateFile(path, GENERIC_READ, 0, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0);
 
     if (file == INVALID_HANDLE_VALUE) {
@@ -394,7 +396,6 @@ String readFileToString(char *path, Arena *arena) {
     result.size = getFileSize(file, path);
     result.data.signedData = arenaAllocate(arena, result.size);
 
-    MEASURE_THROUGHPUT("fread", result.size);
 
     size_t totalBytesRead = 0;
 
@@ -659,7 +660,10 @@ bool isNullLiteral(Parser *parser) {
 }
 
 bool hasNext(Parser *parser) {
-    return parser->offset < parser->text.size;
+
+    bool result = parser->offset < parser->text.size;
+
+    return result;
 }
 
 void nextLine(Parser *parser) {
