@@ -30,6 +30,8 @@ typedef struct {
 
 #define MAX_COUNTERS 4096
 
+#define READ_SIZE (4 * 1024 * 1024)
+
 typedef struct {
     uint64_t totalTicks;
     uint64_t ticksInRoot;
@@ -384,23 +386,15 @@ void freeLastAllocation(Arena *arena) {
     arena->currentOffset = arena->previousOffset;
 }
 
-String readFileToString(HANDLE file, size_t size, char* buffer) {
+void readFileToString(HANDLE file, size_t size, char* buffer) {
 
-
-    String result = {0};
-
-    result.size = size;
-    result.data.signedData = buffer;
-
-
-    MEASURE_THROUGHPUT("fread", result.size);
 
     size_t totalBytesRead = 0;
 
     BOOL ok = TRUE;
 
     while (totalBytesRead < size) {
-        DWORD bytesToRead = size <= MAXDWORD ? (DWORD) result.size : MAXDWORD;
+        DWORD bytesToRead = size <= MAXDWORD ? (DWORD) size : MAXDWORD;
 
         DWORD bytesRead = 0;
 
@@ -413,10 +407,6 @@ String readFileToString(HANDLE file, size_t size, char* buffer) {
         die(__FILE__, __LINE__, errno, "could not read file");
     }
 
-
-    STOP_COUNTER;
-
-    return result;
 }
 
 char *winErrorMessage() {
@@ -523,9 +513,11 @@ const String falseLiteral = {FALSE_LITERAL, sizeof(FALSE_LITERAL) - 1};
 typedef struct {
     String text;
     size_t offset;
+    size_t bytesRead;
     size_t line;
     size_t column;
     Arena *arena;
+    HANDLE file;
 } Parser;
 
 typedef enum {
@@ -597,11 +589,12 @@ void skipChars(Parser *parser, size_t count);
 
 void printString(String string);
 
-Parser initParser(String text, Arena *arena) {
+Parser initParser(HANDLE file, size_t size, Arena *arena) {
     TIME_FUNCTION Parser parser = {0};
+    parser.file = file;
     parser.arena = arena;
-    parser.text = text;
-
+    parser.text.data.signedData = arenaAllocate(arena, size);
+    parser.text.size = size;
     STOP_COUNTER return parser;
 }
 
@@ -651,7 +644,18 @@ bool isNullLiteral(Parser *parser) {
 }
 
 bool hasNext(Parser *parser) {
+
+  
+
+    if(parser->offset >= parser->bytesRead){
+        size_t remaining =  parser->text.size - parser->offset;
+        size_t readSize = (READ_SIZE > remaining) ? remaining : READ_SIZE;
+        readFileToString(parser->file, readSize, parser->text.data.signedData + parser->offset);
+        parser->bytesRead += readSize;
+    }
+
     return parser->offset < parser->text.size;
+
 }
 
 void nextLine(Parser *parser) {
@@ -700,6 +704,7 @@ uint32_t decodeUtf8Unchecked(String codepoint) {
 
 char next(Parser *parser) {
     assert(hasNext(parser));
+
     char result = (parser->text.data.signedData + parser->offset)[0];
 
     bool isNewLine = result == '\n';
@@ -1417,26 +1422,25 @@ int main(void) {
 
     size_t size = getFileSize(file);
 
-    void * buffer = arenaAllocate(&arena, size);
 
-    String text = readFileToString(file, size, buffer);
-
-        if (file == INVALID_HANDLE_VALUE) {
+    if (file == INVALID_HANDLE_VALUE) {
         die(__FILE__, __LINE__, errno, "could not open %s", JSON_PATH);
     }
 
-      bool  ok = CloseHandle(file);
-
-    if (!ok) {
-        die(__FILE__, __LINE__, errno, "could not close %s", JSON_PATH);
-    }
 
 
     // printf("Json: %.*s", (int)text.size, text.data);
     // printf("hi");
-    Parser parser = initParser(text, &arena);
+    Parser parser = initParser(file, size, &arena);
 
     Value *json = parseJson(&parser);
+
+    bool  ok = CloseHandle(file);
+
+
+    if (!ok) {
+        die(__FILE__, __LINE__, errno, "could not close %s", JSON_PATH);
+    }
 
     // printElement(json, 2, 0);
     // printf("\n");
