@@ -1,0 +1,5 @@
+data
+*.exe
+*.pdb
+vs
+*.sln
