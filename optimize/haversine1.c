@@ -30,7 +30,7 @@ typedef struct {
 
 #define MAX_COUNTERS 4096
 
-#define READ_SIZE ((size_t) 1024 * 1024 * 1024)
+#define READ_SIZE ((size_t) 1024 * 1024)
 
 typedef struct {
     uint64_t totalTicks;
@@ -73,9 +73,9 @@ void pushCounter(Counters *counters, size_t id, const char *name, size_t bytes) 
 
     timedBlock->calls++;
 
-    counters->stack[counters->stackSize] .id = id;
-    counters->stack[counters->stackSize] .start = count;
-    counters->stack[counters->stackSize] .initialTicksInRoot = timedBlock->ticksInRoot;
+    counters->stack[counters->stackSize].id = id;
+    counters->stack[counters->stackSize].start = count;
+    counters->stack[counters->stackSize].initialTicksInRoot = timedBlock->ticksInRoot;
     counters->stackSize++;
 }
 
@@ -84,9 +84,9 @@ void popCounter(Counters *counters) {
 
     assert(counters->stackSize > 0);
 
-    size_t startTicks = counters->stack[counters->stackSize - 1] .start;
-    size_t id = counters->stack[counters->stackSize - 1] .id;
-    uint64_t initialTicksInRoot = counters->stack[counters->stackSize - 1] .initialTicksInRoot;
+    size_t startTicks = counters->stack[counters->stackSize - 1].start;
+    size_t id = counters->stack[counters->stackSize - 1].id;
+    uint64_t initialTicksInRoot = counters->stack[counters->stackSize - 1].initialTicksInRoot;
 
     size_t elapsed = endTicks - startTicks;
     TimedBlock *timedBlock = &(counters->timedBlocks[id]);
@@ -96,7 +96,7 @@ void popCounter(Counters *counters) {
     counters->stackSize--;
 
     if (counters->stackSize > 0) {
-        size_t parentId = counters->stack[counters->stackSize - 1] .id;
+        size_t parentId = counters->stack[counters->stackSize - 1].id;
         TimedBlock *parentBlock = &(counters->timedBlocks[parentId]);
         parentBlock->childrenTicks += elapsed;
     }
@@ -182,13 +182,11 @@ void printTimedBlocksStats(Counters *counters, size_t totalCount) {
     MEASURE_THROUGHPUT(NAME, 0);\
 }
 
-#define TIME_FUNCTION \
-{\
+#define TIME_FUNCTION {\
     TIME_BLOCK(__func__);\
 }
 
-#define STOP_COUNTER \
-{\
+#define STOP_COUNTER {\
     popCounter(&COUNTERS);\
 }
 
@@ -225,16 +223,16 @@ void stopCounters(Counters *counters) {
 }
 
 void printPerformanceReport(Counters *counters) {
+    #ifdef PROFILE
     size_t totalCount = counters->end - counters->start;
 
-#ifdef PROFILE
     printTimedBlocksStats(counters, totalCount);
-#endif
 
     float totalSeconds = ((float) (totalCount)) / ((float) (counters->cpuCounterFrequency));
     printf("\n");
 
     printf("Total time:       %14.10f\n", totalSeconds);
+#endif
 }
 
 uint64_t getOsTimeFrequency() {
@@ -385,8 +383,7 @@ void freeLastAllocation(Arena *arena) {
     arena->currentOffset = arena->previousOffset;
 }
 
-void readFileToString(HANDLE file, size_t size, char* buffer) {
-
+void readFileToString(HANDLE file, size_t size, char *buffer) {
     TIME_FUNCTION;
 
     size_t totalBytesRead = 0;
@@ -410,7 +407,6 @@ void readFileToString(HANDLE file, size_t size, char* buffer) {
     }
 
     STOP_COUNTER;
-
 }
 
 char *winErrorMessage() {
@@ -648,9 +644,7 @@ bool isNullLiteral(Parser *parser) {
 }
 
 bool hasNext(Parser *parser) {
-
     return parser->offset < parser->text.size;
-
 }
 
 void nextLine(Parser *parser) {
@@ -1289,9 +1283,9 @@ size_t getElementCount(Value *array) {
 Value *parseElement(Parser *parser) {
     assert(parser != NULL);
 
-    if(parser->bytesRead - parser->offset < 1024){
-        size_t remaining =  parser->text.size - parser->bytesRead;
-        size_t readSize = ((size_t)READ_SIZE >(size_t) remaining) ? (size_t) remaining : (size_t) READ_SIZE;
+    if (parser->bytesRead - parser->offset < 1024) {
+        size_t remaining = parser->text.size - parser->bytesRead;
+        size_t readSize = ((size_t) READ_SIZE > (size_t) remaining) ? (size_t) remaining : (size_t) READ_SIZE;
         readFileToString(parser->file, readSize, parser->text.data.signedData + parser->bytesRead);
         parser->bytesRead += readSize;
     }
@@ -1364,7 +1358,7 @@ double getAverageDistance(Value *json) {
     double sum = 0;
     size_t count = getElementCount(pairs);
 
-    MEASURE_THROUGHPUT("pairsLoop", count *4 *sizeof(double));
+    MEASURE_THROUGHPUT("pairsLoop", count * 4 * sizeof(double));
 
     for (size_t elementIndex = 0; elementIndex < count; elementIndex++) {
         Value *pair = getElementOfArray(pairs, elementIndex);
@@ -1413,45 +1407,60 @@ void bar() {
 }
 
 int main(void) {
-    COUNTERS.cpuCounterFrequency = estimateRdtscFrequency();
+    uint64_t bestResult = UINT64_MAX;
 
-    startCounters(&COUNTERS);
-    // sleepOneSecond();
-    SetConsoleOutputCP(65001);
+    for (int i = 0; i < 100; i++) {
+        ZeroMemory(&COUNTERS, sizeof(COUNTERS));
+        COUNTERS.cpuCounterFrequency = estimateRdtscFrequency();
 
-    Arena arena = arenaInit();
+        startCounters(&COUNTERS);
+        // sleepOneSecond();
+        SetConsoleOutputCP(65001);
 
-    HANDLE file = CreateFile(JSON_PATH, GENERIC_READ, 0, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0);
+        Arena arena = arenaInit();
 
-    size_t size = getFileSize(file);
+        HANDLE file = CreateFile(JSON_PATH, GENERIC_READ, 0, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0);
 
-    if (file == INVALID_HANDLE_VALUE) {
-        die(__FILE__, __LINE__, errno, "could not open %s", JSON_PATH);
+        size_t size = getFileSize(file);
+
+        if (file == INVALID_HANDLE_VALUE) {
+            die(__FILE__, __LINE__, errno, "could not open %s", JSON_PATH);
+        }
+
+        // printf("Json: %.*s", (int)text.size, text.data);
+        // printf("hi");
+        Parser parser = initParser(file, size, &arena);
+
+        Value *json = parseJson(&parser);
+
+        bool ok = CloseHandle(file);
+
+        if (!ok) {
+            die(__FILE__, __LINE__, errno, "could not close %s", JSON_PATH);
+        }
+
+        // printElement(json, 2, 0);
+        // printf("\n");
+        double average = getAverageDistance(json);
+
+        printf("Average : %1.12f\n\n", average);
+
+
+        // foo();
+        // sleepFiveSeconds();
+        stopCounters(&COUNTERS);
+
+        VirtualFree(arena.memory, 0, MEM_RELEASE);
+
+        //printPerformanceReport(&COUNTERS);
+
+        uint64_t elapsed = COUNTERS.end - COUNTERS.start;
+
+        if (elapsed < bestResult) {
+            bestResult = elapsed;
+            printf("haversine 1 : %f\n", (float) bestResult / (float) COUNTERS.cpuCounterFrequency);
+        }
     }
-
-    // printf("Json: %.*s", (int)text.size, text.data);
-    // printf("hi");
-    Parser parser = initParser(file, size, &arena);
-
-    Value *json = parseJson(&parser);
-
-    bool  ok = CloseHandle(file);
-
-    if (!ok) {
-        die(__FILE__, __LINE__, errno, "could not close %s", JSON_PATH);
-    }
-
-    // printElement(json, 2, 0);
-    // printf("\n");
-    double average = getAverageDistance(json);
-
-    printf("Average : %1.12f\n\n", average);
-
-    // foo();
-    // sleepFiveSeconds();
-    stopCounters(&COUNTERS);
-
-    printPerformanceReport(&COUNTERS);
 
     return 0;
 }

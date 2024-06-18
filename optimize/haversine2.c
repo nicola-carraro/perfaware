@@ -304,7 +304,6 @@ uint64_t estimateRdtscFrequency() {
     return cpuTicks;
 }
 
-
 #define JSON_PATH "data/pairs.json"
 
 #define ANSWERS_PATH "data/answers"
@@ -391,7 +390,6 @@ Arena arenaInit(uint64_t size, uint64_t largePageMinimum) {
             }
 
      arena.memory= VirtualAlloc(0, size, MEM_RESERVE | MEM_COMMIT | MEM_LARGE_PAGES, PAGE_READWRITE);
-     
 
     if (!arena.memory) {
         DWORD error = GetLastError();
@@ -438,7 +436,6 @@ String readFileToString(char *path, Arena *arena) {
     String result = {0};
     result.size = getFileSize(file, path);
     result.data.signedData = arenaAllocate(arena, result.size);
-
 
     size_t totalBytesRead = 0;
 
