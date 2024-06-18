@@ -1,0 +1,5 @@
+
+947.115.053 byte
+haversine 0 : 9.781091
+haversine 1 : 10.318212
+haversine 2 : 9.221272

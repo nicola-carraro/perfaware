@@ -66,7 +66,7 @@ uint64_t enableLargePages() {
             .Privileges = {{.Attributes = SE_PRIVILEGE_ENABLED}}
         };
 
-        if (LookupPrivilegeValue(NULL, SE_LOCK_MEMORY_NAME, &privileges.Privileges[0] .Luid)) {
+        if (LookupPrivilegeValue(NULL, SE_LOCK_MEMORY_NAME, &privileges.Privileges[0].Luid)) {
             AdjustTokenPrivileges(token, FALSE, &privileges, 0, NULL, NULL);
 
             DWORD error = GetLastError();
@@ -105,9 +105,9 @@ void pushCounter(Counters *counters, size_t id, const char *name, size_t bytes) 
 
     timedBlock->calls++;
 
-    counters->stack[counters->stackSize] .id = id;
-    counters->stack[counters->stackSize] .start = count;
-    counters->stack[counters->stackSize] .initialTicksInRoot = timedBlock->ticksInRoot;
+    counters->stack[counters->stackSize].id = id;
+    counters->stack[counters->stackSize].start = count;
+    counters->stack[counters->stackSize].initialTicksInRoot = timedBlock->ticksInRoot;
     counters->stackSize++;
 }
 
@@ -116,9 +116,9 @@ void popCounter(Counters *counters) {
 
     assert(counters->stackSize > 0);
 
-    size_t startTicks = counters->stack[counters->stackSize - 1] .start;
-    size_t id = counters->stack[counters->stackSize - 1] .id;
-    uint64_t initialTicksInRoot = counters->stack[counters->stackSize - 1] .initialTicksInRoot;
+    size_t startTicks = counters->stack[counters->stackSize - 1].start;
+    size_t id = counters->stack[counters->stackSize - 1].id;
+    uint64_t initialTicksInRoot = counters->stack[counters->stackSize - 1].initialTicksInRoot;
 
     size_t elapsed = endTicks - startTicks;
     TimedBlock *timedBlock = &(counters->timedBlocks[id]);
@@ -128,7 +128,7 @@ void popCounter(Counters *counters) {
     counters->stackSize--;
 
     if (counters->stackSize > 0) {
-        size_t parentId = counters->stack[counters->stackSize - 1] .id;
+        size_t parentId = counters->stack[counters->stackSize - 1].id;
         TimedBlock *parentBlock = &(counters->timedBlocks[parentId]);
         parentBlock->childrenTicks += elapsed;
     }
@@ -214,13 +214,11 @@ void printTimedBlocksStats(Counters *counters, size_t totalCount) {
     MEASURE_THROUGHPUT(NAME, 0);\
 }
 
-#define TIME_FUNCTION \
-{\
+#define TIME_FUNCTION {\
     TIME_BLOCK(__func__);\
 }
 
-#define STOP_COUNTER \
-{\
+#define STOP_COUNTER {\
     popCounter(&COUNTERS);\
 }
 
@@ -385,11 +383,11 @@ Arena arenaInit(uint64_t size, uint64_t largePageMinimum) {
 
     size_t remainder = size % largePageMinimum;
 
-            if (remainder != 0) {
-                size += (largePageMinimum - remainder);
-            }
+    if (remainder != 0) {
+        size += (largePageMinimum - remainder);
+    }
 
-     arena.memory= VirtualAlloc(0, size, MEM_RESERVE | MEM_COMMIT | MEM_LARGE_PAGES, PAGE_READWRITE);
+    arena.memory = VirtualAlloc(0, size, MEM_RESERVE | MEM_COMMIT | MEM_LARGE_PAGES, PAGE_READWRITE);
 
     if (!arena.memory) {
         DWORD error = GetLastError();
@@ -426,7 +424,6 @@ void freeLastAllocation(Arena *arena) {
 }
 
 String readFileToString(char *path, Arena *arena) {
-
     TIME_FUNCTION;
     HANDLE file = CreateFile(path, GENERIC_READ, 0, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0);
 
@@ -700,7 +697,6 @@ bool isNullLiteral(Parser *parser) {
 }
 
 bool hasNext(Parser *parser) {
-
     bool result = parser->offset < parser->text.size;
 
     return result;
@@ -1408,7 +1404,7 @@ double getAverageDistance(Value *json) {
     double sum = 0;
     size_t count = getElementCount(pairs);
 
-    MEASURE_THROUGHPUT("pairsLoop", count *4 *sizeof(double));
+    MEASURE_THROUGHPUT("pairsLoop", count * 4 * sizeof(double));
 
     for (size_t elementIndex = 0; elementIndex < count; elementIndex++) {
         Value *pair = getElementOfArray(pairs, elementIndex);
@@ -1457,35 +1453,48 @@ void bar() {
 }
 
 int main(void) {
-    COUNTERS.cpuCounterFrequency = estimateRdtscFrequency();
+    uint64_t bestResult = UINT64_MAX;
 
-    uint64_t largePageMinimum = enableLargePages();
+    for (int i = 0; i < 100; i++) {
+        ZeroMemory(&COUNTERS, sizeof(COUNTERS));
+        COUNTERS.cpuCounterFrequency = estimateRdtscFrequency();
 
-    startCounters(&COUNTERS);
-    // sleepOneSecond();
-    SetConsoleOutputCP(65001);
+        uint64_t largePageMinimum = enableLargePages();
 
-    Arena arena = arenaInit(ARENA_SIZE, largePageMinimum);
+        startCounters(&COUNTERS);
+        // sleepOneSecond();
+        SetConsoleOutputCP(65001);
 
-    String text = readFileToString(JSON_PATH, &arena);
+        Arena arena = arenaInit(ARENA_SIZE, largePageMinimum);
 
-    // printf("Json: %.*s", (int)text.size, text.data);
-    // printf("hi");
-    Parser parser = initParser(text, &arena);
+        String text = readFileToString(JSON_PATH, &arena);
 
-    Value *json = parseJson(&parser);
+        // printf("Json: %.*s", (int)text.size, text.data);
+        // printf("hi");
+        Parser parser = initParser(text, &arena);
 
-    // printElement(json, 2, 0);
-    // printf("\n");
-    double average = getAverageDistance(json);
+        Value *json = parseJson(&parser);
 
-    printf("Average : %1.12f\n\n", average);
+        // printElement(json, 2, 0);
+        // printf("\n");
+        double average = getAverageDistance(json);
 
-    // foo();
-    // sleepFiveSeconds();
-    stopCounters(&COUNTERS);
+        printf("Average : %1.12f\n\n", average);
 
-    printPerformanceReport(&COUNTERS);
+        // foo();
+        // sleepFiveSeconds();
+        stopCounters(&COUNTERS);
+
+        // printPerformanceReport(&COUNTERS);
+        VirtualFree(arena.memory, 0, MEM_RELEASE);
+
+        uint64_t elapsed = COUNTERS.end - COUNTERS.start;
+
+        if (elapsed < bestResult) {
+            bestResult = elapsed;
+            printf("haversine 2 : %f\n", (float) bestResult / (float) COUNTERS.cpuCounterFrequency);
+        }
+    }
 
     return 0;
 }
