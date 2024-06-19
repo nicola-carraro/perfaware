@@ -30,7 +30,7 @@ typedef struct {
 
 #define MAX_COUNTERS 4096
 
-#define READ_SIZE ((size_t) 1024 * 1024)
+#define READ_SIZE ((size_t)1024 * 1024)
 
 typedef struct {
     uint64_t totalTicks;

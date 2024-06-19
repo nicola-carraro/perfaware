@@ -18,9 +18,9 @@ goto argactionstart
 
 del *.pdb
 
-cl %common% %profile% %build_type% haversine0.c
-cl %common% %profile% %build_type% haversine1.c
-cl %common% %profile% %build_type% Advapi32.lib haversine2.c
+cl %common% %profile% %build_type% hav0.c
+cl %common% %profile% %build_type% hav1.c
+cl %common% %profile% %build_type% Advapi32.lib hav2.c
 
 
 del *.obj *.ilk *.lib
