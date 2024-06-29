@@ -14,8 +14,6 @@
 
 #define GB (1024 * 1024 * 1024)
 
-#define BUFFER_SIZE GB
-
 #define FILE_NAME "data/pairs.json"
 
 typedef int32_t i32;
@@ -71,18 +69,11 @@ u64 readFromFile(char *buffer, u32 readSize) {
     return totalBytesRead;
 }
 
-float calculateGbPerSecond(float seconds, u64 bytes) {
-    float gb = (float) bytes / (float) GB;
 
-    float gbPerSecond = gb / seconds;
-
-    return gbPerSecond;
-}
-
-void test(u32 readSize, u64 rdtscFrequency) {
+float measureThroughput(u32 readSize, u64 rdtscFrequency) {
     BOOL ok = 0;
 
-    char *buffer = VirtualAlloc(0, BUFFER_SIZE, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
+    char *buffer = VirtualAlloc(0, readSize, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
 
     assert(buffer);
 
@@ -91,6 +82,8 @@ void test(u32 readSize, u64 rdtscFrequency) {
     u64 secondsSinceReset = 0;
 
     u64 reset = __rdtsc();
+
+    float bestGbPerSecond = 0;
 
     while (secondsSinceReset < 10) {
         u64 start = __rdtsc();
@@ -107,19 +100,25 @@ void test(u32 readSize, u64 rdtscFrequency) {
             secondsSinceReset = 0;
 
             float seconds = (float) (elapsed) / (float) rdtscFrequency;
-            float gbPerSecond = calculateGbPerSecond(seconds, bytes);
+              float gb = (float) bytes / (float) GB;
 
-            printf("Best: %f sec, %f gb/sec\n", seconds, gbPerSecond);
+            float gbPerSecond = gb / seconds;
+
+            bestGbPerSecond = gbPerSecond;
+
+            printf("Buffer size %I32u: %f sec, %f gb/sec\n", readSize, seconds, gbPerSecond);
         }
     }
 
     ok = VirtualFree(buffer, 0, MEM_RELEASE);
     assert(ok);
+
+    return bestGbPerSecond;
 }
 
 int main(void) {
     u64 rdtscFrequency = measureRdtscFrequency();
-    u32 readSize = BUFFER_SIZE;
+    u32 readSize = GB;
 
-    test(readSize, rdtscFrequency);
+    measureThroughput(readSize, rdtscFrequency);
 }
