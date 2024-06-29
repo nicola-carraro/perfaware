@@ -48,6 +48,27 @@ u64 measureRdtscFrequency() {
     return rdtscFrequency;
 }
 
+u64 readFromFile(char *buffer, u32 readSize) {
+    DWORD bytesRead = 0;
+    u64 totalBytesRead = 0;
+
+    HANDLE file = CreateFile(FILE_NAME, GENERIC_READ, 0, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0);
+
+    assert(file);
+
+    BOOL ok = 0;
+    do {
+        ok = ReadFile(file, buffer, readSize, &bytesRead, 0);
+        assert(ok);
+        totalBytesRead += bytesRead;
+    } while (bytesRead == readSize);
+
+    ok = CloseHandle(file);
+    assert(ok);
+
+    return totalBytesRead;
+}
+
 int main(void) {
     u64 rdtscFrequency = measureRdtscFrequency();
 
@@ -55,19 +76,9 @@ int main(void) {
 
     char *buffer = VirtualAlloc(0, BUFFER_SIZE, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
 
+    u32 readSize = BUFFER_SIZE;
+
     assert(buffer);
 
-    HANDLE file = CreateFile(FILE_NAME, GENERIC_READ, 0, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0);
-
-    assert(file);
-
-    u32 readSize = BUFFER_SIZE;
-    DWORD bytesRead = 0;
-    u64 totalBytesRead = 0;
-
-    do {
-        BOOL ok = ReadFile(file, buffer, readSize, &bytesRead, 0);
-        assert(ok);
-        totalBytesRead += bytesRead;
-    } while (bytesRead == readSize);
+    readFromFile(buffer, readSize);
 }
