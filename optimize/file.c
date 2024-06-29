@@ -72,13 +72,35 @@ u64 readFromFile(char *buffer, u32 readSize) {
 int main(void) {
     u64 rdtscFrequency = measureRdtscFrequency();
 
-    rdtscFrequency;
-
     char *buffer = VirtualAlloc(0, BUFFER_SIZE, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
 
     u32 readSize = BUFFER_SIZE;
 
     assert(buffer);
 
-    readFromFile(buffer, readSize);
+    u64 best = UINT64_MAX;
+
+    u64 secondsSinceReset = 0;
+
+    u64 reset = __rdtsc();
+
+    while (secondsSinceReset < 10) {
+        u64 start = __rdtsc();
+        readFromFile(buffer, readSize);
+        u64 end = __rdtsc();
+
+        u64 elapsed = end - start;
+
+        u64 ticksSinceReset = end - reset;
+        secondsSinceReset = ticksSinceReset / rdtscFrequency;
+
+        if (elapsed < best) {
+            best = elapsed;
+            secondsSinceReset = 0;
+
+            float seconds = (float) (elapsed) / (float) rdtscFrequency;
+
+            printf("Best: %f\n", seconds);
+        }
+    }
 }
