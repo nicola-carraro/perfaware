@@ -20,6 +20,7 @@ del *.pdb
 
 cl %common% %profile% %build_type% hav0.c
 cl %common% %profile% %build_type% hav1.c
+cl %common% %profile% %build_type% file.c
 cl %common% %profile% %build_type% Advapi32.lib hav2.c
 
 
