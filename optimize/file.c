@@ -48,9 +48,13 @@ u64 measureRdtscFrequency() {
     return rdtscFrequency;
 }
 
-u64 readFromFile(char *buffer, u32 bufferSize) {
+u64 readFromFile(u32 bufferSize) {
     DWORD bytesRead = 0;
     u64 totalBytesRead = 0;
+
+    char *buffer = VirtualAlloc(0, bufferSize, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
+
+    assert(buffer);
 
     HANDLE file = CreateFile(FILE_NAME, GENERIC_READ, 0, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0);
 
@@ -66,17 +70,13 @@ u64 readFromFile(char *buffer, u32 bufferSize) {
     ok = CloseHandle(file);
     assert(ok);
 
+    ok = VirtualFree(buffer, 0, MEM_RELEASE);
+    assert(ok);
+
     return totalBytesRead;
 }
 
-
 float measureThroughput(u32 bufferSize, u64 rdtscFrequency) {
-    BOOL ok = 0;
-
-    char *buffer = VirtualAlloc(0, bufferSize, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
-
-    assert(buffer);
-
     u64 best = UINT64_MAX;
 
     u64 secondsSinceReset = 0;
@@ -87,7 +87,7 @@ float measureThroughput(u32 bufferSize, u64 rdtscFrequency) {
 
     while (secondsSinceReset < 10) {
         u64 start = __rdtsc();
-        u64 bytes = readFromFile(buffer, bufferSize);
+        u64 bytes = readFromFile(bufferSize);
         u64 end = __rdtsc();
 
         u64 elapsed = end - start;
@@ -100,7 +100,7 @@ float measureThroughput(u32 bufferSize, u64 rdtscFrequency) {
             secondsSinceReset = 0;
 
             float seconds = (float) (elapsed) / (float) rdtscFrequency;
-              float gb = (float) bytes / (float) GB;
+            float gb = (float) bytes / (float) GB;
 
             float gbPerSecond = gb / seconds;
 
@@ -110,20 +110,13 @@ float measureThroughput(u32 bufferSize, u64 rdtscFrequency) {
         }
     }
 
-    ok = VirtualFree(buffer, 0, MEM_RELEASE);
-    assert(ok);
-
     return bestGbPerSecond;
 }
 
 int main(void) {
     u64 rdtscFrequency = measureRdtscFrequency();
     u32 bufferSizes[] = {
-        1024,
-        1024 * 4,
-        1024 * 16,
-        1024 * 32,
-        1024 * 128,
+        1024 * 256,
         1024 * 512,
         1024 * 1024,
         1024 * 1024 * 2,
@@ -137,13 +130,11 @@ int main(void) {
 
     float throughputs[ARRAYSIZE(bufferSizes)] = {0};
 
-    for(i32 testIndex = 0; testIndex < ARRAYSIZE(bufferSizes); testIndex++) {
+    for (i32 testIndex = 0; testIndex < ARRAYSIZE(bufferSizes); testIndex++) {
         throughputs[testIndex] = measureThroughput(bufferSizes[testIndex], rdtscFrequency);
     }
 
-    for(i32 testIndex = 0; testIndex < ARRAYSIZE(bufferSizes); testIndex++) {
+    for (i32 testIndex = 0; testIndex < ARRAYSIZE(bufferSizes); testIndex++) {
         printf("size: %u, throughput: %f\n", bufferSizes[testIndex], throughputs[testIndex]);
     }
-
-    
 }
